@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5º CTA — Controle de Acesso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   VARIÁVEIS & RESET
+   Paleta: cinza institucional + verde oliva militar + branco
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg:         #f0f2f4;
+  --surface:    #ffffff;
+  --surface2:   #f7f8fa;
+  --border:     #d4d8dd;
+  --border2:    #b8bec6;
+  --text:       #1a2332;
+  --text-2:     #3d4f63;
+  --text-muted: #7a8fa6;
+  --accent:     #2c4a2e;       /* verde oliva escuro */
+  --accent2:    #3d6b40;       /* verde oliva médio */
+  --accent-bg:  rgba(44,74,46,.07);
+  --accent-bd:  rgba(44,74,46,.2);
+  --danger:     #b52a2a;
+  --danger-bg:  rgba(181,42,42,.07);
+  --danger-bd:  rgba(181,42,42,.2);
+  --warn:       #8a5a00;
+  --warn-bg:    rgba(138,90,0,.07);
+  --warn-bd:    rgba(138,90,0,.2);
+  --info:       #1a4a7a;
+  --info-bg:    rgba(26,74,122,.07);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:  0 2px 8px rgba(0,0,0,.1);
+  --radius:     3px;
+  --font:       'Source Sans 3', sans-serif;
+  --font-mono:  'Source Code Pro', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: var(--font); font-size: 14px; background: var(--bg); color: var(--text); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+* { -webkit-font-smoothing: antialiased; }
+
+/* ═══════════════════════════════════════════════════════
+   TELA DE LOGIN
+═══════════════════════════════════════════════════════ */
+#tela-login {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #1a2332;
+  display: flex; align-items: center; justify-content: center;
+}
+#tela-login.oculto { display: none; }
+
+.login-card {
+  background: var(--surface);
+  width: 380px;
+  border-top: 4px solid var(--accent);
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  padding: 40px;
+}
+.login-brasao {
+  text-align: center; margin-bottom: 28px;
+}
+.login-brasao-icon {
+  width: 56px; height: 56px; margin: 0 auto 12px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; color: #fff;
+}
+.login-org {
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 4px;
+}
+.login-title {
+  font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .5px;
+}
+.login-divider {
+  border: none; border-top: 1px solid var(--border); margin: 20px 0;
+}
+.login-form-group { margin-bottom: 16px; }
+.login-form-group label {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 6px;
+}
+.login-form-group input {
+  width: 100%; padding: 10px 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-family: var(--font); font-size: 14px; color: var(--text);
+  outline: none; border-radius: var(--radius);
+  transition: border-color .15s;
+}
+.login-form-group input:focus { border-color: var(--accent); }
+.login-erro {
+  background: var(--danger-bg); border: 1px solid var(--danger-bd);
+  color: var(--danger); font-size: 13px; padding: 10px 12px;
+  border-radius: var(--radius); margin-bottom: 14px; display: none;
+}
+.btn-login {
+  width: 100%; padding: 11px;
+  background: var(--accent); color: #fff; border: none;
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer; border-radius: var(--radius);
+  transition: background .15s;
+}
+.btn-login:hover { background: var(--accent2); }
+.btn-login:disabled { opacity: .6; cursor: wait; }
+.login-footer {
+  text-align: center; margin-top: 20px;
+  font-size: 11px; color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT PRINCIPAL
+═══════════════════════════════════════════════════════ */
+#app { display: flex; height: 100vh; overflow: hidden; }
+#app.oculto { display: none; }
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  background: #1a2332;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+.sidebar-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sidebar-org {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,.4); margin-bottom: 4px;
+}
+.sidebar-name {
+  font-size: 14px; font-weight: 700; color: #fff; line-height: 1.3;
+}
+.sidebar-badge {
+  display: inline-block; margin-top: 6px;
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  background: var(--accent); color: rgba(255,255,255,.9);
+  padding: 2px 8px; border-radius: 2px;
+}
+
+.sidebar-nav { flex: 1; padding: 12px 0; }
+.nav-section-label {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,.25); padding: 12px 16px 4px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; cursor: pointer;
+  color: rgba(255,255,255,.55); font-size: 13px; font-weight: 400;
+  border-left: 3px solid transparent;
+  transition: all .15s;
+}
+.nav-item:hover { color: rgba(255,255,255,.85); background: rgba(255,255,255,.05); }
+.nav-item.ativo {
+  color: #fff; background: rgba(255,255,255,.08);
+  border-left-color: var(--accent2);
+  font-weight: 600;
+}
+.nav-item svg { opacity: .7; flex-shrink: 0; }
+.nav-item.ativo svg { opacity: 1; }
+
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.sidebar-user {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.sidebar-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.sidebar-user-name { font-size: 12px; color: rgba(255,255,255,.7); font-weight: 600; }
+.sidebar-user-role { font-size: 10px; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: 1px; }
+.btn-logout {
+  width: 100%; padding: 7px; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.5);
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer; border-radius: var(--radius); transition: all .15s;
+}
+.btn-logout:hover { background: rgba(181,42,42,.2); color: #e88; border-color: rgba(181,42,42,.3); }
+
+/* ── Main content ─────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.topbar {
+  height: 52px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px; gap: 16px; flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+.topbar-title {
+  font-size: 15px; font-weight: 700; color: var(--text); flex: 1;
+}
+.topbar-clock {
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-muted);
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: var(--radius);
+}
+.topbar-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-muted);
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent2); animation: blink 2.5s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ═══════════════════════════════════════════════════════
+   PÁGINAS
+═══════════════════════════════════════════════════════ */
+.page { display: none; animation: fadeIn .2s ease; }
+.page.ativo { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:none} }
+
+/* ═══════════════════════════════════════════════════════
+   COMPONENTES COMUNS
+═══════════════════════════════════════════════════════ */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-sm);
+}
+.card-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+.card-body { padding: 18px; }
+
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* Botões */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 8px 14px; border-radius: var(--radius);
+  border: none; cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary { background: var(--surface); color: var(--text-2); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface2); border-color: var(--border2); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-bd); }
+.btn-danger:hover { background: rgba(181,42,42,.14); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 2px;
+}
+.badge-green  { background:var(--accent-bg);  color:var(--accent);  border:1px solid var(--accent-bd); }
+.badge-red    { background:var(--danger-bg);  color:var(--danger);  border:1px solid var(--danger-bd); }
+.badge-yellow { background:var(--warn-bg);    color:var(--warn);    border:1px solid var(--warn-bd); }
+.badge-blue   { background:var(--info-bg);    color:var(--info);    border:1px solid rgba(26,74,122,.2); }
+.badge-gray   { background:var(--surface2);   color:var(--text-muted); border:1px solid var(--border); }
+
+/* Inputs */
+.form-group { margin-bottom: 14px; }
+.form-group label {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 5px;
+}
+input[type=text], input[type=password], input[type=date],
+input[type=number], input[type=email], select, textarea {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--font); font-size: 13px;
+  padding: 8px 11px; border-radius: var(--radius); outline: none;
+  transition: border-color .15s; width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder { color: var(--text-muted); }
+select { cursor: pointer; }
+
+/* Tabela */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--surface2); }
+th {
+  text-align: left; padding: 10px 14px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface2); }
+.td-name { font-weight: 600; }
+.td-sub  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.td-mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* Paginação */
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted);
+}
+.pag-btns { display: flex; gap: 4px; }
+.pag-btn {
+  padding: 5px 11px; background: var(--surface);
+  border: 1px solid var(--border); color: var(--text-muted);
+  border-radius: var(--radius); cursor: pointer;
+  font-family: var(--font-mono); font-size: 12px; transition: all .15s;
+}
+.pag-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pag-btn.atual { background:var(--accent); color:#fff; border-color:var(--accent); }
+.pag-btn:disabled { opacity: .35; cursor: default; }
+
+/* Grid de filtros */
+.filter-bar {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  margin-bottom: 16px; box-shadow: var(--shadow-sm);
+}
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px; margin-bottom: 12px;
+}
+.filter-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Toast */
+.toast-wrap { position: fixed; bottom: 20px; right: 20px; z-index: 9998; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: var(--shadow-md); border-radius: var(--radius);
+  padding: 12px 16px; min-width: 260px; font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  animation: slideIn .2s ease;
+}
+@keyframes slideIn { from{transform:translateX(20px);opacity:0} }
+.toast.success { border-left: 3px solid var(--accent2); }
+.toast.error   { border-left: 3px solid var(--danger); }
+.toast.info    { border-left: 3px solid var(--info); }
+
+/* Modal */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 5000; display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-bg.aberto { display: flex; }
+.modal {
+  background: var(--surface); width: 90%; max-width: 560px;
+  border-top: 3px solid var(--accent); box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  animation: slideUp .2s ease; border-radius: var(--radius);
+}
+.modal-lg { max-width: 760px; }
+@keyframes slideUp { from{transform:translateY(16px);opacity:0} }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 14px; font-weight: 700; }
+.modal-close {
+  background:none; border:none; font-size:18px; cursor:pointer;
+  color:var(--text-muted); line-height:1; transition:color .15s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 20px; }
+.modal-footer {
+  padding: 14px 20px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Empty state */
+.empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+.empty-icon { font-size: 36px; margin-bottom: 10px; opacity: .4; }
+.empty-text { font-size: 13px; }
+
+/* Spinner */
+.spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-state { display: flex; align-items: center; justify-content: center; padding: 40px; gap: 10px; color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════════ */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px; margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+  border-left: 3px solid var(--border2); box-shadow: var(--shadow-sm);
+}
+.stat-card.verde  { border-left-color: var(--accent2); }
+.stat-card.vermelho { border-left-color: var(--danger); }
+.stat-card.azul   { border-left-color: var(--info); }
+.stat-card.amarelo{ border-left-color: var(--warn); }
+.stat-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.stat-valor { font-size: 32px; font-weight: 700; line-height: 1; color: var(--text); }
+.stat-card.verde   .stat-valor { color: var(--accent); }
+.stat-card.vermelho .stat-valor { color: var(--danger); }
+.stat-card.azul    .stat-valor { color: var(--info); }
+.stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+}
+@media (max-width:900px) { .dash-grid { grid-template-columns: 1fr; } }
+
+/* Gráfico de barras simples */
+.bar-chart-wrap { padding: 6px 0 0; }
+.bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 100px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.bar-fill { width: 100%; min-height: 2px; background: var(--accent-bg); border: 1px solid var(--accent-bd); border-radius: 2px 2px 0 0; transition: height .5s ease; cursor: default; }
+.bar-fill:hover { background: var(--accent); }
+.bar-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
+
+/* Feed */
+.feed-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 16px; border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.feed-item:last-child { border-bottom: none; }
+.feed-item:hover { background: var(--surface2); }
+.feed-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 12px;
+}
+.feed-dot.entrada { background: var(--accent-bg); border: 1px solid var(--accent-bd); color: var(--accent); }
+.feed-dot.saida   { background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); }
+.feed-name { font-size: 13px; font-weight: 600; }
+.feed-meta { font-size: 11px; color: var(--text-muted); }
+.feed-time { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+/* ═══════════════════════════════════════════════════════
+   CÂMERAS
+═══════════════════════════════════════════════════════ */
+.cam-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.cam-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+.cam-preview {
+  aspect-ratio: 16/9; background: #0a0f18; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.cam-preview video, .cam-preview iframe { width:100%; height:100%; border:none; object-fit:cover; }
+.cam-placeholder { text-align:center; color: rgba(255,255,255,.2); }
+.cam-placeholder-icon { font-size: 32px; margin-bottom: 6px; }
+.cam-placeholder-text { font-size: 11px; font-family: var(--font-mono); }
+.cam-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.7));
+  padding: 8px 10px; display: flex; align-items: center; justify-content: space-between;
+}
+.cam-status-dot { width:6px;height:6px;border-radius:50%;background:#4caf50;animation:blink 2s infinite; }
+.cam-status-text { font-size:10px;color:rgba(255,255,255,.7);font-family:var(--font-mono);margin-left:5px; }
+.cam-info { padding: 12px 14px; display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--border); }
+.cam-name { font-weight:600; font-size:13px; }
+.cam-local { font-size:11px; color:var(--text-muted); }
+.cam-actions { display:flex; gap:6px; }
+
+/* ═══════════════════════════════════════════════════════
+   MODAL CLIPE
+═══════════════════════════════════════════════════════ */
+.clip-info-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px; }
+.clip-info-item label { font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted); }
+.clip-info-val { font-size:13px;font-weight:600;margin-top:3px; }
+.clip-area {
+  aspect-ratio:16/9; background:#0a0f18;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--radius); border:1px solid var(--border);
+  overflow:hidden; position:relative;
+}
+.clip-area video { width:100%;height:100%; }
+.clip-area iframe { width:100%;height:100%;border:none; }
+.clip-placeholder-modal { text-align:center; color:rgba(255,255,255,.25); }
+.clip-note {
+  margin-top:12px; padding:10px 12px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-left:3px solid var(--info); font-size:12px; color:var(--text-muted);
+  border-radius:var(--radius);
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     TELA DE LOGIN
+══════════════════════════════════════════════════ -->
+<div id="tela-login">
+  <div class="login-card">
+    <div class="login-brasao">
+      <div class="login-brasao-icon">🛡</div>
+      <div class="login-org">Exército Brasileiro</div>
+      <div class="login-title">5º CTA — 10ª Brigada de Infantaria</div>
+    </div>
+    <hr class="login-divider">
+    <div id="login-erro" class="login-erro"></div>
+    <div class="login-form-group">
+      <label for="inp-login">Usuário</label>
+      <input type="text" id="inp-login" autocomplete="username" placeholder="ex: admin">
+    </div>
+    <div class="login-form-group">
+      <label for="inp-senha">Senha</label>
+      <input type="password" id="inp-senha" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <button class="btn-login" id="btn-entrar" onclick="fazerLogin()">Entrar</button>
+    <div class="login-footer">Acesso restrito a pessoal autorizado</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     APLICAÇÃO PRINCIPAL
+══════════════════════════════════════════════════ -->
+<div id="app" class="oculto">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-org">Exército Brasileiro</div>
+      <div class="sidebar-name">5º CTA<br>Controle de Acesso</div>
+      <span class="sidebar-badge">10ª Brigada</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item ativo" onclick="ir('dashboard')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="ir('historico')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+        Histórico de Acessos
+      </div>
+      <div class="nav-item" onclick="ir('cameras')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Câmeras
+      </div>
+
+      <div class="nav-section-label" style="margin-top:8px">Gerenciamento</div>
+      <div class="nav-item" onclick="ir('pessoas')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Militares
+      </div>
+      <div class="nav-item nav-admin" onclick="ir('usuarios')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><path d="M16 11l2 2 4-4"/></svg>
+        Usuários do Sistema
+      </div>
+      <div class="nav-item nav-admin" onclick="ir('configuracoes')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M18.66 12H21M19.07 19.07l-1.41-1.41M12 18.66V21M4.93 19.07l1.41-1.41M3 12h2.34M4.93 4.93l1.41 1.41M12 3v2.34"/></svg>
+        Configurações
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sbar-avatar">A</div>
+        <div>
+          <div class="sidebar-user-name" id="sbar-nome">—</div>
+          <div class="sidebar-user-role" id="sbar-perfil">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="fazerLogout()">↩ Sair do Sistema</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-status"><div class="status-dot"></div>Sistema Operacional</div>
+      <div class="topbar-clock" id="clock">--:--:--</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ─────────────────── DASHBOARD ─────────────────── -->
+      <div class="page ativo" id="page-dashboard">
+        <div class="stats-row" id="stats-row">
+          <div class="stat-card verde">
+            <div class="stat-label">Acessos Hoje</div>
+            <div class="stat-valor" id="stat-hoje">—</div>
+            <div class="stat-sub">registros no dia</div>
+          </div>
+          <div class="stat-card vermelho">
+            <div class="stat-label">Acessos Negados</div>
+            <div class="stat-valor" id="stat-neg">—</div>
+            <div class="stat-sub">tentativas bloqueadas</div>
+          </div>
+          <div class="stat-card azul">
+            <div class="stat-label">Total Cadastrados</div>
+            <div class="stat-valor" id="stat-total">—</div>
+            <div class="stat-sub">militares ativos</div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Acessos por Hora — Hoje</span>
+            </div>
+            <div class="card-body">
+              <div class="bar-chart-wrap">
+                <div class="bar-chart" id="bar-chart"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Últimos Registros</span>
+              <button class="btn btn-sm btn-secondary" onclick="ir('historico')">Ver todos</button>
+            </div>
+            <div id="feed-ultimos">
+              <div class="loading-state"><div class="spinner"></div> Carregando...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────── HISTÓRICO ─────────────────── -->
+      <div class="page" id="page-historico">
+        <div class="filter-bar">
+          <div class="section-label">Filtros de Busca</div>
+          <div class="filter-grid">
+            <div class="form-group" style="margin:0">
+              <label>Nome</label>
+              <input type="text" id="f-nome" placeholder="ex: Ricardo">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Matrícula</label>
+              <input type="text" id="f-matricula" placeholder="ex: 001234">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Tipo</label>
+              <select id="f-tipo">
+                <option value="">Todos</option>
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Local</label>
+              <select id="f-local"><option value="">Todos</option></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Método</label>
+              <select id="f-metodo">
+                <option value="">Todos</option>
+                <option value="digital">Digital</option>
+                <option value="cartao+digital">Cartão + Digital</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Autorização</label>
+              <select id="f-autorizado">
+                <option value="">Todos</option>
+                <option value="1">Autorizado</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Data Início</label>
+              <input type="date" id="f-ini">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Data Fim</label>
+              <input type="date" id="f-fim">
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn btn-secondary" onclick="limparFiltros()">Limpar</button>
+            <button class="btn btn-primary" onclick="buscarAcessos(1)">🔍 Buscar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Militar</th>
+                  <th>Tipo</th>
+                  <th>Data / Hora</th>
+                  <th>Local</th>
+                  <th>Método</th>
+                  <th>Status</th>
+                  <th>Vídeo</th>
+                </tr>
+              </thead>
+              <tbody id="tb-acessos">
+                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Carregando...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="paginacao" style="display:none">
+            <span id="pag-info"></span>
+            <div class="pag-btns" id="pag-btns"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────── CÂMERAS ─────────────────── -->
+      <div class="page" id="page-cameras">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <span class="card-title">Câmeras Cadastradas</span>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalCamera()">+ Adicionar Câmera</button>
+          </div>
+          <div class="card-body">
+            <div class="cam-grid" id="cam-grid">
+              <div class="loading-state"><div class="spinner"></div>Carregando...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Câmera da webcam local (sempre disponível para teste) -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🎥 Teste — Webcam do seu computador</span>
+            <button class="btn btn-secondary btn-sm" id="btn-webcam" onclick="iniciarWebcam()">Ativar Webcam</button>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <div>
+                <div class="cam-preview" style="border-radius:var(--radius);" id="webcam-area">
+                  <div class="cam-placeholder">
+                    <div class="cam-placeholder-icon">📷</div>
+                    <div class="cam-placeholder-text">Clique em "Ativar Webcam"</div>
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:13px;color:var(--text-2);line-height:1.7">
+                <strong>Para que serve este teste?</strong><br>
+                Permite verificar se o sistema consegue acessar câmeras conectadas ao computador.<br><br>
+                <strong>Em produção:</strong><br>
+                As câmeras IP do batalhão são acessadas via protocolo RTSP (rede local).
+                Cadastre a URL delas no botão "+ Adicionar Câmera".<br><br>
+                <strong>Formatos suportados:</strong><br>
+                • <code>rtsp://ip:porta/stream</code><br>
+                • <code>http://ip/video.mjpg</code><br>
+                • Câmeras públicas (YouTube Live, etc.)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────── MILITARES ─────────────────── -->
+      <div class="page" id="page-pessoas">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <span class="card-title">Militares Cadastrados</span>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalPessoa()">+ Cadastrar Militar</button>
+          </div>
+          <div class="card-body" style="padding-bottom:0">
+            <div class="filter-grid" style="margin-bottom:12px">
+              <div><label>Nome</label><input type="text" id="fp-nome" placeholder="buscar por nome"></div>
+              <div><label>Matrícula</label><input type="text" id="fp-mat" placeholder="buscar por matrícula"></div>
+              <div><label>Departamento</label><input type="text" id="fp-dep" placeholder="buscar por dep."></div>
+              <div style="display:flex;align-items:flex-end">
+                <button class="btn btn-primary" style="width:100%" onclick="carregarPessoas()">Buscar</button>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Nome</th><th>Matrícula</th><th>Patente</th><th>Departamento</th><th>Status</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="tb-pessoas">
+                <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────── USUÁRIOS DO SISTEMA ─────────────────── -->
+      <div class="page" id="page-usuarios">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Usuários do Painel de Controle</span>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalUsuario()">+ Novo Usuário</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Último Acesso</th><th>Status</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="tb-usuarios">
+                <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────── CONFIGURAÇÕES ─────────────────── -->
+      <div class="page" id="page-configuracoes">
+        <div class="card" style="max-width:600px">
+          <div class="card-header">
+            <span class="card-title">Configurações do Sistema</span>
+          </div>
+          <div class="card-body" id="cfg-body">
+            <div class="loading-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="max-width:600px;margin-top:16px">
+          <div class="card-header"><span class="card-title">🔑 Alterar Minha Senha</span></div>
+          <div class="card-body">
+            <div class="form-group"><label>Senha Atual</label><input type="password" id="senha-atual" placeholder="••••••••"></div>
+            <div class="form-group"><label>Nova Senha</label><input type="password" id="senha-nova" placeholder="••••••••"></div>
+            <div class="form-group"><label>Confirmar Nova Senha</label><input type="password" id="senha-conf" placeholder="••••••••"></div>
+            <button class="btn btn-primary" onclick="trocarSenha()">Salvar Nova Senha</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════════════════
+     MODAL — CLIPE DE VÍDEO
+══════════════════════════════════════════════════ -->
+<div class="modal-bg" id="modal-clip">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">Clipe de Vídeo — Registro de Acesso</span>
+      <button class="modal-close" onclick="fecharModal('modal-clip')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="clip-info-grid" id="clip-info"></div>
+      <div class="clip-area" id="clip-area">
+        <div class="clip-placeholder-modal">
+          <div style="font-size:40px;margin-bottom:8px;opacity:.2">🎬</div>
+          <div style="font-size:12px;font-family:var(--font-mono)">Aguardando solicitação de clipe</div>
+        </div>
+      </div>
+      <div class="clip-note" id="clip-note">
+        O sistema recupera 2 minutos antes e 2 minutos após o horário do acesso das câmeras cadastradas.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-clip')">Fechar</button>
+      <button class="btn btn-primary" id="btn-gerar-clip" onclick="gerarClipe()">▶ Gerar Clipe</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Câmera -->
+<div class="modal-bg" id="modal-camera">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-cam-titulo">Adicionar Câmera</span>
+      <button class="modal-close" onclick="fecharModal('modal-camera')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Nome da Câmera *</label><input type="text" id="cam-nome" placeholder="ex: Câmera Recepção"></div>
+      <div class="form-group"><label>Local</label><input type="text" id="cam-local" placeholder="ex: Entrada Principal"></div>
+      <div class="form-group">
+        <label>Tipo de Câmera</label>
+        <select id="cam-tipo" onchange="atualizarDicaURL()">
+          <option value="rtsp">RTSP (câmera IP na rede local)</option>
+          <option value="http">HTTP/MJPEG (stream HTTP)</option>
+          <option value="publica">Câmera Pública (link YouTube/etc)</option>
+          <option value="webcam">Webcam do Computador</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>URL / Endereço *</label>
+        <input type="text" id="cam-url" placeholder="rtsp://192.168.1.100:554/stream1">
+        <div id="cam-url-dica" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-camera')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarCamera()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Militar -->
+<div class="modal-bg" id="modal-pessoa">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-pes-titulo">Cadastrar Militar</span>
+      <button class="modal-close" onclick="fecharModal('modal-pessoa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pes-id">
+      <div class="form-row">
+        <div class="form-group"><label>Nome Completo *</label><input type="text" id="pes-nome" placeholder="ex: Cap. João da Silva"></div>
+        <div class="form-group"><label>Matrícula *</label><input type="text" id="pes-mat" placeholder="ex: 007890"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Patente</label><input type="text" id="pes-pat" placeholder="ex: Capitão"></div>
+        <div class="form-group"><label>Departamento</label><input type="text" id="pes-dep" placeholder="ex: CTA"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-pessoa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarPessoa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Usuário do sistema -->
+<div class="modal-bg" id="modal-usuario">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-usr-titulo">Novo Usuário do Sistema</span>
+      <button class="modal-close" onclick="fecharModal('modal-usuario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="usr-id">
+      <div class="form-group"><label>Nome Completo *</label><input type="text" id="usr-nome" placeholder="ex: Sgt. Marcos Ferreira"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Login *</label><input type="text" id="usr-login" placeholder="ex: marcos.ferreira"></div>
+        <div class="form-group">
+          <label>Perfil</label>
+          <select id="usr-perfil">
+            <option value="operador">Operador (somente leitura)</option>
+            <option value="admin">Administrador (acesso total)</option>
+          </select>
+        </div>
+      </div>
+      <div id="usr-senha-wrap">
+        <div class="form-group"><label>Senha *</label><input type="password" id="usr-senha" placeholder="••••••••"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:10px 12px;border-radius:var(--radius)">
+        <strong>Perfis:</strong><br>
+        • <strong>Administrador</strong> — Acesso completo, incluindo cadastros e configurações.<br>
+        • <strong>Operador</strong> — Visualiza dashboard, histórico e câmeras. Não pode editar cadastros.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── Configuração ────────────────────────────────────────────────────────────
+const API = 'http://localhost:3001/api';
+
+// ─── Estado da aplicação ────────────────────────────────────────────────────
+let paginaAtual    = 1;
+let totalPaginas   = 1;
+let acessoAtualId  = null;
+let pollClipeTimer = null;
+let sessionUser    = null;
+let webcamStream   = null;
+let camEdicaoId    = null;
+let pessoaEdicaoId = null;
+let usuarioEdicaoId = null;
+
+// ─── Utilitários ─────────────────────────────────────────────────────────────
+
+/** Formata timestamp "YYYY-MM-DD HH:MM:SS" → "DD/MM/YYYY HH:MM:SS" */
+function formatarData(ts) {
+  if (!ts) return '—';
+  const d = ts.replace('T', ' ');
+  const [data, hora] = d.split(' ');
+  const [y, m, dia]  = data.split('-');
+  return `${dia}/${m}/${y} ${hora || ''}`.trim();
+}
+
+/** Retorna iniciais do nome para o avatar */
+function iniciais(nome) {
+  return nome ? nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : 'U';
+}
+
+/** Exibe uma notificação toast na tela */
+function toast(msg, tipo = 'info') {
+  const wrap = document.getElementById('toasts');
+  const el   = document.createElement('div');
+  el.className = `toast ${tipo}`;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  el.innerHTML = `<span>${icons[tipo] || 'ℹ️'}</span><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+
+/** Faz requisições HTTP para o backend */
+async function api(metodo, rota, corpo = null) {
+  const opcoes = {
+    method: metodo,
+    credentials: 'include',        // Envia cookies de sessão
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (corpo) opcoes.body = JSON.stringify(corpo);
+
+  const res = await fetch(API + rota, opcoes);
+  const json = await res.json().catch(() => ({}));
+
+  if (res.status === 401) {
+    // Sessão expirada — volta para login
+    mostrarLogin();
+    return null;
+  }
+  if (!res.ok) {
+    throw new Error(json.erro || `Erro ${res.status}`);
+  }
+  return json;
+}
+
+// ─── Relógio ────────────────────────────────────────────────────────────────
+setInterval(() => {
+  const agora = new Date();
+  const hh = String(agora.getHours()).padStart(2, '0');
+  const mm = String(agora.getMinutes()).padStart(2, '0');
+  const ss = String(agora.getSeconds()).padStart(2, '0');
+  const el = document.getElementById('clock');
+  if (el) el.textContent = `${hh}:${mm}:${ss}`;
+}, 1000);
+
+// ─── Login / Logout ──────────────────────────────────────────────────────────
+
+function mostrarLogin() {
+  document.getElementById('tela-login').classList.remove('oculto');
+  document.getElementById('app').classList.add('oculto');
+  document.getElementById('inp-login').focus();
+}
+
+function mostrarApp(usuario) {
+  sessionUser = usuario;
+  document.getElementById('tela-login').classList.add('oculto');
+  document.getElementById('app').classList.remove('oculto');
+
+  // Atualizar informações do usuário na sidebar
+  document.getElementById('sbar-nome').textContent   = usuario.nome;
+  document.getElementById('sbar-perfil').textContent  = usuario.perfil;
+  document.getElementById('sbar-avatar').textContent  = iniciais(usuario.nome);
+
+  // Ocultar itens de admin se for operador
+  if (usuario.perfil !== 'admin') {
+    document.querySelectorAll('.nav-admin').forEach(el => el.style.display = 'none');
+  }
+
+  ir('dashboard');
+}
+
+async function fazerLogin() {
+  const login = document.getElementById('inp-login').value.trim();
+  const senha = document.getElementById('inp-senha').value;
+  const erro  = document.getElementById('login-erro');
+  const btn   = document.getElementById('btn-entrar');
+
+  erro.style.display = 'none';
+  if (!login || !senha) {
+    erro.textContent    = 'Preencha usuário e senha.';
+    erro.style.display  = 'block';
+    return;
+  }
+
+  btn.textContent = 'Autenticando...';
+  btn.disabled    = true;
+
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method:      'POST',
+      credentials: 'include',
+      headers:     { 'Content-Type': 'application/json' },
+      body:        JSON.stringify({ login, senha }),
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      erro.textContent   = json.erro || 'Erro ao autenticar.';
+      erro.style.display = 'block';
+    } else {
+      mostrarApp(json.usuario);
+    }
+  } catch (e) {
+    erro.textContent   = '❌ Não foi possível conectar ao servidor. Verifique se o backend está rodando em localhost:3001';
+    erro.style.display = 'block';
+  } finally {
+    btn.textContent = 'Entrar';
+    btn.disabled    = false;
+  }
+}
+
+// Enter no campo de senha faz login
+document.getElementById('inp-senha').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
+document.getElementById('inp-login').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('inp-senha').focus();
+});
+
+async function fazerLogout() {
+  await api('POST', '/auth/logout').catch(() => {});
+  mostrarLogin();
+}
+
+// ─── Navegação ───────────────────────────────────────────────────────────────
+
+const titulos = {
+  dashboard:      'Dashboard',
+  historico:      'Histórico de Acessos',
+  cameras:        'Câmeras de Segurança',
+  pessoas:        'Militares Cadastrados',
+  usuarios:       'Usuários do Sistema',
+  configuracoes:  'Configurações',
+};
+
+function ir(pagina) {
+  // Desativar página atual
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('ativo'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('ativo'));
+
+  // Ativar nova página
+  const el = document.getElementById('page-' + pagina);
+  if (el) el.classList.add('ativo');
+
+  // Marcar nav ativo
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') === `ir('${pagina}')`) n.classList.add('ativo');
+  });
+
+  // Atualizar título
+  document.getElementById('topbar-title').textContent = titulos[pagina] || pagina;
+
+  // Carregar dados da página
+  if (pagina === 'dashboard')     carregarDashboard();
+  if (pagina === 'historico')     { carregarLocais(); buscarAcessos(1); }
+  if (pagina === 'cameras')       carregarCameras();
+  if (pagina === 'pessoas')       carregarPessoas();
+  if (pagina === 'usuarios')      carregarUsuarios();
+  if (pagina === 'configuracoes') carregarConfiguracoes();
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
+async function carregarDashboard() {
+  try {
+    const d = await api('GET', '/stats');
+    if (!d) return;
+
+    document.getElementById('stat-hoje').textContent  = d.acessosHoje;
+    document.getElementById('stat-neg').textContent   = d.acessosNegados;
+    document.getElementById('stat-total').textContent = d.totalPessoas;
+
+    renderBarChart(d.porHora);
+    renderFeed(d.ultimos);
+  } catch (e) {
+    toast('Erro ao carregar dashboard: ' + e.message, 'error');
+  }
+}
+
+function renderBarChart(porHora) {
+  const el  = document.getElementById('bar-chart');
+  const mapa = {};
+  porHora.forEach(h => mapa[h.hora] = h.total);
+  const max  = Math.max(...Object.values(mapa), 1);
+
+  el.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const hora = String(h).padStart(2, '0');
+    const val  = mapa[hora] || 0;
+    const pct  = Math.max(Math.round((val / max) * 100), 2);
+    const col  = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = `
+      <div class="bar-fill" style="height:${pct}%" title="${hora}h: ${val} acesso(s)"></div>
+      <div class="bar-lbl">${h % 4 === 0 ? hora : ''}</div>
+    `;
+    el.appendChild(col);
+  }
+}
+
+function renderFeed(ultimos) {
+  const el = document.getElementById('feed-ultimos');
+  if (!ultimos || !ultimos.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sem registros hoje</div></div>';
+    return;
+  }
+  el.innerHTML = ultimos.map(a => `
+    <div class="feed-item">
+      <div class="feed-dot ${a.tipo}">${a.tipo === 'entrada' ? '↗' : '↙'}</div>
+      <div>
+        <div class="feed-name">${a.nome}</div>
+        <div class="feed-meta">${a.patente || '—'} · ${a.local}</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <span class="badge ${a.tipo === 'entrada' ? 'badge-green' : 'badge-red'}">${a.tipo}</span>
+        <div class="feed-time" style="margin-top:3px">${formatarData(a.timestamp)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── Histórico de Acessos ────────────────────────────────────────────────────
+
+async function carregarLocais() {
+  const locais = await api('GET', '/locais').catch(() => []);
+  const sel = document.getElementById('f-local');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' +
+    (locais || []).map(l => `<option value="${l}">${l}</option>`).join('');
+  sel.value = val;
+}
+
+async function buscarAcessos(pag = 1) {
+  paginaAtual = pag;
+  const params = new URLSearchParams({
+    nome:       document.getElementById('f-nome').value,
+    matricula:  document.getElementById('f-matricula').value,
+    tipo:       document.getElementById('f-tipo').value,
+    local:      document.getElementById('f-local').value,
+    metodo:     document.getElementById('f-metodo').value,
+    autorizado: document.getElementById('f-autorizado').value,
+    data_inicio:document.getElementById('f-ini').value,
+    data_fim:   document.getElementById('f-fim').value,
+    page: pag, limit: 50,
+  });
+
+  const tb = document.getElementById('tb-acessos');
+  tb.innerHTML = `<tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Buscando...</div></td></tr>`;
+
+  try {
+    const d = await api('GET', `/acessos?${params}`);
+    if (!d) return;
+    totalPaginas = d.paginas || 1;
+
+    if (!d.data.length) {
+      tb.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Nenhum registro encontrado com esses filtros</div></div></td></tr>`;
+      document.getElementById('paginacao').style.display = 'none';
+      return;
+    }
+
+    tb.innerHTML = d.data.map(a => `
+      <tr>
+        <td>
+          <div class="td-name">${a.nome}</div>
+          <div class="td-sub">${a.matricula} · ${a.patente || '—'}</div>
+        </td>
+        <td><span class="badge ${a.tipo === 'entrada' ? 'badge-green' : 'badge-red'}">${a.tipo === 'entrada' ? '↗ Entrada' : '↙ Saída'}</span></td>
+        <td><span class="td-mono">${formatarData(a.timestamp)}</span></td>
+        <td>${a.local}</td>
+        <td><span class="badge badge-gray">${a.metodo}</span></td>
+        <td><span class="badge ${a.autorizado ? 'badge-green' : 'badge-red'}">${a.autorizado ? '✓ OK' : '✗ Negado'}</span></td>
+        <td>
+          <button class="btn btn-sm btn-secondary"
+            onclick='abrirModalClipe(${JSON.stringify(a)})'>
+            🎬 Ver clipe
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    renderPaginacao(d.total, d.limit);
+  } catch (e) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">❌ ${e.message}</td></tr>`;
+  }
+}
+
+function renderPaginacao(total, limit) {
+  const pg = document.getElementById('paginacao');
+  pg.style.display = 'flex';
+  document.getElementById('pag-info').textContent =
+    `${total} registro(s) · Página ${paginaAtual} de ${totalPaginas}`;
+
+  const btns = document.getElementById('pag-btns');
+  let html = `<button class="pag-btn" onclick="buscarAcessos(${paginaAtual - 1})" ${paginaAtual <= 1 ? 'disabled' : ''}>‹</button>`;
+  const inicio = Math.max(1, paginaAtual - 2);
+  const fim    = Math.min(totalPaginas, paginaAtual + 2);
+  for (let i = inicio; i <= fim; i++) {
+    html += `<button class="pag-btn ${i === paginaAtual ? 'atual' : ''}" onclick="buscarAcessos(${i})">${i}</button>`;
+  }
+  html += `<button class="pag-btn" onclick="buscarAcessos(${paginaAtual + 1})" ${paginaAtual >= totalPaginas ? 'disabled' : ''}>›</button>`;
+  btns.innerHTML = html;
+}
+
+function limparFiltros() {
+  ['f-nome', 'f-matricula', 'f-ini', 'f-fim'].forEach(id => document.getElementById(id).value = '');
+  ['f-tipo', 'f-local', 'f-metodo', 'f-autorizado'].forEach(id => document.getElementById(id).value = '');
+  buscarAcessos(1);
+}
+
+// ─── Modal de Clipe ──────────────────────────────────────────────────────────
+
+function abrirModalClipe(acesso) {
+  acessoAtualId = acesso.id;
+
+  document.getElementById('clip-info').innerHTML = `
+    <div class="clip-info-item"><label>Militar</label><div class="clip-info-val">${acesso.nome}</div></div>
+    <div class="clip-info-item"><label>Matrícula / Patente</label><div class="clip-info-val">${acesso.matricula} · ${acesso.patente || '—'}</div></div>
+    <div class="clip-info-item"><label>Data / Hora</label><div class="clip-info-val">${formatarData(acesso.timestamp)}</div></div>
+    <div class="clip-info-item"><label>Local / Tipo</label><div class="clip-info-val">${acesso.local} · <span style="color:${acesso.tipo==='entrada'?'var(--accent)':'var(--danger)'}">${acesso.tipo}</span></div></div>
+  `;
+
+  const area = document.getElementById('clip-area');
+  const btn  = document.getElementById('btn-gerar-clip');
+
+  if (acesso.clip_status === 'demo') {
+    area.innerHTML = `
+      <div class="clip-placeholder-modal">
+        <div style="font-size:40px;margin-bottom:8px;opacity:.2">🎬</div>
+        <div style="font-size:12px;font-family:var(--font-mono);color:rgba(255,255,255,.4)">MODO DEMONSTRAÇÃO</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.2);margin-top:4px">Câmera real não conectada</div>
+      </div>`;
+    document.getElementById('clip-note').textContent =
+      'DEMO: Este é um registro fictício. Para câmeras reais, veja o guia de integração.';
+    btn.textContent = '▶ Simular Geração';
+  } else if (acesso.clip_status === 'pronto' && acesso.clip_url && acesso.clip_url !== 'DEMO_MODE') {
+    area.innerHTML = `<video controls src="${acesso.clip_url}" style="width:100%;height:100%"></video>`;
+    btn.textContent = '⬇ Baixar Clipe';
+  } else {
+    area.innerHTML = `
+      <div class="clip-placeholder-modal">
+        <div style="font-size:40px;margin-bottom:8px;opacity:.2">🎬</div>
+        <div style="font-size:12px;font-family:var(--font-mono);color:rgba(255,255,255,.4)">Clique em "Gerar Clipe"</div>
+      </div>`;
+    btn.textContent = '▶ Gerar Clipe';
+  }
+  btn.disabled = false;
+  abrirModal('modal-clip');
+}
+
+async function gerarClipe() {
+  if (!acessoAtualId) return;
+  const btn  = document.getElementById('btn-gerar-clip');
+  const area = document.getElementById('clip-area');
+  btn.textContent = '⏳ Solicitando...';
+  btn.disabled    = true;
+
+  try {
+    const d = await api('POST', `/acessos/${acessoAtualId}/clip`);
+    if (!d) return;
+
+    area.innerHTML = `
+      <div class="clip-placeholder-modal">
+        <div class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:#fff;margin:0 auto 10px"></div>
+        <div style="font-size:12px;font-family:var(--font-mono);color:rgba(255,255,255,.4)">Capturando vídeo...</div>
+      </div>`;
+    toast('Clipe solicitado. Aguarde alguns segundos.', 'info');
+
+    // Verificar status a cada 2.5s
+    pollClipeTimer = setInterval(async () => {
+      const status = await api('GET', `/acessos/${acessoAtualId}/clip`).catch(() => null);
+      if (!status) return;
+      if (status.clip_status === 'pronto' || status.clip_status === 'demo') {
+        clearInterval(pollClipeTimer);
+        btn.textContent = '✓ Concluído';
+        if (status.clip_url && status.clip_url !== 'DEMO_MODE') {
+          area.innerHTML = `<video controls src="${status.clip_url}" style="width:100%;height:100%"></video>`;
+        } else {
+          area.innerHTML = `
+            <div class="clip-placeholder-modal">
+              <div style="font-size:40px;margin-bottom:8px;opacity:.3">✓</div>
+              <div style="font-size:12px;font-family:var(--font-mono);color:rgba(255,255,255,.4)">Clipe processado (DEMO)</div>
+            </div>`;
+        }
+        toast('Clipe disponível!', 'success');
+      }
+    }, 2500);
+  } catch (e) {
+    btn.textContent = '▶ Gerar Clipe';
+    btn.disabled    = false;
+    toast('Erro ao gerar clipe: ' + e.message, 'error');
+  }
+}
+
+// ─── Câmeras ────────────────────────────────────────────────────────────────
+
+async function carregarCameras() {
+  const grid = document.getElementById('cam-grid');
+  try {
+    const cameras = await api('GET', '/cameras');
+    if (!cameras) return;
+
+    if (!cameras.length) {
+      grid.innerHTML = '<div class="empty"><div class="empty-icon">📷</div><div class="empty-text">Nenhuma câmera cadastrada</div></div>';
+      return;
+    }
+
+    grid.innerHTML = cameras.map(c => `
+      <div class="cam-card">
+        <div class="cam-preview">${renderCamPreview(c)}</div>
+        <div class="cam-info">
+          <div>
+            <div class="cam-name">${c.nome}</div>
+            <div class="cam-local">${c.local || '—'} · <span style="font-family:var(--font-mono);font-size:10px">${c.tipo.toUpperCase()}</span></div>
+          </div>
+          <div class="cam-actions">
+            <button class="btn btn-sm btn-secondary" onclick='editarCamera(${JSON.stringify(c)})'>Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="deletarCamera('${c.id}','${c.nome}')">✕</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = `<div style="color:var(--danger);padding:20px">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderCamPreview(c) {
+  if (c.tipo === 'webcam') {
+    return `<div class="cam-placeholder"><div class="cam-placeholder-icon">📷</div><div class="cam-placeholder-text">Webcam Local</div></div>`;
+  }
+  if (c.tipo === 'publica' && c.url && c.url.includes('youtube')) {
+    const vid = c.url.match(/[?&]v=([^&]+)/);
+    if (vid) {
+      return `<iframe src="https://www.youtube.com/embed/${vid[1]}?autoplay=0&mute=1" allowfullscreen></iframe>`;
+    }
+  }
+  if (c.tipo === 'http') {
+    return `<img src="${c.url}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'" alt="">
+      <div class="cam-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="cam-placeholder-icon">📷</div><div class="cam-placeholder-text">${c.url}</div></div>`;
+  }
+  return `
+    <div class="cam-placeholder">
+      <div class="cam-placeholder-icon">📹</div>
+      <div class="cam-placeholder-text">${c.tipo.toUpperCase()} · ${c.url.substring(0, 30)}${c.url.length > 30 ? '…' : ''}</div>
+    </div>
+    <div class="cam-overlay">
+      <div style="display:flex;align-items:center">
+        <div class="cam-status-dot"></div>
+        <span class="cam-status-text">ONLINE</span>
+      </div>
+      <span style="font-size:10px;color:rgba(255,255,255,.5);font-family:var(--font-mono)">${new Date().toLocaleTimeString('pt-BR')}</span>
+    </div>`;
+}
+
+function abrirModalCamera(id) {
+  camEdicaoId = null;
+  document.getElementById('modal-cam-titulo').textContent = 'Adicionar Câmera';
+  ['cam-nome', 'cam-local', 'cam-url'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cam-tipo').value = 'rtsp';
+  atualizarDicaURL();
+  abrirModal('modal-camera');
+}
+
+function editarCamera(cam) {
+  camEdicaoId = cam.id;
+  document.getElementById('modal-cam-titulo').textContent = 'Editar Câmera';
+  document.getElementById('cam-nome').value  = cam.nome;
+  document.getElementById('cam-local').value = cam.local || '';
+  document.getElementById('cam-tipo').value  = cam.tipo;
+  document.getElementById('cam-url').value   = cam.url;
+  atualizarDicaURL();
+  abrirModal('modal-camera');
+}
+
+function atualizarDicaURL() {
+  const tipo = document.getElementById('cam-tipo').value;
+  const dicas = {
+    rtsp:    'Exemplo: rtsp://192.168.1.100:554/stream1  (câmera IP na rede local)',
+    http:    'Exemplo: http://192.168.1.100/video.mjpg   (stream MJPEG)',
+    publica: 'Exemplo: https://www.youtube.com/watch?v=VIDEO_ID',
+    webcam:  'Digite "webcam" para usar a câmera do computador',
+  };
+  const el = document.getElementById('cam-url-dica');
+  el.textContent = dicas[tipo] || '';
+  if (tipo === 'webcam') document.getElementById('cam-url').value = 'webcam';
+}
+
+async function salvarCamera() {
+  const nome  = document.getElementById('cam-nome').value.trim();
+  const local = document.getElementById('cam-local').value.trim();
+  const tipo  = document.getElementById('cam-tipo').value;
+  const url   = document.getElementById('cam-url').value.trim();
+
+  if (!nome || !url) { toast('Nome e URL são obrigatórios.', 'error'); return; }
+
+  try {
+    if (camEdicaoId) {
+      await api('PUT', `/cameras/${camEdicaoId}`, { nome, local, url, tipo, ativa: 1 });
+      toast('Câmera atualizada.', 'success');
+    } else {
+      await api('POST', '/cameras', { nome, local, url, tipo });
+      toast('Câmera adicionada.', 'success');
+    }
+    fecharModal('modal-camera');
+    carregarCameras();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function deletarCamera(id, nome) {
+  if (!confirm(`Remover a câmera "${nome}"?`)) return;
+  try {
+    await api('DELETE', `/cameras/${id}`);
+    toast('Câmera removida.', 'info');
+    carregarCameras();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// Webcam local
+async function iniciarWebcam() {
+  const area = document.getElementById('webcam-area');
+  const btn  = document.getElementById('btn-webcam');
+
+  if (webcamStream) {
+    webcamStream.getTracks().forEach(t => t.stop());
+    webcamStream = null;
+    area.innerHTML = `<div class="cam-placeholder"><div class="cam-placeholder-icon">📷</div><div class="cam-placeholder-text">Clique em "Ativar Webcam"</div></div>`;
+    btn.textContent = 'Ativar Webcam';
+    return;
+  }
+
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    const video  = document.createElement('video');
+    video.srcObject = webcamStream;
+    video.autoplay  = true;
+    video.playsInline = true;
+    video.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    area.innerHTML = '';
+    area.appendChild(video);
+    btn.textContent = '⬛ Parar Webcam';
+    toast('Webcam ativada com sucesso!', 'success');
+  } catch (e) {
+    toast('Não foi possível acessar a webcam: ' + e.message, 'error');
+  }
+}
+
+// ─── Militares ───────────────────────────────────────────────────────────────
+
+async function carregarPessoas() {
+  const nome = document.getElementById('fp-nome').value;
+  const mat  = document.getElementById('fp-mat').value;
+  const dep  = document.getElementById('fp-dep').value;
+  const params = new URLSearchParams({ nome, matricula: mat, departamento: dep });
+  const tb = document.getElementById('tb-pessoas');
+  tb.innerHTML = `<tr><td colspan="6"><div class="loading-state"><div class="spinner"></div></div></td></tr>`;
+
+  try {
+    const pessoas = await api('GET', `/pessoas?${params}`);
+    if (!pessoas) return;
+    if (!pessoas.length) {
+      tb.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">👤</div><div class="empty-text">Nenhum militar encontrado</div></div></td></tr>`;
+      return;
+    }
+    tb.innerHTML = pessoas.map(p => `
+      <tr>
+        <td class="td-name">${p.nome}</td>
+        <td><span class="td-mono">${p.matricula}</span></td>
+        <td>${p.patente || '—'}</td>
+        <td>${p.departamento || '—'}</td>
+        <td><span class="badge ${p.ativo ? 'badge-green' : 'badge-red'}">${p.ativo ? 'Ativo' : 'Inativo'}</span></td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" onclick='editarPessoa(${JSON.stringify(p)})'>Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="desativarPessoa('${p.id}','${p.nome}','${p.ativo}')">
+              ${p.ativo ? 'Desativar' : 'Reativar'}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger);padding:20px">❌ ${e.message}</td></tr>`;
+  }
+}
+
+function abrirModalPessoa() {
+  pessoaEdicaoId = null;
+  document.getElementById('modal-pes-titulo').textContent = 'Cadastrar Militar';
+  ['pes-nome', 'pes-mat', 'pes-pat', 'pes-dep'].forEach(id => document.getElementById(id).value = '');
+  abrirModal('modal-pessoa');
+}
+
+function editarPessoa(p) {
+  pessoaEdicaoId = p.id;
+  document.getElementById('modal-pes-titulo').textContent = 'Editar Militar';
+  document.getElementById('pes-nome').value = p.nome;
+  document.getElementById('pes-mat').value  = p.matricula;
+  document.getElementById('pes-pat').value  = p.patente || '';
+  document.getElementById('pes-dep').value  = p.departamento || '';
+  abrirModal('modal-pessoa');
+}
+
+async function salvarPessoa() {
+  const nome       = document.getElementById('pes-nome').value.trim();
+  const matricula  = document.getElementById('pes-mat').value.trim();
+  const patente    = document.getElementById('pes-pat').value.trim();
+  const departamento = document.getElementById('pes-dep').value.trim();
+  if (!nome || !matricula) { toast('Nome e matrícula são obrigatórios.', 'error'); return; }
+
+  try {
+    if (pessoaEdicaoId) {
+      await api('PUT', `/pessoas/${pessoaEdicaoId}`, { nome, matricula, patente, departamento, ativo: 1 });
+      toast('Militar atualizado.', 'success');
+    } else {
+      await api('POST', '/pessoas', { nome, matricula, patente, departamento });
+      toast('Militar cadastrado.', 'success');
+    }
+    fecharModal('modal-pessoa');
+    carregarPessoas();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function desativarPessoa(id, nome, ativoAtual) {
+  const novoAtivo = ativoAtual == 1 ? 0 : 1;
+  const acao = novoAtivo ? 'reativar' : 'desativar';
+  if (!confirm(`Deseja ${acao} o militar "${nome}"?`)) return;
+  try {
+    const p = await api('GET', `/pessoas?nome=${encodeURIComponent(nome)}`);
+    const dados = p ? p.find(x => x.id === id) : null;
+    await api('PUT', `/pessoas/${id}`, { ...(dados || { nome }), ativo: novoAtivo });
+    toast(`Militar ${novoAtivo ? 'reativado' : 'desativado'}.`, 'success');
+    carregarPessoas();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ─── Usuários do sistema ─────────────────────────────────────────────────────
+
+async function carregarUsuarios() {
+  const tb = document.getElementById('tb-usuarios');
+  try {
+    const usuarios = await api('GET', '/usuarios');
+    if (!usuarios) return;
+    tb.innerHTML = usuarios.map(u => `
+      <tr>
+        <td class="td-name">${u.nome}</td>
+        <td><span class="td-mono">${u.login}</span></td>
+        <td><span class="badge ${u.perfil === 'admin' ? 'badge-yellow' : 'badge-blue'}">${u.perfil}</span></td>
+        <td><span class="td-mono" style="font-size:11px">${u.ultimo_acesso ? formatarData(u.ultimo_acesso) : '—'}</span></td>
+        <td><span class="badge ${u.ativo ? 'badge-green' : 'badge-red'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger);padding:20px">❌ ${e.message}</td></tr>`;
+  }
+}
+
+function abrirModalUsuario() {
+  usuarioEdicaoId = null;
+  document.getElementById('modal-usr-titulo').textContent = 'Novo Usuário do Sistema';
+  ['usr-nome', 'usr-login', 'usr-senha'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('usr-perfil').value = 'operador';
+  document.getElementById('usr-senha-wrap').style.display = 'block';
+  document.getElementById('usr-login').disabled = false;
+  abrirModal('modal-usuario');
+}
+
+function editarUsuario(u) {
+  usuarioEdicaoId = u.id;
+  document.getElementById('modal-usr-titulo').textContent = 'Editar Usuário';
+  document.getElementById('usr-nome').value   = u.nome;
+  document.getElementById('usr-login').value  = u.login;
+  document.getElementById('usr-perfil').value = u.perfil;
+  document.getElementById('usr-login').disabled = true; // login não muda
+  document.getElementById('usr-senha-wrap').style.display = 'none';
+  abrirModal('modal-usuario');
+}
+
+async function salvarUsuario() {
+  const nome   = document.getElementById('usr-nome').value.trim();
+  const login  = document.getElementById('usr-login').value.trim();
+  const perfil = document.getElementById('usr-perfil').value;
+  const senha  = document.getElementById('usr-senha').value;
+
+  if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
+
+  try {
+    if (usuarioEdicaoId) {
+      await api('PUT', `/usuarios/${usuarioEdicaoId}`, { nome, perfil, ativo: 1 });
+      toast('Usuário atualizado.', 'success');
+    } else {
+      if (!login || !senha) { toast('Login e senha são obrigatórios.', 'error'); return; }
+      await api('POST', '/usuarios', { nome, login, senha, perfil });
+      toast('Usuário criado.', 'success');
+    }
+    fecharModal('modal-usuario');
+    carregarUsuarios();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ─── Configurações ───────────────────────────────────────────────────────────
+
+async function carregarConfiguracoes() {
+  const body = document.getElementById('cfg-body');
+  try {
+    const cfg = await api('GET', '/configuracoes');
+    if (!cfg) return;
+    body.innerHTML = `
+      <div class="form-group"><label>Nome da Instalação</label>
+        <input type="text" id="cfg-nome" value="${cfg.nome_instalacao || ''}"></div>
+      <div class="form-group"><label>Duração da Sessão (horas)</label>
+        <input type="number" id="cfg-sessao" value="${cfg.tempo_sessao_horas || 8}" min="1" max="24"></div>
+      <button class="btn btn-primary" onclick="salvarConfiguracoes()">Salvar Configurações</button>
+    `;
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--danger)">Erro: ${e.message}</div>`;
+  }
+}
+
+async function salvarConfiguracoes() {
+  try {
+    await api('PUT', '/configuracoes', {
+      nome_instalacao:     document.getElementById('cfg-nome').value,
+      tempo_sessao_horas:  document.getElementById('cfg-sessao').value,
+    });
+    toast('Configurações salvas.', 'success');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function trocarSenha() {
+  const atual  = document.getElementById('senha-atual').value;
+  const nova   = document.getElementById('senha-nova').value;
+  const conf   = document.getElementById('senha-conf').value;
+
+  if (!atual || !nova) { toast('Preencha todos os campos.', 'error'); return; }
+  if (nova !== conf)   { toast('Nova senha e confirmação não coincidem.', 'error'); return; }
+  if (nova.length < 6) { toast('A senha deve ter pelo menos 6 caracteres.', 'error'); return; }
+
+  try {
+    await api('PUT', `/usuarios/${sessionUser.id}/senha`, { senhaAtual: atual, novaSenha: nova });
+    toast('Senha alterada com sucesso!', 'success');
+    ['senha-atual', 'senha-nova', 'senha-conf'].forEach(id => document.getElementById(id).value = '');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ─── Modais ──────────────────────────────────────────────────────────────────
+
+function abrirModal(id) {
+  document.getElementById(id).classList.add('aberto');
+}
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove('aberto');
+  if (id === 'modal-clip' && pollClipeTimer) {
+    clearInterval(pollClipeTimer);
+    pollClipeTimer = null;
+  }
+}
+
+// Fechar modais clicando no fundo
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => {
+    if (e.target === bg) fecharModal(bg.id);
+  });
+});
+
+// ─── Verificação de sessão ao carregar ───────────────────────────────────────
+window.addEventListener('load', async () => {
+  try {
+    const usuario = await fetch(`${API}/auth/me`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null);
+
+    if (usuario) {
+      mostrarApp(usuario);
+    } else {
+      mostrarLogin();
+    }
+  } catch (e) {
+    mostrarLogin();
+  }
+});
+</script>
+</body>
+</html>
