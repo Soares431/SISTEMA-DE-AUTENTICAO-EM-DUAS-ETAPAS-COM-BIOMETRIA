@@ -75,7 +75,7 @@ namespace BiometricAcess.Worker.Services
         {
             try
             {
-                _device.EnrollFingerprint((ulong)id, (int)Finger.RightIndex).Wait();
+                _device.EnrollFingerprint((ulong)id).Wait();
                 return true;
             }
             catch (Exception ex)
