@@ -5,6 +5,7 @@ using BiometricAcess.Worker.Simulador;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
+builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
 
 builder.Services.AddHostedService<Worker>();
 
