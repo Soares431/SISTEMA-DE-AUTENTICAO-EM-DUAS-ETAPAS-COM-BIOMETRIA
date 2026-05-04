@@ -1,4 +1,4 @@
-Faz sentido! Versão enxuta e focada:
+
 
 
 # Hardware & Serviço de Background
