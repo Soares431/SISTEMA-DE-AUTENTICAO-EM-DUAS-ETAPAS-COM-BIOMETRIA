@@ -26,7 +26,15 @@ namespace BiometricAcess.Worker
                     continue;
                 }
 
-                _logger.LogInformation("Conectado ao T50M. Iniciando polling de eventos...");
+                _logger.LogInformation("Conectado ao T50M. Buscando eventos armazenados...");
+
+                var eventosArmazenados = _connector.BuscarEventosArmazenados();
+                foreach (var eventoArmazenado in eventosArmazenados)
+                {
+                    _logger.LogInformation($"Evento armazenado — Pessoa: {eventoArmazenado.PessoaID} | Tipo: {eventoArmazenado.TipoVerificacao} | Liberado: {eventoArmazenado.AcessoLiberado} | Hora: {eventoArmazenado.DataHora}");
+                }
+
+                _logger.LogInformation("Iniciando polling de eventos em tempo real...");
 
                 try
                 {
