@@ -6,6 +6,7 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
 builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
+builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
 
 builder.Services.AddHostedService<Worker>();
 

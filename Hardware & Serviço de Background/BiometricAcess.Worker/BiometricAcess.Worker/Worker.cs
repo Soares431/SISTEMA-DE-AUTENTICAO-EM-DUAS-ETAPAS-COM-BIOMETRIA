@@ -6,11 +6,13 @@ namespace BiometricAcess.Worker
     {
         private readonly ILogger<Worker> _logger;
         private readonly IAnvizConnector _connector;
+        private readonly IEventProcessor _eventProcessor;
 
-        public Worker(ILogger<Worker> logger, IAnvizConnector connector)
+        public Worker(ILogger<Worker> logger, IAnvizConnector connector, IEventProcessor eventProcessor)
         {
             _logger = logger;
             _connector = connector;
+            _eventProcessor = eventProcessor;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -31,7 +33,7 @@ namespace BiometricAcess.Worker
                 var eventosArmazenados = _connector.BuscarEventosArmazenados();
                 foreach (var eventoArmazenado in eventosArmazenados)
                 {
-                    _logger.LogInformation($"Evento armazenado — Pessoa: {eventoArmazenado.PessoaID} | Tipo: {eventoArmazenado.TipoVerificacao} | Liberado: {eventoArmazenado.AcessoLiberado} | Hora: {eventoArmazenado.DataHora}");
+                    _eventProcessor.Processar(eventoArmazenado);
                 }
 
                 _logger.LogInformation("Iniciando polling de eventos em tempo real...");
@@ -44,7 +46,7 @@ namespace BiometricAcess.Worker
 
                         if (evento != null)
                         {
-                            _logger.LogInformation($"Evento recebido — Pessoa: {evento.PessoaID} | Tipo: {evento.TipoVerificacao} | Liberado: {evento.AcessoLiberado} | Hora: {evento.DataHora}");
+                            _eventProcessor.Processar(evento);
                         }
 
                         await Task.Delay(2000, stoppingToken);
