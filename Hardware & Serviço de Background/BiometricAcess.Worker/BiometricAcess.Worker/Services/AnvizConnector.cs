@@ -51,7 +51,8 @@ namespace BiometricAcess.Worker.Services
                 PessoaID = (int)record.UserCode,
                 TipoVerificacao = tipoVerificacao,
                 AcessoLiberado = true,
-                DataHora = record.DateTime
+                DataHora = record.DateTime,
+                IpDispositivo = _ip
             };
         }
 
@@ -97,7 +98,8 @@ namespace BiometricAcess.Worker.Services
                         PessoaID = (int)record.UserCode,
                         TipoVerificacao = tipoVerificacao,
                         AcessoLiberado = true,
-                        DataHora = record.DateTime
+                        DataHora = record.DateTime,
+                        IpDispositivo = _ip
                     });
                 }
             }
