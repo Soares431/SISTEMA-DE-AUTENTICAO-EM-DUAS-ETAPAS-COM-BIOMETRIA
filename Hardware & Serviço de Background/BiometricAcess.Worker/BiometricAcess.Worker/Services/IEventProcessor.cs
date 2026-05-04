@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BiometricAcess.Worker.Models;
 
 namespace BiometricAcess.Worker.Services
 {
-    internal interface IIEventProcessor
+    public interface IEventProcessor
     {
+        void Processar(EventoAcesso evento);
     }
 }
