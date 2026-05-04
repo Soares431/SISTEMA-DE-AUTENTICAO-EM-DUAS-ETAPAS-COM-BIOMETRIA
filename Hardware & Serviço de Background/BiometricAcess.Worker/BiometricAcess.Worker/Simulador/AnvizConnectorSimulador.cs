@@ -25,7 +25,26 @@ namespace BiometricAcess.Worker.Simulador
                 return T50MSimulador.gerarEvento();
             }
         }
+        public List<EventoAcesso> BuscarEventosArmazenados()
+        {
+            if (!_conectado)
+            {
+                return new List<EventoAcesso>();
+            }
 
+            Console.WriteLine("Simulador: Buscando eventos armazenados no T50M...");
+
+            var eventos = new List<EventoAcesso>();
+            int quantidade = new Random().Next(0, 5);
+
+            for (int i = 0; i < quantidade; i++)
+            {
+                eventos.Add(T50MSimulador.gerarEvento());
+            }
+
+            Console.WriteLine($"Simulador: {quantidade} eventos armazenados encontrados");
+            return eventos;
+        }
         public void Desconectar()
         {
             _conectado = false;

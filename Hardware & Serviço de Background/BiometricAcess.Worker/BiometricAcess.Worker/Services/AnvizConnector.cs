@@ -67,6 +67,48 @@ namespace BiometricAcess.Worker.Services
             return evento;
         }
 
+        public List<EventoAcesso> BuscarEventosArmazenados()
+        {
+            if (_device == null)
+            {
+                return new List<EventoAcesso>();
+            }
+
+            var eventos = new List<EventoAcesso>();
+
+            try
+            {
+                var records = _device.DownloadRecords(onlyNew: true).Result;
+
+                foreach (var record in records)
+                {
+                    string tipoVerificacao;
+                    if (record.BackupCode == 4)
+                    {
+                        tipoVerificacao = "senha_id";
+                    }
+                    else
+                    {
+                        tipoVerificacao = "digital_id";
+                    }
+
+                    eventos.Add(new EventoAcesso
+                    {
+                        PessoaID = (int)record.UserCode,
+                        TipoVerificacao = tipoVerificacao,
+                        AcessoLiberado = true,
+                        DataHora = record.DateTime
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao buscar eventos armazenados: {ex.Message}");
+            }
+
+            return eventos;
+        }
+
         public void Desconectar()
         {
             if (_device != null)
