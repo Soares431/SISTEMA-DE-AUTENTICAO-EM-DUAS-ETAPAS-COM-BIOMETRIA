@@ -6,6 +6,7 @@ namespace BiometricAcess.Worker.Services
     {
         bool Conectar();
         EventoAcesso? BuscarNovoEvento();
+        List<EventoAcesso> BuscarEventosArmazenados();
         void Desconectar();
     }
 }
