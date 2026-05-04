@@ -1,3 +1,5 @@
+Faz sentido! Versão enxuta e focada:
+
 
 # Hardware & Serviço de Background
 
@@ -6,21 +8,27 @@ Worker Service em .NET 8 responsável pela comunicação com o dispositivo biom�
 
 ## Como trocar simulador pelo hardware real
 
-### Program.cs
-Quando o hardware estiver disponível, trocar esta linha:
+No `Program.cs`, trocar:
 ```
 builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
+builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
 ```
 Por:
 ```
 builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();
+builder.Services.AddSingleton<IAnvizService, AnvizService>();
 ```
 
-### AnvizService — Valores do Mode
-- `Mode = 4` → Somente Senha+ID
-- `Mode = 6` → Digital+ID e Senha+ID simultaneamente (padrão)
+## Configuração do T50M
 
-### IP padrão do T50M
-- Dispositivo: `192.168.0.218`
-- Servidor: `192.168.0.7`
-- Porta: `5010`
+- IP padrão do dispositivo: `192.168.0.218`
+- IP padrão do servidor: `192.168.0.7`
+- Porta de comunicação: `5010`
+
+## Observações importantes
+
+- `Mode = 4` → Somente Senha+ID
+- `Mode = 6` → Digital+ID e Senha+ID simultaneamente (padrão do SDK)
+- `BackupCode = 4` no evento de acesso → autenticação por senha; outros valores → digital
+
+
