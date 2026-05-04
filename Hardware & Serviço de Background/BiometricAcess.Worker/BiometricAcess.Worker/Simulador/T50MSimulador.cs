@@ -33,7 +33,8 @@ namespace BiometricAcess.Worker.Simulador{
                 PessoaID = pessoaID,
                 TipoVerificacao = tipoVerificacao,
                 AcessoLiberado = acessoLiberado,
-                DataHora = DateTime.Now
+                DataHora = DateTime.Now,
+                IpDispositivo = "192.168.0.218"
             };
 
 
