@@ -31,4 +31,25 @@ builder.Services.AddSingleton<IAnvizService, AnvizService>();
 - `Mode = 6` → Digital+ID e Senha+ID simultaneamente (padrão do SDK)
 - `BackupCode = 4` no evento de acesso → autenticação por senha; outros valores → digital
 
+## EventProcessor — trocar simulador pelo real
+
+No `Program.cs`, trocar:
+```
+builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
+```
+Por:
+```
+builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
+```
+
+## Dependências do banco de dados (Integrante 1)
+
+Para implementar o `EventProcessor` real, são necessários os seguintes repositórios:
+
+- `IPessoaRepository` — métodos: `BuscarPorId`, `AlterarStatus`, `MarcarBiometriaCadastrada`, `SalvarTemplate`, `AtualizarUltimoAcesso`
+- `IAmbientePessoaRepository` — métodos: `PessoaTemAcesso`
+- `IDispositivoT50Repository` — métodos: `ContarDigitaisCadastradas`, `TemVagaDigital`
+- `ITentativaAcessoRepository` — métodos: `Registrar`
+- `ILogAdminRepository` — métodos: `Registrar` (necessário para HW-17)
+
 
