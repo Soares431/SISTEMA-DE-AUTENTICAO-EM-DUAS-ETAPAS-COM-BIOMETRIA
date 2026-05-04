@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BiometricAcess.Worker.Services
 {
-    internal interface IAnvizService
+    public interface IAnvizService
     {
+        bool AdicionarPessoa(int id, string nome, string senha);
+        bool RemoverPessoa(int id);
+        bool UploadTemplate(int id, byte[] template);
+        byte[]? DownloadTemplate(int id);
+        bool IniciarCapturaDigital(int id);
+        bool AlterarModo(int id, string modo);
+        bool SincronizarHora();
     }
 }
