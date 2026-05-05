@@ -24,6 +24,7 @@ namespace BiometricAcess.Worker.Services
                 var manager = new AnvizManager();
                 _device = manager.Connect(_ip, _porta).Result;
                 _device.ReceivedRecord += OnReceivedRecord;
+                _device.DeviceError += OnDeviceError;
                 Console.WriteLine($"Conectado ao T50M em {_ip}:{_porta}");
                 return true;
             }
@@ -52,8 +53,40 @@ namespace BiometricAcess.Worker.Services
                 TipoVerificacao = tipoVerificacao,
                 AcessoLiberado = true,
                 DataHora = record.DateTime,
-                IpDispositivo = _ip
+                IpDispositivo = _ip,
+                MotivoNegacao = string.Empty
             };
+        }
+
+        private void OnDeviceError(object? sender, Exception ex)
+        {
+            string motivo = string.Empty;
+
+            if (ex.Message.Contains("NO_USER"))
+            {
+                motivo = "nao_cadastrado";
+            }
+            else if (ex.Message.Contains("FAIL"))
+            {
+                motivo = "biometria_invalida";
+            }
+            else if (ex.Message.Contains("TIME_OUT"))
+            {
+                motivo = "senha_invalida";
+            }
+
+            if (!string.IsNullOrEmpty(motivo))
+            {
+                _ultimoEvento = new EventoAcesso
+                {
+                    PessoaID = 0,
+                    TipoVerificacao = string.Empty,
+                    AcessoLiberado = false,
+                    DataHora = DateTime.Now,
+                    IpDispositivo = _ip,
+                    MotivoNegacao = motivo
+                };
+            }
         }
 
         public EventoAcesso? BuscarNovoEvento()
@@ -99,7 +132,8 @@ namespace BiometricAcess.Worker.Services
                         TipoVerificacao = tipoVerificacao,
                         AcessoLiberado = true,
                         DataHora = record.DateTime,
-                        IpDispositivo = _ip
+                        IpDispositivo = _ip,
+                        MotivoNegacao = string.Empty
                     });
                 }
             }
@@ -116,6 +150,7 @@ namespace BiometricAcess.Worker.Services
             if (_device != null)
             {
                 _device.ReceivedRecord -= OnReceivedRecord;
+                _device.DeviceError -= OnDeviceError;
                 _device = null;
             }
             Console.WriteLine("Desconectado do T50M");

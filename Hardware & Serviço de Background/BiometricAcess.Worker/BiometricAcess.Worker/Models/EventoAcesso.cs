@@ -7,5 +7,6 @@
         public bool AcessoLiberado { get; set; }
         public DateTime DataHora { get; set; }
         public string IpDispositivo { get; set; } = string.Empty;
+        public string MotivoNegacao { get; set; } = string.Empty;
     }
 }
