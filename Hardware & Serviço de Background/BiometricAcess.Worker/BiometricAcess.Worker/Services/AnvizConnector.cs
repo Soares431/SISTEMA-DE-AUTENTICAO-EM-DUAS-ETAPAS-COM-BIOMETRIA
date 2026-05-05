@@ -60,33 +60,8 @@ namespace BiometricAcess.Worker.Services
 
         private void OnDeviceError(object? sender, Exception ex)
         {
-            string motivo = string.Empty;
-
-            if (ex.Message.Contains("NO_USER"))
-            {
-                motivo = "nao_cadastrado";
-            }
-            else if (ex.Message.Contains("FAIL"))
-            {
-                motivo = "biometria_invalida";
-            }
-            else if (ex.Message.Contains("TIME_OUT"))
-            {
-                motivo = "senha_invalida";
-            }
-
-            if (!string.IsNullOrEmpty(motivo))
-            {
-                _ultimoEvento = new EventoAcesso
-                {
-                    PessoaID = 0,
-                    TipoVerificacao = string.Empty,
-                    AcessoLiberado = false,
-                    DataHora = DateTime.Now,
-                    IpDispositivo = _ip,
-                    MotivoNegacao = motivo
-                };
-            }
+            
+            Console.WriteLine($"Erro no dispositivo: {ex.Message}");
         }
 
         public EventoAcesso? BuscarNovoEvento()
