@@ -41,6 +41,18 @@ Por:
 ```
 builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 ```
+## EventProcessor real — dependências adicionais
+
+Além dos repositórios do banco, o `EventProcessor` real vai precisar do `IAnvizService` injetado para:
+
+- `FluxoPrimeiroAcesso` → chamar `IniciarCapturaDigital(id)` para o T50M coletar a digital
+- Após coleta → chamar `UploadTemplate(id, template)` para salvar a digital
+
+No `Program.cs` já está registrado:
+```
+builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
+```
+Trocar para `AnvizService` quando o hardware estiver disponível.
 
 ## Dependências do banco de dados (Integrante 1)
 
@@ -51,5 +63,8 @@ Para implementar o `EventProcessor` real, são necessários os seguintes reposit
 - `IDispositivoT50Repository` — métodos: `ContarDigitaisCadastradas`, `TemVagaDigital`
 - `ITentativaAcessoRepository` — métodos: `Registrar`
 - `ILogAdminRepository` — métodos: `Registrar` (necessário para HW-17)
+
+
+
 
 
