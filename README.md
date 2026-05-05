@@ -64,7 +64,9 @@ Para implementar o `EventProcessor` real, são necessários os seguintes reposit
 - `ITentativaAcessoRepository` — métodos: `Registrar`
 - `ILogAdminRepository` — métodos: `Registrar` (necessário para HW-17)
 
+## Observação importante para o Integrante 1
 
+A geração de senhas em `SenhaRepository.BuscarDisponivel()` deve retornar apenas senhas no range de `100000` a `999999` — senhas começando com zero causam problema na comunicação com o T50M devido ao formato interno do SDK Anviz.
 
 
 
