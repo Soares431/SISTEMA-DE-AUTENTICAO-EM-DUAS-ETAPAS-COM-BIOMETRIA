@@ -1,0 +1,106 @@
+@page "/ambientes/{Id:int}"
+
+<div class="space-y">
+    <div class="flex items-center gap-4">
+        <a href="/ambientes" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
+        <div class="flex-1"><h1 class="text-2xl font-bold">@ambiente.Nome</h1><p class="text-muted">@ambiente.Descricao</p></div>
+        <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online</span>
+    </div>
+
+    <div class="tabs-list">
+        <button class="tab-trigger @(activeTab == "t50" ? "active" : "")" @onclick='() => activeTab = "t50"'>Dispositivo T50</button>
+        <button class="tab-trigger @(activeTab == "pessoas" ? "active" : "")" @onclick='() => activeTab = "pessoas"'>Pessoas com Acesso</button>
+        <button class="tab-trigger @(activeTab == "cameras" ? "active" : "")" @onclick='() => activeTab = "cameras"'>Câmeras</button>
+        <button class="tab-trigger @(activeTab == "config" ? "active" : "")" @onclick='() => activeTab = "config"'>Configurações</button>
+    </div>
+
+    @if (activeTab == "t50")
+    {
+        <div class="grid grid-2">
+            <div class="card"><div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Informacoes do Dispositivo</div></div>
+                <div class="card-content"><div class="grid grid-2" style="gap: 1rem;">
+                    <div><p class="text-sm text-muted">Endereco IP</p><p class="font-mono">@ambiente.T50Ip</p></div>
+                    <div><p class="text-sm text-muted">Firmware</p><p class="font-mono">@ambiente.T50Firmware</p></div>
+                    <div><p class="text-sm text-muted">Status</p><span class="badge badge-success">Online</span></div>
+                    <div><p class="text-sm text-muted">Ultima Sincronizacao</p><p>@ambiente.UltimaSincronizacao</p></div>
+                </div></div>
+            </div>
+            <div class="card"><div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biometrica</div><p class="card-description">Armazenamento de templates biometricos</p></div>
+                <div class="card-content space-y-sm">
+                    <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium text-warning">@(ambiente.T50Capacidade)%</span></div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: @(ambiente.T50Capacidade)%; background: var(--warning);"></div></div>
+                    <p class="text-sm text-muted">Atenção: A capacidade está acima de 85%. Considere limpar templates inativos.</p>
+                    <button class="btn btn-outline btn-block">Gerenciar Templates</button>
+                </div>
+            </div>
+        </div>
+    }
+    else if (activeTab == "pessoas")
+    {
+        <div class="card"><div class="card-header card-header-row"><div><div class="card-title"><Icon Name="users" Size="20" /> Pessoas com Acesso</div><p class="card-description">3 pessoas autorizadas</p></div>
+            <button class="btn btn-primary" @onclick="() => showAddPessoa = true"><Icon Name="plus" Size="16" /> Adicionar Pessoa</button></div>
+            <div class="card-content"><table><thead><tr><th>Nome</th><th>Cargo</th><th>Último Acesso</th><th class="text-right">Ações</th></tr></thead>
+                <tbody>
+                    <tr><td class="font-medium"><a href="/pessoas/1" class="text-primary">Carlos Silva</a></td><td class="text-muted">Administrador de Sistemas</td><td class="text-muted">Hoje, 14:32</td><td class="text-right"><button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button></td></tr>
+                    <tr><td class="font-medium"><a href="/pessoas/2" class="text-primary">Ana Santos</a></td><td class="text-muted">Engenheira de Redes</td><td class="text-muted">Hoje, 11:15</td><td class="text-right"><button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button></td></tr>
+                    <tr><td class="font-medium"><a href="/pessoas/3" class="text-primary">Pedro Oliveira</a></td><td class="text-muted">Técnico de Suporte</td><td class="text-muted">Ontem, 16:45</td><td class="text-right"><button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button></td></tr>
+                </tbody></table></div></div>
+    }
+    else if (activeTab == "cameras")
+    {
+        <div class="card"><div class="card-header card-header-row"><div><div class="card-title"><Icon Name="camera" Size="20" /> Câmeras</div><p class="card-description">3 câmeras configuradas</p></div>
+            <button class="btn btn-primary" @onclick="() => showAddCamera = true"><Icon Name="plus" Size="16" /> Adicionar Câmera</button></div>
+            <div class="card-content"><div class="grid grid-2" style="gap: 1.5rem;">
+                @{ var cams = new[] { ("Câmera Entrada", "192.168.1.101", "online"), ("Câmera Racks", "192.168.1.102", "online"), ("Câmera Saída", "192.168.1.103", "offline") }; }
+                @foreach (var (nome, ip, status) in cams)
+                {
+                    <div class="card" style="background: color-mix(in srgb, var(--muted) 30%, transparent);">
+                        <div class="card-content pt-6">
+                            <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;"><Icon Name="camera" Size="48" CssClass="text-muted" /></div>
+                            <div class="flex justify-between items-center"><span class="font-medium">@nome</span><span class="badge @(status == "online" ? "badge-success" : "badge-muted")">@status</span></div>
+                            <p class="text-sm font-mono text-muted">@ip</p>
+                            <button class="btn btn-outline btn-block mt-4" disabled="@(status == "offline")">Ver Ao Vivo</button>
+                        </div>
+                    </div>
+                }
+            </div></div></div>
+    }
+    else if (activeTab == "config")
+    {
+        <div class="card"><div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravacao</div><p class="card-description">Tempo em segundos que o sistema aguarda apos uma tentativa de acesso para salvar a gravacao</p></div>
+            <div class="card-content space-y-sm">
+                <div class="flex items-center gap-4"><input type="number" class="form-input w-32" value="10" min="1" max="60" /><span class="text-muted">segundos</span></div>
+                <button class="btn btn-primary">Salvar Configuracoes</button>
+            </div></div>
+    }
+</div>
+
+@if (showAddPessoa)
+{
+    <div class="modal-overlay" @onclick="() => showAddPessoa = false"><div class="modal" @onclick:stopPropagation="true">
+        <div class="modal-header"><h3>Adicionar Pessoa</h3><p>Selecione uma pessoa para conceder acesso a este ambiente</p></div>
+        <div class="modal-body"><div class="form-group"><label class="form-label">Pessoa</label><select class="form-select"><option>Maria Costa - Gerente</option><option>Jose Lima - Desenvolvedor</option><option>Paula Souza - Analista</option></select></div></div>
+        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showAddPessoa = false">Adicionar</button></div>
+    </div></div>
+}
+
+@if (showAddCamera)
+{
+    <div class="modal-overlay" @onclick="() => showAddCamera = false"><div class="modal" @onclick:stopPropagation="true">
+        <div class="modal-header"><h3>Adicionar Camera</h3><p>Configure uma nova camera para este ambiente</p></div>
+        <div class="modal-body space-y-sm">
+            <div class="form-group"><label class="form-label">Nome</label><input class="form-input" placeholder="Ex: Camera Principal" /></div>
+            <div class="form-group"><label class="form-label">Endereco IP</label><input class="form-input" placeholder="192.168.1.xxx" /></div>
+            <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://..." /></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddCamera = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showAddCamera = false">Adicionar</button></div>
+    </div></div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private string activeTab = "t50";
+    private bool showAddPessoa = false;
+    private bool showAddCamera = false;
+    private Ambiente ambiente => MockData.Ambientes.FirstOrDefault(a => a.Id == Id) ?? MockData.Ambientes[1];
+}

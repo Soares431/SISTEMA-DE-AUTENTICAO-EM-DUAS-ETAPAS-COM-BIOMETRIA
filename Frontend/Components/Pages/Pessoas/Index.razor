@@ -1,0 +1,69 @@
+@page "/pessoas"
+
+<div class="space-y">
+    <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
+        <div><h1 class="text-2xl font-bold">Pessoas</h1><p class="text-muted">Gerencie pessoas e permissoes de acesso</p></div>
+        <button class="btn btn-primary" @onclick="() => showDialog = true"><Icon Name="plus" Size="16" /> Nova Pessoa</button>
+    </div>
+
+    <div class="flex gap-4" style="flex-wrap: wrap;">
+        <div class="input-icon-wrapper flex-1" style="min-width: 200px;">
+            <Icon Name="search" /><input class="form-input" placeholder="Buscar por nome, email ou cargo..." @bind="search" @bind:event="oninput" />
+        </div>
+        <select class="form-select" style="width: 150px;" @bind="statusFilter"><option value="todos">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select>
+        <select class="form-select" style="width: 180px;" @bind="depFilter"><option value="todos">Todos</option>@foreach (var d in Departamentos){<option value="@d">@d</option>}</select>
+    </div>
+
+    <div class="grid grid-3">
+        @foreach (var p in Filtered)
+        {
+            <div class="card">
+                <div class="card-content pt-6">
+                    <div class="flex items-start gap-4">
+                        <div class="avatar avatar-md">@GetInitials(p.Nome)</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2"><h3 class="font-semibold truncate">@p.Nome</h3><span class="badge @(p.Status == "ativo" ? "badge-success" : "badge-muted")">@p.Status</span></div>
+                            <p class="text-sm text-muted">@p.Cargo</p><p class="text-xs text-muted">@p.Departamento</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-y-xs">
+                        <div class="flex items-center gap-2 text-sm text-muted"><Icon Name="mail" Size="16" /><span class="truncate">@p.Email</span></div>
+                        <div class="flex items-center gap-2 text-sm text-muted"><Icon Name="phone" Size="16" />@p.Telefone</div>
+                        <div class="flex items-center gap-2 text-sm"><Icon Name="fingerprint" Size="16" CssClass="text-muted" /><span class="badge @(p.BiometriaStatus == "cadastrada" ? "badge-success" : "badge-warning")">Biometria @p.BiometriaStatus</span></div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t flex items-center justify-between">
+                        <span class="text-sm text-muted">Acesso a @p.AmbientesAcesso ambientes</span>
+                        <a href="/pessoas/@p.Id" class="btn btn-ghost btn-sm">Ver Perfil <Icon Name="chevron-right" Size="16" /></a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!Filtered.Any())
+    {
+        <div class="card"><div class="card-content pt-6" style="text-align: center; padding: 3rem;"><Icon Name="user" Size="48" CssClass="text-muted" /><p class="font-medium mt-4">Nenhuma pessoa encontrada</p><p class="text-muted">Tente ajustar os filtros</p></div></div>
+    }
+</div>
+
+@if (showDialog)
+{
+    <div class="modal-overlay" @onclick="() => showDialog = false"><div class="modal" @onclick:stopPropagation="true">
+        <div class="modal-header"><h3>Cadastrar Nova Pessoa</h3><p>Adicione uma nova pessoa ao sistema de controle de acesso</p></div>
+        <div class="modal-body space-y-sm">
+            <div class="grid grid-2"><div class="form-group"><label class="form-label">Nome Completo</label><input class="form-input" placeholder="Nome completo" /></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" placeholder="email@empresa.com" /></div></div>
+            <div class="grid grid-2"><div class="form-group"><label class="form-label">Telefone</label><input class="form-input" placeholder="(11) 99999-9999" /></div><div class="form-group"><label class="form-label">Cargo</label><input class="form-input" placeholder="Cargo" /></div></div>
+            <div class="form-group"><label class="form-label">Departamento</label><select class="form-select">@foreach (var d in Departamentos){<option>@d</option>}</select></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showDialog = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showDialog = false">Cadastrar</button></div>
+    </div></div>
+}
+
+@code {
+    private string search = ""; private string statusFilter = "todos"; private string depFilter = "todos"; private bool showDialog = false;
+    private string[] Departamentos => MockData.Pessoas.Select(p => p.Departamento).Distinct().ToArray();
+    private string GetInitials(string nome) => string.Join("", nome.Split(' ').Take(2).Select(n => n[0])).ToUpper();
+    private IEnumerable<Pessoa> Filtered => MockData.Pessoas.Where(p =>
+        (string.IsNullOrEmpty(search) || p.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Email.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Cargo.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
+        (statusFilter == "todos" || p.Status == statusFilter) && (depFilter == "todos" || p.Departamento == depFilter));
+}

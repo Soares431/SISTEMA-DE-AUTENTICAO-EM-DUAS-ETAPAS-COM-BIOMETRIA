@@ -1,0 +1,43 @@
+@* =============================================================================
+   Error.razor - Página de Aviso de Erros
+   Features: Exibição do ID da requisição para rastreamento,
+             orientações sobre o modo de desenvolvimento (ASPNETCORE_ENVIRONMENT),
+             alerta de segurança sobre exposição de exceções em produção
+   Rota: /Error (configurada no middleware UseExceptionHandler)
+   ============================================================================= *@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Erro</PageTitle>
+
+<h1 class="text-danger">Erro.</h1>
+<h2 class="text-danger">Um erro ocorreu enquanto processava sua requisicao.</h2>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>ID da Requisição:</strong> <code>@RequestId</code>
+    </p>
+}
+
+<h3>Modo de Desenvolvimento</h3>
+<p>
+    A troca para o ambiente de <strong>Desenvolvimento</strong> exibirá informações mais detalhadas sobre o erro que ocorreu.
+</p>
+<p>
+    <strong>O ambiente de Desenvolvimento não deve ser habilitado em aplicações implantadas.</strong>
+    Isso pode resultar na exibição de informações sensíveis de exceções para os usuários finais.
+    Para depuração local, habilite o ambiente de <strong>Desenvolvimento</strong> definindo a variável de ambiente <strong>ASPNETCORE_ENVIRONMENT</strong> como <strong>Development</strong>
+    e reiniciando o aplicativo.
+</p>
+
+@code{
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

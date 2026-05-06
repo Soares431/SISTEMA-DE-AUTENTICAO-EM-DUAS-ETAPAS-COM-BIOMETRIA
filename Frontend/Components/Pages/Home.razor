@@ -1,0 +1,155 @@
+@* =============================================================================
+   Home.razor - Página Dashboard (Página Inicial)
+   Features: 4 cards de estatísticas, gráfico de acessos por hora (Chart.js),
+             painel de alertas T50, tabela de últimos acessos negados
+   Rota: / (raiz da aplicação)
+   ============================================================================= *@
+@page "/"
+@inject IJSRuntime JS
+
+<div class="space-y">
+    <div>
+        <h1 class="text-2xl font-bold">Dashboard</h1>
+        <p class="text-muted">Resumo do dia - Acesso</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4">
+        <div class="card">
+            <div class="card-header card-header-row">
+                <span class="text-sm font-medium text-muted">Entradas Permitidas</span>
+                <div class="icon-bg icon-bg-success"><Icon Name="check-circle" Size="16" /></div>
+            </div>
+            <div class="card-content">
+                <div class="stat-value">1,247</div>
+                <p class="text-xs text-muted">+12% vs ontem</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header card-header-row">
+                <span class="text-sm font-medium text-muted">Acessos Negados</span>
+                <div class="icon-bg icon-bg-destructive"><Icon Name="x-circle" Size="16" /></div>
+            </div>
+            <div class="card-content">
+                <div class="stat-value">23</div>
+                <p class="text-xs text-muted">-5% vs ontem</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header card-header-row">
+                <span class="text-sm font-medium text-muted">Alertas T50</span>
+                <div class="icon-bg icon-bg-warning"><Icon Name="alert-triangle" Size="16" /></div>
+            </div>
+            <div class="card-content">
+                <div class="stat-value">3</div>
+                <p class="text-xs text-muted">2 ambientes</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header card-header-row">
+                <span class="text-sm font-medium text-muted">Pessoas Ativas</span>
+                <div class="icon-bg icon-bg-primary"><Icon Name="users" Size="16" /></div>
+            </div>
+            <div class="card-content">
+                <div class="stat-value">342</div>
+                <p class="text-xs text-muted">8 novos hoje</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart + Alerts -->
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Acessos por Hora</div>
+                <p class="card-description">Distribuição de entradas ao longo do dia</p>
+            </div>
+            <div class="card-content">
+                <canvas id="dashboardChart" style="width:100%; height:300px;"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><Icon Name="alert-triangle" CssClass="text-warning" /> Alertas Ativos</div>
+                <p class="card-description">Dispositivos T50 precisando de atenção</p>
+            </div>
+            <div class="card-content space-y-sm">
+                @foreach (var alert in MockData.Alertas)
+                {
+                    <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--muted) 30%, transparent);">
+                        <div class="icon-bg icon-bg-warning"><Icon Name="building" Size="16" /></div>
+                        <div style="flex: 1;">
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium">@alert.Ambiente</span>
+                                <span class="badge @GetGravidadeBadge(alert.Gravidade)">@(alert.Gravidade == "alta" ? "Alta" : alert.Gravidade == "media" ? "Média" : "Baixa")</span>
+                            </div>
+                            <p class="text-sm text-muted">@alert.Mensagem</p>
+                            <p class="text-xs text-muted">@alert.Hora</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Denied -->
+    <div class="card">
+        <div class="card-header card-header-row">
+            <div>
+                <div class="card-title"><Icon Name="x-circle" CssClass="text-destructive" /> Últimos Acessos Negados</div>
+                <p class="card-description">Tentativas de acesso negadas hoje</p>
+            </div>
+            <a href="/historico" class="btn btn-outline btn-sm">Ver todos</a>
+        </div>
+        <div class="card-content">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pessoa</th><th>Ambiente</th><th>Motivo</th><th>Hora</th><th>Gravação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in MockData.UltimosNegados)
+                        {
+                            <tr>
+                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @item.Pessoa</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @item.Ambiente</span></td>
+                                <td><span class="badge badge-destructive">@item.Motivo</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @item.Hora</span></td>
+                                <td>
+                                    @if (item.TemGravacao)
+                                    {
+                                        <button class="btn btn-ghost btn-sm text-primary">Ver vídeo</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-sm text-muted">Indisponível</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string GetGravidadeBadge(string gravidade) => gravidade switch
+    {
+        "alta" => "badge-destructive",
+        "media" => "badge-warning",
+        _ => "badge-muted"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("renderDashboardChart", "dashboardChart");
+        }
+    }
+}

@@ -1,0 +1,78 @@
+@* =============================================================================
+   Login.razor - Página de autenticação do sistema
+   Features: Formulário de login (email + senha), toggle de visibilidade da senha,
+             loading state no botão, redirecionamento para dashboard após login
+   Usa LoginLayout (sem sidebar) como layout alternativo
+   Rota: /login
+   ============================================================================= *@
+@page "/login"
+@layout LoginLayout
+@inject NavigationManager Nav
+
+<div class="login-page">
+    <div class="login-blob" style="top: 25%; left: 25%;"></div>
+    <div class="login-blob" style="bottom: 25%; right: 25%;"></div>
+
+    <div class="card login-card">
+        <div class="card-header" style="text-align: center;">
+            <div style="margin: 0 auto 1rem; width: 4rem; height: 4rem; border-radius: 0.75rem; background: color-mix(in srgb, var(--primary) 15%, transparent); display: flex; align-items: center; justify-content: center;">
+                <Icon Name="shield" Size="32" CssClass="text-primary" />
+            </div>
+            <h2 class="text-2xl font-bold">5° CTA</h2>
+            <p class="text-muted text-sm">Sistema de Controle de Acesso Biometrico</p>
+        </div>
+        <div class="card-content">
+            <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+                <div class="space-y-sm">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email</label>
+                        <input id="email" type="email" class="form-input" placeholder="admin@empresa.com"
+                               @bind="loginModel.Email" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="password">Senha</label>
+                        <div style="position: relative;">
+                            <input id="password" type="@(showPassword ? "text" : "password")" class="form-input"
+                                   placeholder="Digite sua senha" @bind="loginModel.Password" required
+                                   style="padding-right: 2.5rem;" />
+                            <button type="button" class="btn btn-ghost btn-icon"
+                                    style="position: absolute; right: 0; top: 0; height: 100%;"
+                                    @onclick="TogglePassword">
+                                <Icon Name="@(showPassword ? "eye-off" : "eye")" Size="16" />
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block" disabled="@isLoading">
+                        @(isLoading ? "Entrando..." : "Entrar")
+                    </button>
+                </div>
+            </EditForm>
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <p class="text-xs text-muted">Acesso restrito a administradores autorizados</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private bool showPassword = false;
+    private bool isLoading = false;
+
+    private void TogglePassword() => showPassword = !showPassword;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        StateHasChanged();
+        await Task.Delay(1000);
+        Nav.NavigateTo("/");
+    }
+
+    public class LoginModel
+    {
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+}
+
