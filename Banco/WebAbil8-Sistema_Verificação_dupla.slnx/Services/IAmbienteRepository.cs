@@ -5,9 +5,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
     public interface IAmbienteRepository
     {
         Ambiente Adicionar(Ambiente ambiente);
-        AmbientePessoa BuscarPorId(int id);
-        List<AmbientePessoa> ListarTodos();
+        Ambiente BuscarPorId(int id);
+        List<Ambiente> ListarTodos();
         Ambiente Atualizar(Ambiente ambiente);
-        void RemoverPessoa(int id);
+        void Remover(int id);
     }
 }
