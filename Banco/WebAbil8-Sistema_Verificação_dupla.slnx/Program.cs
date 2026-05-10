@@ -1,10 +1,10 @@
 using BCrypt.Net;
-using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Configurations;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
+using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,22 +16,30 @@ builder.Services.AddControllers();
 // Scoped é usado para criar uma nova instância do serviço para cada solicitação HTTP. Isso é útil para serviços que possuem estado ou que precisam ser isolados por solicitação, como um serviço de pessoa neste caso  
 // Scoped é instanciado uma vez por solicitação HTTP
 // É injentado a instancia do serviço em toda a solicitação, ou seja, em todos os controladores ou outras classes que dependem dele durante a mesma solicitação.
-builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+
 
 // 
 builder.AddSeriLogLogging();
 
 //builder.Services.AddDatabaseConfiguration(builder.Configuration);
 builder.Services.AddDataBaseConfiguration(builder.Configuration);
+builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
+builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
+builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();
+builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
+builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 using (var scope = app.Services.CreateScope())
@@ -39,7 +47,6 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 
-    // Só popula se a tabela estiver vazia
     if (!db.SenhasDisponiveis.Any())
     {
         var triviais = new HashSet<string> {
@@ -58,18 +65,19 @@ using (var scope = app.Services.CreateScope())
 
         db.SenhasDisponiveis.AddRange(senhas);
         db.SaveChanges();
+    }
 
-        if (!db.Administradores.Any())
+    // Fora do if anterior
+    if (!db.Administradores.Any())
+    {
+        db.Administradores.Add(new Administrador
         {
-            db.Administradores.Add(new Administrador
-            {
-                Login = "admin",
-                SenhaHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-                NomeCompleto = "Administrador Padrão",
-                DataCriacao = DateTime.UtcNow
-            });
-            db.SaveChanges();
-        }
+            Login = "admin",
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+            NomeCompleto = "Administrador Padrão",
+            DataCriacao = DateTime.UtcNow
+        });
+        db.SaveChanges();
     }
 }
 
