@@ -24,6 +24,7 @@ builder.AddSeriLogLogging();
 //builder.Services.AddDatabaseConfiguration(builder.Configuration);
 builder.Services.AddDataBaseConfiguration(builder.Configuration);
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
 builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
 builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();
