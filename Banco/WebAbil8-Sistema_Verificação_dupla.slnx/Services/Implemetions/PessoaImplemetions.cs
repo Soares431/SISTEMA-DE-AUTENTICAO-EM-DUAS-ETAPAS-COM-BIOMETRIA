@@ -24,9 +24,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             return _context.Pessoas.ToList();
         }
 
-        public Pessoa BuscarPorCPF(long id)
+        public Pessoa BuscarPorCPF(string cpf)
         {
-            throw new NotImplementedException();
+            return _context.Pessoas
+                .FirstOrDefault(p => p.Cpf == cpf);
         }
 
         public Pessoa BuscarPorId(long id)
@@ -59,28 +60,42 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             _context.SaveChanges();
         }
 
-        public DateTime AtualizarUltimoAcesso()
+        public Pessoa AtualizarUltimoAcesso(long pessoaId)
         {
-            throw new NotImplementedException();
+            var pessoa = _context.Pessoas.Find(pessoaId);
+            if (pessoa == null) throw new ArgumentNullException("Erro ao Atualizar cadastro, Usuario Inexistente");
+            pessoa.dataUltimoAcesso = DateTime.Now;
+            _context.SaveChanges();
+            return pessoa;
         }
 
-        public void AlterarStatus()
+        public void AlterarStatus(long pessoaId, bool status)
         {
-            throw new NotImplementedException();
+            var pessoa = _context.Pessoas.Find(pessoaId);
+            if (pessoa == null) throw new ArgumentNullException("Erro ao Alterar Status, Usuario Inexistente");
+            pessoa.Status = status ? "ativo" : "inativo";
+            _context.SaveChanges();
         }
 
-        public DateTime MarcarBiometriaCadastrada()
+        public Pessoa MarcarBiometriaCadastrada(long pessoaId)
         {
-            throw new NotImplementedException();
+            var pessoa = _context.Pessoas.Find(pessoaId);
+            if (pessoa == null) throw new ArgumentNullException("Erro ao Marcar Biometrica, Usuario Inexistente");
+            pessoa.biometriaCadastrada = DateTime.Now;
+            _context.SaveChanges();
+            return pessoa;
         }
 
 
 
-        public byte[] SalvarTemplate()
+        public Pessoa SalvarTemplate(long pessoaId, byte[] template)
         {
-            throw new NotImplementedException();
+            var pessoa = _context.Pessoas.Find(pessoaId);
+            if (pessoa == null) throw new ArgumentNullException("Erro ao Salvar template. Usuario Inexistente.");
+            pessoa.templateBackup = template;
+            _context.SaveChanges();
+            return pessoa;
         }
-
 
     }
 }

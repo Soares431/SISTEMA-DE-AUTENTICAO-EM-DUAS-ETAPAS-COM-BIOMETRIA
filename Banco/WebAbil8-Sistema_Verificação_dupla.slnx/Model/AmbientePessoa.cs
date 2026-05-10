@@ -19,6 +19,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public Ambiente Ambiente { get; set; }
 
         [ForeignKey("PessoaId")]
-        public Pessoa pessoa{ get; set; }
+        public Pessoa Pessoa{ get; set; }
     }
 }

@@ -10,6 +10,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         LogAdmin Atualizar(LogAdmin person);
         void Remover(long id);
 
-        void Registrar();
+        LogAdmin Registrar(int adminId, string acao, string entidadeAfetada, int? entidadeId);
+        List<LogAdmin> ListarComFiltros(int? adminId, string acao, string entidadeAfetada, DateTime? dataInicio, DateTime? dataFim);
     }
 }

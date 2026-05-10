@@ -10,6 +10,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         // Todos os DbSets
         public DbSet<Pessoa> Pessoas { get; set; }
         public DbSet<Ambiente> Ambientes { get; set; }
+        public DbSet<AmbientePessoa> AmbientesPessoas { get; set; }
         public DbSet<DispositivoT50> DispositivosT50 { get; set; }
         public DbSet<Camera> Cameras { get; set; }
         public DbSet<TentativaAcesso> TentativasAcesso { get; set; }

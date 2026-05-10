@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.Eventing.Reader;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 {
@@ -16,7 +17,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public bool EmUso { get; set; }
 
         [Column("pessoaId")]
-        public int? PessoaId { get; set; } // NULL se não atribuída
+        public long? PessoaId { get; set; } // NULL se não atribuída
 
         // Navegação
         [ForeignKey("PessoaId")]
