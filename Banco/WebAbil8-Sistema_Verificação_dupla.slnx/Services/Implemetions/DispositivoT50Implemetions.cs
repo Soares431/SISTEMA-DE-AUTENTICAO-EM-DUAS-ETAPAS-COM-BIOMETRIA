@@ -58,7 +58,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         {
             var dispositivo = _context.DispositivosT50.Find(dispositivoId);
             if (dispositivo == null) throw new ArgumentNullException("Dispositivo não encontrado");
-            return dispositivo.DigitaisCadastradas < 3000; // T50 suporta até 3000 digitais
+            return dispositivo.DigitaisCadastradas < 1000; // T50 suporta até 1000 digitais
         }
     }
 }
