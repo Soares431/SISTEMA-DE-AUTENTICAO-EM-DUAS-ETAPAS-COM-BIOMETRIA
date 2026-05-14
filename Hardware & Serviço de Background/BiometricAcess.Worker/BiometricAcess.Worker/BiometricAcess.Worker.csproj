@@ -11,4 +11,8 @@
     <PackageReference Include="Anviz.SDK" Version="2.0.18" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\WebAbil8-Sistema_Verificação_dupla.slnx.csproj" />
+  </ItemGroup>
 </Project>
