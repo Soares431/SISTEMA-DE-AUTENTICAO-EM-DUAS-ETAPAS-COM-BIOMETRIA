@@ -18,6 +18,11 @@ namespace BiometricAcess.Worker.Services
             try
             {
                 var userInfo = new UserInfo((ulong)id, nome);
+                // DEPOIS
+                // ATENÇÃO: O T50M usa formato especial de 3 bytes para senha.
+                // O SDK .NET (Anviz.SDK NuGet) pode ou não fazer essa conversão internamente.
+                // Formato nativo: bits 23-20 = comprimento da senha, bits 19-0 = valor numérico.
+                // Se a autenticação por senha falhar com hardware real, investigar aqui primeiro.
                 userInfo.Password = ulong.Parse(senha);
                 _device.SetEmployeesData(userInfo).Wait();
                 return true;
