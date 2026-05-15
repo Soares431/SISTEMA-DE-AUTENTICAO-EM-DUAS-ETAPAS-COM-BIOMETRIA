@@ -7,5 +7,7 @@ namespace InfraestruturaBloco1.Models
         public string Acao { get; set; } = string.Empty;
         public string Entidade { get; set; } = string.Empty;
         public DateTime DataHora { get; set; } = DateTime.UtcNow;
+         // Novo campo para UI-11b
+        public string? VideoUrl { get; set; }
     }
 }

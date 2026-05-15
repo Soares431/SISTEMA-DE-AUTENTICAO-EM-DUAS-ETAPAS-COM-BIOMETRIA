@@ -13,14 +13,16 @@ namespace InfraestruturaBloco1.Services
             _context = context;
         }
 
-        public async Task RegistrarAsync(string admin, string acao, string entidade)
+        // Agora aceita opcionalmente o link da gravação
+        public async Task RegistrarAsync(string admin, string acao, string entidade, string? videoUrl = null)
         {
             var log = new AuditLog
             {
                 Admin = admin,
                 Acao = acao,
                 Entidade = entidade,
-                DataHora = DateTime.UtcNow
+                DataHora = DateTime.UtcNow,
+                VideoUrl = videoUrl
             };
 
             _context.AuditLogs.Add(log);

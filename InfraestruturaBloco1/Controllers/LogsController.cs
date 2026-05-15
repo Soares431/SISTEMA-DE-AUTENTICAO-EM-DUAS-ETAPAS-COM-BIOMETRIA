@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using InfraestruturaBloco1.Services;
-
 using Microsoft.AspNetCore.Mvc;
 
 namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // protege os endpoints
     public class LogsController : ControllerBase
     {
         private readonly AuditService _auditService;
@@ -16,7 +16,7 @@ namespace InfraestruturaBloco1.Controllers
             _auditService = auditService;
         }
 
-        // GET /api/logs?admin=Joao&acao=Remocao&dataInicio=2026-05-01&dataFim=2026-05-15
+        // GET /api/logs?admin=Joao&acao=Remocao&entidade=Usuario&dataInicio=2026-05-01&dataFim=2026-05-15
         [HttpGet]
         public async Task<IActionResult> GetLogs(
             [FromQuery] string? admin,
@@ -27,6 +27,16 @@ namespace InfraestruturaBloco1.Controllers
         {
             var logs = await _auditService.ConsultarAsync(admin, acao, entidade, dataInicio, dataFim);
             return Ok(logs);
+        }
+
+        // GET /api/logs/5 (detalhe de um log específico)
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetLog(int id)
+        {
+            var logs = await _auditService.ConsultarAsync();
+            var log = logs.FirstOrDefault(l => l.Id == id);
+            if (log == null) return NotFound();
+            return Ok(log);
         }
     }
 }
