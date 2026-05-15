@@ -47,11 +47,15 @@ namespace BiometricAcess.Worker.Services
                 tipoVerificacao = "digital_id";
             }
 
+            // RecordType bit 7: 1 = porta abriu, 0 = porta não abriu
+            // Fonte: documentação oficial Anviz SDK "New SDK API 2019.docx"
+            bool acessoLiberado = (record.RecordType & 0x80) != 0;
+
             _ultimoEvento = new EventoAcesso
             {
                 PessoaID = (int)record.UserCode,
                 TipoVerificacao = tipoVerificacao,
-                AcessoLiberado = true,
+                AcessoLiberado = acessoLiberado,
                 DataHora = record.DateTime,
                 IpDispositivo = _ip,
                 MotivoNegacao = string.Empty
@@ -60,7 +64,8 @@ namespace BiometricAcess.Worker.Services
 
         private void OnDeviceError(object? sender, Exception ex)
         {
-            
+            // Erro de comunicação com o dispositivo — não é acesso negado
+            // O Worker vai detectar a falha no próximo BuscarNovoEvento e reconectar
             Console.WriteLine($"Erro no dispositivo: {ex.Message}");
         }
 
@@ -101,11 +106,14 @@ namespace BiometricAcess.Worker.Services
                         tipoVerificacao = "digital_id";
                     }
 
+                    // RecordType bit 7: 1 = porta abriu, 0 = porta não abriu
+                    bool acessoLiberado = (record.RecordType & 0x80) != 0;
+
                     eventos.Add(new EventoAcesso
                     {
                         PessoaID = (int)record.UserCode,
                         TipoVerificacao = tipoVerificacao,
-                        AcessoLiberado = true,
+                        AcessoLiberado = acessoLiberado,
                         DataHora = record.DateTime,
                         IpDispositivo = _ip,
                         MotivoNegacao = string.Empty

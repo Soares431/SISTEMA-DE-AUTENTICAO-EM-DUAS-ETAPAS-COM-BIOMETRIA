@@ -25,7 +25,7 @@ namespace BiometricAcess.Worker.Simulador
         public byte[]? DownloadTemplate(int id)
         {
             Console.WriteLine($"Simulador: Template baixado — ID: {id}");
-            return new byte[512]; // retorna um template falso de 512 bytes
+            return new byte[338]; 
         }
 
         public bool IniciarCapturaDigital(int id)

@@ -54,19 +54,30 @@ builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
 ```
 Trocar para `AnvizService` quando o hardware estiver disponível.
 
-## Dependências do banco de dados (Integrante 1)
+## Formato da senha no T50M
 
-Para implementar o `EventProcessor` real, são necessários os seguintes repositórios:
+A senha é armazenada internamente em 3 bytes com formato especial:
+- Bits 23-20 (4 bits): comprimento da senha em dígitos
+- Bits 19-0 (20 bits): valor numérico da senha
 
-- `IPessoaRepository` — métodos: `BuscarPorId`, `AlterarStatus`, `MarcarBiometriaCadastrada`, `SalvarTemplate`, `AtualizarUltimoAcesso`
-- `IAmbientePessoaRepository` — métodos: `PessoaTemAcesso`
-- `IDispositivoT50Repository` — métodos: `ContarDigitaisCadastradas`, `TemVagaDigital`
-- `ITentativaAcessoRepository` — métodos: `Registrar`
-- `ILogAdminRepository` — métodos: `Registrar` (necessário para HW-17)
+Exemplo para senha "123456" (6 dígitos):
+resultado = (123456 & 0xFFFFF) + ((6 & 0xF) << 20) = 6414912
 
-## Observação importante para o Integrante 1
+O SDK .NET (Anviz.SDK NuGet) pode fazer essa conversão internamente.
+Se a autenticação por senha falhar com hardware real, investigar o método
+`AdicionarPessoa` no `AnvizService.cs`.
 
-A geração de senhas em `SenhaRepository.BuscarDisponivel()` deve retornar apenas senhas no range de `100000` a `999999` — senhas começando com zero causam problema na comunicação com o T50M devido ao formato interno do SDK Anviz.
+**Por isso as senhas geradas devem ter sempre 6 dígitos começando em 100000.**
+Senhas com zeros à esquerda teriam comprimento errado nesse formato.
 
+## RecordType — campo do evento de acesso
 
+`RecordType` é um byte onde o **bit 7** indica se a porta abriu:
+- `RecordType & 0x80 != 0` → porta abriu (AcessoLiberado = true)
+- `RecordType & 0x80 == 0` → porta não abriu (AcessoLiberado = false)
+Bits 3-0 indicam status de ponto (attendance status) — não usados no nosso sistema.
+
+## Tamanho do template biométrico
+
+O T50M usa 338 bytes por template de digital (FINGERPRINT_DATA_LEN_338).
 
