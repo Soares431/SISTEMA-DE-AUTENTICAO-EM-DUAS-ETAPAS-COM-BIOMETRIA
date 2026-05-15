@@ -11,5 +11,7 @@ namespace InfraestruturaBloco1.Data
 
         // DbSet para os logs de auditoria
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<Camera> Cameras { get; set; }
+
     }
 }
