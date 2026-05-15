@@ -81,3 +81,24 @@ Bits 3-0 indicam status de ponto (attendance status) — não usados no nosso si
 
 O T50M usa 338 bytes por template de digital (FINGERPRINT_DATA_LEN_338).
 
+## Tentativas falhas de acesso — limitação do hardware
+
+O T50M **não envia eventos de rede** quando uma biometria ou senha não é reconhecida.
+O dispositivo rejeita localmente (bip de erro) sem notificar o software.
+
+Por isso, o sistema consegue registrar apenas dois cenários de falha:
+
+| Situação | AcessoLiberado | Registrado no banco? |
+|---|---|---|
+| Digital/senha reconhecida, porta abriu | true | ✅ sim |
+| Digital/senha reconhecida, porta NÃO abriu (falha da trava física) | false | ✅ sim |
+| Digital NÃO reconhecida pelo T50M | — | ❌ não (sem evento) |
+| Senha errada digitada no T50M | — | ❌ não (sem evento) |
+
+**Consequência prática:** o sistema não tem como distinguir "ninguém tentou entrar"
+de "alguém tentou entrar mas não foi reconhecido". Tentativas de acesso não
+autorizado com biometria ou senha inválida são invisíveis para o software —
+só ficam no log local do próprio dispositivo.
+
+Isso é uma limitação de protocolo do SDK Anviz, não do nosso sistema.
+
