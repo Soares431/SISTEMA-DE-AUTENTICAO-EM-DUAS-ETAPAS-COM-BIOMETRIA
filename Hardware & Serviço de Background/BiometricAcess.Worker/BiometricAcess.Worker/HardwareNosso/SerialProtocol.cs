@@ -3,34 +3,38 @@
 // Mensagens que chegam DO Arduino para o C#
 public static class Eventos
 {
-    public const string TeclaPressionada = "EVT|KEY";        // EVT|KEY|5
-    public const string DigitalOk = "EVT|FINGER|OK";  // EVT|FINGER|OK|1
+    public const string TeclaPressionada = "EVT|KEY";
+    public const string DigitalOk = "EVT|FINGER|OK";
     public const string DigitalFalhou = "EVT|FINGER|FAIL";
+    public const string DigitalCadastrada = "EVT|FINGER|ENROLLED"; // primeiro acesso concluído
     public const string DigoPosto = "EVT|FINGER|PLACED";
     public const string DigoRetirado = "EVT|FINGER|REMOVED";
     public const string Pronto = "EVT|READY";
+    public const string Auth = "EVT|AUTH";             // EVT|AUTH|ID|SENHA
 }
 
 // Comandos que o C# manda PARA o Arduino
 public static class Comandos
 {
-    public const string LcdLinha1 = "CMD|LCD|LINE1";   // CMD|LCD|LINE1|Bem vindo
-    public const string LcdLinha2 = "CMD|LCD|LINE2";   // CMD|LCD|LINE2|Digite ID:
+    public const string LcdLinha1 = "CMD|LCD|LINE1";
+    public const string LcdLinha2 = "CMD|LCD|LINE2";
     public const string LcdLimpar = "CMD|LCD|CLEAR";
-    public const string DigitalCapturar = "CMD|FINGER|START_ENROLL";  // CMD|FINGER|START_ENROLL|1
+    public const string DigitalCapturar = "CMD|FINGER|START_ENROLL";
     public const string DigitalVerificar = "CMD|FINGER|START_VERIFY";
     public const string DigitalCancelar = "CMD|FINGER|CANCEL";
     public const string BuzzerOk = "CMD|BUZZER|OK";
     public const string BuzzerFalhou = "CMD|BUZZER|FAIL";
+    public const string AccessDenied = "CMD|ACCESS|DENIED";     // CMD|ACCESS|DENIED|motivo
 }
 
 // Parser — quebra uma linha recebida em partes
 public class MensagemSerial
 {
-    public string Tipo { get; private set; } = "";  // EVT ou CMD
-    public string Modulo { get; private set; } = "";  // KEY, FINGER, LCD...
-    public string Acao { get; private set; } = "";  // OK, FAIL, LINE1...
-    public string Dado { get; private set; } = "";  // valor extra, se tiver
+    public string Tipo { get; private set; } = "";
+    public string Modulo { get; private set; } = "";
+    public string Acao { get; private set; } = "";
+    public string Dado { get; private set; } = "";
+    public string Dado2 { get; private set; } = "";  // ← novo
 
     public static MensagemSerial? Parse(string linha)
     {
@@ -42,7 +46,8 @@ public class MensagemSerial
             Tipo = partes[0],
             Modulo = partes[1],
             Acao = partes[2],
-            Dado = partes.Length > 3 ? partes[3] : ""
+            Dado = partes.Length > 3 ? partes[3] : "",
+            Dado2 = partes.Length > 4 ? partes[4] : ""  // ← novo
         };
     }
 

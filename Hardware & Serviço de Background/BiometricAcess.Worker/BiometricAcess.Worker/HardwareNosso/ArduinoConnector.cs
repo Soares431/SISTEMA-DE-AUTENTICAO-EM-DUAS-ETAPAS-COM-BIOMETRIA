@@ -10,7 +10,10 @@ public class ArduinoConnector : IAnvizConnector
     private readonly string _porta;
     private readonly int _baudRate;
     private EventoAcesso? _ultimoEvento;
-    private string _digitandoId = "";
+
+    // Guarda o ID do fluxo em andamento para usar quando
+    // a digital confirmar (EVT|FINGER|OK chega sem a senha)
+    private int _idEmAndamento = 0;
 
     public ArduinoConnector(string porta, int baudRate = 9600)
     {
@@ -32,12 +35,12 @@ public class ArduinoConnector : IAnvizConnector
             _serial.DataReceived += OnDadosRecebidos;
             _serial.Open();
 
-            Console.WriteLine($"Arduino conectado em {_porta} a {_baudRate} baud");
+            Console.WriteLine($"[Arduino] Conectado em {_porta} a {_baudRate} baud");
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao conectar Arduino: {ex.Message}");
+            Console.WriteLine($"[Arduino] Erro ao conectar: {ex.Message}");
             return false;
         }
     }
@@ -50,41 +53,55 @@ public class ArduinoConnector : IAnvizConnector
             var msg = MensagemSerial.Parse(linha);
             if (msg == null) return;
 
-            // Tecla pressionada — vai montando o ID digitado
-            if (msg.EhEvento(Eventos.TeclaPressionada))
+            Console.WriteLine($"[Arduino] Recebido: {linha.Trim()}");
+
+            // ── EVT|READY ───────────────────────────────────────────
+            // Arduino inicializou — manda mensagem de boas-vindas
+            if (msg.EhEvento(Eventos.Pronto))
             {
-                var tecla = msg.Dado;
-
-                if (tecla == "#")
-                {
-                    // # cancela o que estava digitando
-                    _digitandoId = "";
-                    EnviarComando($"{Comandos.LcdLinha1}|Cancelado");
-                    EnviarComando($"{Comandos.LcdLinha2}|Digite o ID:");
-                    return;
-                }
-
-                if (tecla == "*")
-                {
-                    // * confirma o ID — dispara o fluxo de acesso
-                    ProcessarId(_digitandoId);
-                    _digitandoId = "";
-                    return;
-                }
-
-                // Qualquer outra tecla acumula o ID
-                _digitandoId += tecla;
-                EnviarComando($"{Comandos.LcdLinha2}|ID: {_digitandoId}");
+                EnviarComando($"{Comandos.LcdLinha1}|Sistema Pronto");
+                EnviarComando($"{Comandos.LcdLinha2}|Digite o ID:");
                 return;
             }
 
-            // Digital reconhecida
-            if (msg.EhEvento(Eventos.DigitalOk))
+            // ── EVT|AUTH|ID|SENHA ────────────────────────────────────
+            // Arduino digitou ID + senha e quer que o C# decida o fluxo.
+            // Aqui o C# só registra o evento de autenticação por senha.
+            // O EventProcessor é quem vai consultar o banco e mandar
+            // CMD|FINGER|START_VERIFY, CMD|FINGER|START_ENROLL ou
+            // CMD|ACCESS|DENIED de volta via ArduinoService.
+            if (msg.EhEvento(Eventos.Auth))
             {
+                if (!int.TryParse(msg.Acao, out var pessoaId))
+                {
+                    EnviarComando($"{Comandos.AccessDenied}|ID invalido");
+                    return;
+                }
+
+                _idEmAndamento = pessoaId;
+
                 _ultimoEvento = new EventoAcesso
                 {
-                    PessoaID = int.TryParse(msg.Dado, out var id) ? id : 0,
-                    TipoVerificacao = "digital_id",
+                    PessoaID = pessoaId,
+                    TipoVerificacao = "senha",
+                    AcessoLiberado = false,   // EventProcessor decide isso
+                    DataHora = DateTime.Now,
+                    IpDispositivo = _porta,
+                    MotivoNegacao = string.Empty
+                };
+                return;
+            }
+
+            // ── EVT|FINGER|OK|ID ─────────────────────────────────────
+            // Digital confirmada — acesso liberado
+            if (msg.EhEvento(Eventos.DigitalOk))
+            {
+                var id = int.TryParse(msg.Dado, out var fid) ? fid : _idEmAndamento;
+
+                _ultimoEvento = new EventoAcesso
+                {
+                    PessoaID = id,
+                    TipoVerificacao = "digital",
                     AcessoLiberado = true,
                     DataHora = DateTime.Now,
                     IpDispositivo = _porta,
@@ -92,54 +109,66 @@ public class ArduinoConnector : IAnvizConnector
                 };
 
                 EnviarComando(Comandos.BuzzerOk);
+                _idEmAndamento = 0;
                 return;
             }
 
-            // Digital falhou
+            // ── EVT|FINGER|FAIL ──────────────────────────────────────
+            // Digital não reconhecida — acesso negado
             if (msg.EhEvento(Eventos.DigitalFalhou))
             {
+                _ultimoEvento = new EventoAcesso
+                {
+                    PessoaID = _idEmAndamento,
+                    TipoVerificacao = "digital",
+                    AcessoLiberado = false,
+                    DataHora = DateTime.Now,
+                    IpDispositivo = _porta,
+                    MotivoNegacao = "digital_nao_reconhecida"
+                };
+
                 EnviarComando(Comandos.BuzzerFalhou);
-                EnviarComando($"{Comandos.LcdLinha1}|Nao reconhecido");
+                _idEmAndamento = 0;
                 return;
             }
 
-            // Arduino inicializado
-            if (msg.EhEvento(Eventos.Pronto))
+            // ── EVT|FINGER|ENROLLED|ID ───────────────────────────────
+            // Primeiro acesso — digital cadastrada, libera entrada
+            if (msg.EhEvento(Eventos.DigitalCadastrada))
             {
-                EnviarComando($"{Comandos.LcdLinha1}|Sistema Pronto");
-                EnviarComando($"{Comandos.LcdLinha2}|Digite o ID:");
+                var id = int.TryParse(msg.Dado, out var eid) ? eid : _idEmAndamento;
+
+                _ultimoEvento = new EventoAcesso
+                {
+                    PessoaID = id,
+                    TipoVerificacao = "primeiro_acesso",
+                    AcessoLiberado = true,
+                    DataHora = DateTime.Now,
+                    IpDispositivo = _porta,
+                    MotivoNegacao = string.Empty
+                };
+
+                _idEmAndamento = 0;
+                return;
             }
         }
         catch (TimeoutException) { }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao processar mensagem serial: {ex.Message}");
+            Console.WriteLine($"[Arduino] Erro ao processar mensagem: {ex.Message}");
         }
-    }
-
-    private void ProcessarId(string idDigitado)
-    {
-        if (!int.TryParse(idDigitado, out var pessoaId))
-        {
-            EnviarComando($"{Comandos.LcdLinha1}|ID invalido");
-            return;
-        }
-
-        // Pede verificação da digital
-        EnviarComando($"{Comandos.LcdLinha1}|ID: {pessoaId}");
-        EnviarComando($"{Comandos.LcdLinha2}|Coloque o dedo");
-        EnviarComando(Comandos.DigitalVerificar);
     }
 
     public void EnviarComando(string comando)
     {
         try
         {
+            Console.WriteLine($"[Arduino] Enviando: {comando}");
             _serial?.WriteLine(comando);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao enviar comando: {ex.Message}");
+            Console.WriteLine($"[Arduino] Erro ao enviar comando: {ex.Message}");
         }
     }
 
@@ -164,6 +193,6 @@ public class ArduinoConnector : IAnvizConnector
             _serial.Close();
             _serial = null;
         }
-        Console.WriteLine("Arduino desconectado");
+        Console.WriteLine("[Arduino] Desconectado");
     }
 }
