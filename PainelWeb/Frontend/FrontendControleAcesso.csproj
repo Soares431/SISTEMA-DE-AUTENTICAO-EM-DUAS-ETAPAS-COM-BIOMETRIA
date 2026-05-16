@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FrontendControleAcesso</RootNamespace>
+    <AssemblyName>FrontendControleAcesso</AssemblyName>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\WebAbil8-Sistema_Verificação_dupla.slnx.csproj" />
+	</ItemGroup>
+
+</Project>

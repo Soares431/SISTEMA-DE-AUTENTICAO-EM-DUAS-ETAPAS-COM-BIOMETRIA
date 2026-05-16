@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="../../Banco/WebAbil8-Sistema_Verificação_dupla.slnx/WebAbil8-Sistema_Verificação_dupla.slnx.csproj" />
+  <Project Path="../../InfraestruturaBloco1/InfraestruturaBloco1.csproj" />
+  <Project Path="../../PainelWeb/Frontend/FrontendControleAcesso.csproj" />
   <Project Path="BiometricAcess.Worker/BiometricAcess.Worker.csproj" />
 </Solution>
