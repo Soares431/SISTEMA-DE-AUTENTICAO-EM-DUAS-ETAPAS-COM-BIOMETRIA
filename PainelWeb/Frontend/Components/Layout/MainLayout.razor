@@ -1,0 +1,70 @@
+@* =============================================================================
+   MainLayout.razor - Layout principal da aplicação
+   Estrutura: Sidebar (NavMenu) + Área principal (Header + Conteúdo)
+   Features: Toggle sidebar (recolher/expandir), Alternância de tema (dark/light)
+   Usa IJSRuntime para comunicar com o themeManager do app.js
+   ============================================================================= *@
+@inherits LayoutComponentBase
+
+<div class="app-layout">
+    <NavMenu IsCollapsed="@sidebarCollapsed" OnToggle="ToggleSidebar" />
+    <div class="main-area">
+        <header class="top-header">
+            <button class="toggle-btn" @onclick="ToggleSidebar" title="Toggle sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+            <div class="header-spacer"></div>
+            <div class="header-user">
+                <button class="toggle-btn" style="margin-right: 0.5rem;" @onclick="ToggleTheme" title="Alternar tema">
+                    @if (isDarkTheme)
+                    {
+                        <Icon Name="sun" Size="18" />
+                    }
+                    else
+                    {
+                        <Icon Name="moon" Size="18" />
+                    }
+                </button>
+                <div class="status-dot"></div>
+                <span>Admin</span>
+            </div>
+        </header>
+        <main class="main-content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui">
+    Ocorreu um erro não tratado na aplicação. <a href="" class="dismiss">🗙</a>
+</div>
+
+@code {
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    private bool sidebarCollapsed = false;
+    private bool isDarkTheme = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var currentTheme = await JS.InvokeAsync<string>("window.themeManager.getTheme");
+            isDarkTheme = currentTheme == "dark";
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkTheme = !isDarkTheme;
+        var newTheme = isDarkTheme ? "dark" : "light";
+        await JS.InvokeVoidAsync("window.themeManager.setTheme", newTheme);
+    }
+}

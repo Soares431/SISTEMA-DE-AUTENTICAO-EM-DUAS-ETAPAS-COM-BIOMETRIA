@@ -1,0 +1,62 @@
+@* =============================================================================
+   Ajuda.razor - Central de Ajuda > Manual do Usuário
+   Features: Guia detalhado com seções expansíveis (accordion) por funcionalidade,
+             card de boas-vindas, dicas de segurança (senhas, biometria, gravações),
+             ícones dinâmicos por seção via GetSectionIcon()
+   Rota: /ajuda
+   ============================================================================= *@
+@page "/ajuda"
+
+@{ var secoes = new[] {
+    ("dashboard", "Dashboard", "Visão geral do sistema com métricas e alertas", new[] { ("Resumo do Dia", "O dashboard apresenta um resumo completo das atividades do dia, incluindo total de entradas permitidas, acessos negados e alertas de dispositivos T50 com capacidade cheia."), ("Gráfico de Acessos", "O gráfico de área mostra a distribuição de acessos permitidos e negados ao longo do dia, permitindo identificar horários de pico e padrões de uso."), ("Alertas Ativos", "A seção de alertas mostra todos os dispositivos T50 que precisam de atenção, seja por capacidade cheia ou problemas de conexão."), ("Últimos Acessos Negados", "Lista as últimas tentativas de acesso negadas com detalhes como pessoa, ambiente, motivo e link para a gravação quando disponível.") }),
+    ("ambientes", "Ambientes", "Gerenciamento de ambientes e dispositivos T50", new[] { ("Listagem de Ambientes", "A página de ambientes mostra todos os locais cadastrados no sistema com filtros por nome e status do dispositivo T50 (online, alerta, offline)."), ("Criar Novo Ambiente", "Para criar um novo ambiente, clique em 'Novo Ambiente' e preencha o nome, descrição e endereço IP do dispositivo T50 associado."), ("Status do T50", "Cada ambiente exibe o status do dispositivo T50: Online (funcionando normalmente), Alerta (capacidade acima de 85%) ou Offline (sem conexão)."), ("Detalhes do Ambiente", "Na página de detalhes você pode gerenciar o dispositivo T50, pessoas com acesso, câmeras vinculadas e configurar o tempo de espera de gravação.") }),
+    ("pessoas", "Pessoas", "Cadastro e gerenciamento de pessoas", new[] { ("Cadastrar Pessoa", "Para cadastrar uma nova pessoa, clique em 'Nova Pessoa' e preencha nome completo, email, telefone, cargo e departamento."), ("Gerenciar Biometria", "Na página de detalhes da pessoa, você pode resetar a biometria. Após o reset, a pessoa deverá recadastrar sua digital no dispositivo T50."), ("Conceder Acesso", "Para conceder acesso a um ambiente, vá até a página do ambiente e adicione a pessoa na aba 'Pessoas com Acesso'."), ("Inativar Pessoa", "Ao inativar uma pessoa, todos os seus acessos são removidos automaticamente. Esta ação pode ser revertida posteriormente.") }),
+    ("cameras", "Câmeras", "Configuração e visualização de câmeras", new[] { ("Cadastrar Câmera", "Para cadastrar uma câmera, clique em 'Nova Câmera' e preencha nome, endereço IP, URL RTSP e selecione o ambiente associado."), ("URL RTSP", "A URL RTSP segue o formato: rtsp://usuario:senha@ip:porta/stream. Consulte o manual da sua câmera para obter os parâmetros corretos."), ("Visualização ao Vivo", "Clique em 'Ao Vivo' para visualizar o feed da câmera em tempo real."), ("Gravação", "As gravações são iniciadas automaticamente quando uma tentativa de acesso é detectada no ambiente.") }),
+    ("historico", "Histórico de Acessos", "Consulta e exportação de tentativas de acesso", new[] { ("Filtros", "Utilize os filtros para buscar por pessoa, ambiente, status (permitido/negado) e período."), ("Ver Gravação", "Quando disponível, clique em 'Ver' na coluna Gravação para assistir ao vídeo da tentativa de acesso."), ("Exportar Dados", "Clique em 'Exportar' para baixar os dados em formato CSV ou PDF.") }),
+    ("logs", "Logs do Sistema", "Auditoria de ações administrativas", new[] { ("Tipos de Logs", "O sistema registra todas as ações administrativas: cadastros, alterações, exclusões, resets de biometria."), ("Filtros", "Filtre por categoria, usuário responsável ou busque por palavras-chave na descrição."), ("Exportar", "Exporte os logs em CSV ou PDF para auditorias externas ou backup.") }),
+    ("config", "Configurações", "Configurações globais do sistema", new[] { ("Retenção de Dados", "Configure por quanto tempo o histórico de acessos e gravações será mantido."), ("Tempo de Espera de Gravação", "Define quantos segundos o sistema aguarda após uma tentativa de acesso para salvar a gravação.") })
+}; }
+
+<div class="space-y">
+    <div><h1 class="text-2xl font-bold">Central de Ajuda</h1><p class="text-muted">Manual do usuário - Como usar cada funcionalidade</p></div>
+
+    <div class="card"><div class="card-header"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-primary" style="padding: 0.75rem;"><Icon Name="shield" Size="24" /></div><div><div class="card-title">Seja Bem-vindo ao Sistema Acesso Seguro do 5° CTA</div><p class="card-description">Sistema de Controle de Acesso Biométrico</p></div></div></div>
+        <div class="card-content"><p class="text-muted">Com ele você pode gerenciar ambientes, pessoas, câmeras e monitorar todas as tentativas de acesso em tempo real. Selecione uma seção abaixo para aprender como utilizar cada funcionalidade.</p></div></div>
+
+    <div class="card"><div class="card-header"><div class="card-title"><Icon Name="help-circle" Size="20" /> Guia Detalhado</div><p class="card-description">Clique em uma secao para expandir e ver todos os topicos</p></div>
+        <div class="card-content">
+            @foreach (var (id, titulo, desc, topicos) in secoes)
+            {
+                <div class="accordion-item">
+                    <button class="accordion-trigger @(openSection == id ? "open" : "")" @onclick="() => ToggleSection(id)">
+                        <span class="flex items-center gap-3"><Icon Name="@GetSectionIcon(id)" Size="20" CssClass="text-primary" /> @titulo</span>
+                        <Icon Name="chevron-down" Size="16" CssClass="chevron" />
+                    </button>
+                    @if (openSection == id)
+                    {
+                        <div class="accordion-content"><div class="pl-8 space-y-sm">
+                            @foreach (var (tTitulo, tConteudo) in topicos)
+                            {
+                                <div><h4 class="font-medium">@tTitulo</h4><p class="text-sm text-muted">@tConteudo</p></div>
+                            }
+                        </div></div>
+                    }
+                </div>
+            }
+        </div></div>
+
+    <div class="card"><div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Dicas de Seguranca</div></div>
+        <div class="card-content"><div class="grid grid-2">
+            @{ var dicas = new[] { ("key", "Senhas Seguras", "Mantenha sua senha de administrador segura e troque-a periodicamente."), ("fingerprint", "Biometria", "Revise periodicamente os acessos biométricos e remova pessoas que não fazem mais parte da equipe."), ("video", "Gravações", "Configure adequadamente o tempo de retenção de gravações conforme a política de privacidade da empresa."), ("file-text", "Auditoria", "Revise regularmente os logs do sistema para identificar atividades suspeitas.") }; }
+            @foreach (var (icon, titulo, desc) in dicas)
+            {
+                <div class="flex items-start gap-3"><div class="icon-bg icon-bg-warning"><Icon Name="@icon" Size="16" /></div><div><h4 class="font-medium">@titulo</h4><p class="text-sm text-muted">@desc</p></div></div>
+            }
+        </div></div></div>
+</div>
+
+@code {
+    private string? openSection = null;
+    private void ToggleSection(string id) => openSection = openSection == id ? null : id;
+    private string GetSectionIcon(string id) => id switch { "dashboard" => "settings", "ambientes" => "building", "pessoas" => "users", "cameras" => "camera", "historico" => "history", "logs" => "file-text", "config" => "settings", _ => "help-circle" };
+}

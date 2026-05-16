@@ -1,0 +1,97 @@
+@page "/ambientes"
+
+<div class="space-y">
+    <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 class="text-2xl font-bold">Ambientes</h1>
+            <p class="text-muted">Gerencie os ambientes e dispositivos T50</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => showDialog = true">
+            <Icon Name="plus" Size="16" /> Novo Ambiente
+        </button>
+    </div>
+
+    <div class="flex gap-4" style="flex-wrap: wrap;">
+        <div class="input-icon-wrapper flex-1" style="min-width: 200px;">
+            <Icon Name="search" />
+            <input class="form-input" placeholder="Buscar ambientes..." @bind="search" @bind:event="oninput" />
+        </div>
+        <select class="form-select" style="width: 180px;" @bind="statusFilter">
+            <option value="todos">Todos os status</option>
+            <option value="online">Online</option>
+            <option value="alerta">Alerta</option>
+            <option value="offline">Offline</option>
+        </select>
+    </div>
+
+    <div class="grid grid-3">
+        @foreach (var amb in FilteredAmbientes)
+        {
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-bg icon-bg-primary"><Icon Name="building" Size="20" /></div>
+                        <div>
+                            <div class="card-title">@amb.Nome</div>
+                            <p class="card-description">@amb.Descricao</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-content space-y-sm">
+                    @if (amb.T50Status == "offline")
+                    {
+                        <span class="badge badge-muted"><Icon Name="wifi-off" Size="12" /> Offline</span>
+                    }
+                    else if (amb.T50Capacidade >= 85)
+                    {
+                        <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> T50 (@amb.T50Capacidade%)</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online (@amb.T50Capacidade%)</span>
+                    }
+                    <div class="grid grid-2">
+                        <div><p class="text-muted text-sm">Pessoas com Acesso</p><p class="font-medium">@amb.PessoasComAcesso</p></div>
+                        <div><p class="text-muted text-sm">Câmeras</p><p class="font-medium">@amb.Cameras</p></div>
+                    </div>
+                    <a href="/ambientes/@amb.Id" class="btn btn-outline btn-block">Ver Detalhes <Icon Name="chevron-right" Size="16" /></a>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!FilteredAmbientes.Any())
+    {
+        <div class="card"><div class="card-content pt-6" style="text-align: center; padding: 3rem;">
+            <Icon Name="building" Size="48" CssClass="text-muted" /><p class="font-medium mt-4">Nenhum ambiente encontrado</p><p class="text-muted">Tente ajustar os filtros de busca</p>
+        </div></div>
+    }
+</div>
+
+@if (showDialog)
+{
+    <div class="modal-overlay" @onclick="() => showDialog = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3>Criar Novo Ambiente</h3><p>Adicione um novo ambiente ao sistema de controle de acesso</p></div>
+            <div class="modal-body space-y-sm">
+                <div class="form-group"><label class="form-label">Nome do Ambiente</label><input class="form-input" placeholder="Ex: Sala de Reuniões" /></div>
+                <div class="form-group"><label class="form-label">Descrição</label><input class="form-input" placeholder="Descrição do ambiente" /></div>
+                <div class="form-group"><label class="form-label">Dispositivo T50</label><input class="form-input" placeholder="IP do dispositivo T50" /></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showDialog = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="() => showDialog = false">Criar Ambiente</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string search = "";
+    private string statusFilter = "todos";
+    private bool showDialog = false;
+
+    private IEnumerable<Ambiente> FilteredAmbientes => MockData.Ambientes.Where(a =>
+        (string.IsNullOrEmpty(search) || a.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) || a.Descricao.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
+        (statusFilter == "todos" || a.T50Status == statusFilter));
+}
