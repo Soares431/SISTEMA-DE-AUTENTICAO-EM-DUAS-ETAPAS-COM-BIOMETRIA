@@ -2,6 +2,7 @@ using BiometricAcess.Worker;
 using BiometricAcess.Worker.Services;
 using BiometricAcess.Worker.Simulador;
 using BiometricAcess.Worker.HardwareNosso;
+using BiometricAcess.Worker.HardwareNosso.Simulador;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -16,12 +17,17 @@ builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
 builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
 builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
 
-// OPÇÃO 2 — Nosso Arduino (hardware físico ou Wokwi)
+// OPÇÃO 2 — Nosso Arduino
 //var arduinoConnector = new ArduinoConnector(porta: "COM3");
 //builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
 //builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
 //builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
+
+// OPÇÃO 2A — Arduino com dados mockados (banco vazio)
 //builder.Services.AddSingleton<IEventProcessor, EventProcessorArduinoSimulador>();
+
+// OPÇÃO 2B — Arduino com banco real
+//builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
 
 // OPÇÃO 3 — T50M real (hardware Anviz)
 //builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();
