@@ -1,0 +1,53 @@
+﻿using Microsoft.EntityFrameworkCore;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
+
+namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
+{
+    public class CameraImplemetions : ICameraRepository
+    {
+        private readonly AppDbContext _context;
+
+        public CameraImplemetions(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<List<Camera>> ListarComFiltros(string? nome, bool? ativa)
+        {
+            var query = _context.Cameras.AsQueryable();
+            if (!string.IsNullOrEmpty(nome))
+                query = query.Where(c => c.Nome.Contains(nome));
+            if (ativa.HasValue)
+                query = query.Where(c => c.Ativa == ativa.Value);
+            return await query.ToListAsync();
+        }
+
+        public async Task<Camera?> BuscarPorId(int id) =>
+            await _context.Cameras.FindAsync(id);
+
+        public async Task Adicionar(Camera camera)
+        {
+            _context.Cameras.Add(camera);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> Atualizar(Camera camera)
+        {
+            var existe = await _context.Cameras.AnyAsync(c => c.Id == camera.Id);
+            if (!existe) return false;
+            _context.Entry(camera).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> Remover(int id)
+        {
+            var camera = await _context.Cameras.FindAsync(id);
+            if (camera == null) return false;
+            _context.Cameras.Remove(camera);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+    }
+}

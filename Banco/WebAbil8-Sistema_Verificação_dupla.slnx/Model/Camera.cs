@@ -35,5 +35,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         // Navegação
         [ForeignKey("AmbienteId")]
         public Ambiente Ambiente { get; set; }
+
+        [Column("ativa")]
+        public bool Ativa { get; set; } = true;
     }
 }
