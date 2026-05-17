@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "SISTEMA-DE-AUTENTICAO-EM-DUAS-ETAPAS-COM-BIOMETRIA",
+			"path": "../.."
+		},
+		{
+			"name": "InfraestruturaBloco1",
+			"path": "../../../InfraestruturaBloco1"
+		}
+	],
+	"settings": {}
+}

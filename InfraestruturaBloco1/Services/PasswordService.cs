@@ -1,46 +1,26 @@
-using BCrypt.Net;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
-namespace InfraestruturaBloco1.Services
+namespace InfraestruturaBloco1.Services;
+
+public class PasswordService
 {
-    public class PasswordService
+    private readonly ISenhaRepository _senhaRepo;
+
+    public PasswordService(ISenhaRepository senhaRepo)
     {
-        // SEC-01: Gerar hash com BCrypt
-        public string HashPassword(string plainPassword)
-        {
-            return BCrypt.Net.BCrypt.HashPassword(plainPassword, workFactor: 10);
-        }
+        _senhaRepo = senhaRepo;
+    }
 
-        // SEC-02: Verificar hash
-        public bool VerifyPassword(string plainPassword, string hashedPassword)
-        {
-            return BCrypt.Net.BCrypt.Verify(plainPassword, hashedPassword);
-        }
+    public string GerarHash(string senha) =>
+        BCrypt.Net.BCrypt.HashPassword(senha, workFactor: 10);
 
-        // SEC-04: Gerar senha aleatória única de 6 dígitos
-        public string GerarSenhaAleatoria()
-        {
-            var random = new Random();
-            string senha;
+    public bool VerificarHash(string senha, string hash) =>
+        BCrypt.Net.BCrypt.Verify(senha, hash);
 
-            do
-            {
-                senha = random.Next(100000, 999999).ToString();
-            }
-            while (SenhaEhTrivial(senha));
-
-            return senha;
-        }
-
-        // Método auxiliar para evitar senhas triviais
-        private bool SenhaEhTrivial(string senha)
-        {
-            var triviais = new List<string>
-            {
-                "123456", "654321", "111111", "000000", "121212", "222222"
-            };
-
-            return triviais.Contains(senha);
-        }
+    public async Task<string> GerarSenhaAleatoriaAsync(int pessoaId)
+    {
+        var disponivel = await _senhaRepo.BuscarDisponivel(pessoaId);
+        return disponivel?.Senha
+            ?? throw new InvalidOperationException("Nenhuma senha disponível no banco.");
     }
 }
-
