@@ -10,10 +10,8 @@ public class ArduinoConnector : IAnvizConnector
     private readonly string _porta;
     private readonly int _baudRate;
     private EventoAcesso? _ultimoEvento;
-
-    // Guarda o ID do fluxo em andamento para usar quando
-    // a digital confirmar (EVT|FINGER|OK chega sem a senha)
     private int _idEmAndamento = 0;
+    private string _senhaEmAndamento = "";
 
     public ArduinoConnector(string porta, int baudRate = 9600)
     {
@@ -55,8 +53,6 @@ public class ArduinoConnector : IAnvizConnector
 
             Console.WriteLine($"[Arduino] Recebido: {linha.Trim()}");
 
-            // ── EVT|READY ───────────────────────────────────────────
-            // Arduino inicializou — manda mensagem de boas-vindas
             if (msg.EhEvento(Eventos.Pronto))
             {
                 EnviarComando($"{Comandos.LcdLinha1}|Sistema Pronto");
@@ -64,12 +60,6 @@ public class ArduinoConnector : IAnvizConnector
                 return;
             }
 
-            // ── EVT|AUTH|ID|SENHA ────────────────────────────────────
-            // Arduino digitou ID + senha e quer que o C# decida o fluxo.
-            // Aqui o C# só registra o evento de autenticação por senha.
-            // O EventProcessor é quem vai consultar o banco e mandar
-            // CMD|FINGER|START_VERIFY, CMD|FINGER|START_ENROLL ou
-            // CMD|ACCESS|DENIED de volta via ArduinoService.
             if (msg.EhEvento(Eventos.Auth))
             {
                 if (!int.TryParse(msg.Acao, out var pessoaId))
@@ -79,21 +69,20 @@ public class ArduinoConnector : IAnvizConnector
                 }
 
                 _idEmAndamento = pessoaId;
+                _senhaEmAndamento = msg.Dado;
 
                 _ultimoEvento = new EventoAcesso
                 {
                     PessoaID = pessoaId,
                     TipoVerificacao = "senha",
-                    AcessoLiberado = false,   // EventProcessor decide isso
+                    AcessoLiberado = false,
                     DataHora = DateTime.Now,
                     IpDispositivo = _porta,
-                    MotivoNegacao = string.Empty
+                    MotivoNegacao = msg.Dado  // senha aqui temporariamente
                 };
                 return;
             }
 
-            // ── EVT|FINGER|OK|ID ─────────────────────────────────────
-            // Digital confirmada — acesso liberado
             if (msg.EhEvento(Eventos.DigitalOk))
             {
                 var id = int.TryParse(msg.Dado, out var fid) ? fid : _idEmAndamento;
@@ -110,11 +99,10 @@ public class ArduinoConnector : IAnvizConnector
 
                 EnviarComando(Comandos.BuzzerOk);
                 _idEmAndamento = 0;
+                _senhaEmAndamento = "";
                 return;
             }
 
-            // ── EVT|FINGER|FAIL ──────────────────────────────────────
-            // Digital não reconhecida — acesso negado
             if (msg.EhEvento(Eventos.DigitalFalhou))
             {
                 _ultimoEvento = new EventoAcesso
@@ -129,11 +117,10 @@ public class ArduinoConnector : IAnvizConnector
 
                 EnviarComando(Comandos.BuzzerFalhou);
                 _idEmAndamento = 0;
+                _senhaEmAndamento = "";
                 return;
             }
 
-            // ── EVT|FINGER|ENROLLED|ID ───────────────────────────────
-            // Primeiro acesso — digital cadastrada, libera entrada
             if (msg.EhEvento(Eventos.DigitalCadastrada))
             {
                 var id = int.TryParse(msg.Dado, out var eid) ? eid : _idEmAndamento;
@@ -149,6 +136,7 @@ public class ArduinoConnector : IAnvizConnector
                 };
 
                 _idEmAndamento = 0;
+                _senhaEmAndamento = "";
                 return;
             }
         }
@@ -181,7 +169,6 @@ public class ArduinoConnector : IAnvizConnector
 
     public List<EventoAcesso> BuscarEventosArmazenados()
     {
-        // Arduino não armazena eventos — só envia em tempo real
         return new List<EventoAcesso>();
     }
 
