@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+
 using InfraestruturaBloco1.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -45,21 +45,7 @@ builder.Services.AddAuthorization();
 // Adicionar suporte a controllers e Swagger/OpenAPI
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Infraestrutura Bloco 1 API",
-        Version = "v1",
-        Description = "API para serviços de hash de senha, envio de email, criptografia AES e auditoria",
-        Contact = new OpenApiContact
-        {
-            Name = "Equipe AdminSoftware",
-            Email = "suporte@adminsoftware.com",
-            Url = new Uri("https://adminsoftware.com")
-        }
-    });
-});
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
