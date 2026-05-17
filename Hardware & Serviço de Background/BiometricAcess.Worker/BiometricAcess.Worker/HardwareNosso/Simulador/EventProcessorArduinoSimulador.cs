@@ -25,7 +25,7 @@ public class EventProcessorArduinoSimulador : IEventProcessor
     {
         Console.WriteLine($"[ArduinoSim] Evento — Pessoa: {evento.PessoaID} | Tipo: {evento.TipoVerificacao}");
 
-        // Digital confirmada ou primeiro acesso concluído
+        // ── Digital ou primeiro acesso concluído ─────────────────────
         if (evento.TipoVerificacao == "digital" || evento.TipoVerificacao == "primeiro_acesso")
         {
             var pessoaDigital = _pessoas.FirstOrDefault(p => p.Id == evento.PessoaID);
@@ -39,40 +39,61 @@ public class EventProcessorArduinoSimulador : IEventProcessor
             return;
         }
 
-        // EVT|AUTH — valida ID e senha
         var pessoa = _pessoas.FirstOrDefault(p => p.Id == evento.PessoaID);
 
-        if (pessoa == null)
+        // ── EVT|ID — Arduino mandou só o ID ──────────────────────────
+        if (evento.TipoVerificacao == "id")
         {
-            Console.WriteLine($"[ArduinoSim] Pessoa {evento.PessoaID} não cadastrada");
-            _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
+            if (pessoa == null)
+            {
+                Console.WriteLine($"[ArduinoSim] Pessoa {evento.PessoaID} não cadastrada");
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
+                return;
+            }
+
+            if (!pessoa.Ativa)
+            {
+                Console.WriteLine($"[ArduinoSim] Pessoa {evento.PessoaID} inativa");
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "inativo");
+                return;
+            }
+
+            if (!pessoa.TemBiometria)
+            {
+                // Primeiro acesso — pede senha
+                Console.WriteLine($"[ArduinoSim] Primeiro acesso — pedindo senha — Pessoa: {evento.PessoaID}");
+                _arduinoService.NotificarPedirSenha(evento.PessoaID);
+                return;
+            }
+
+            // Já tem biometria — pede digital direto
+            Console.WriteLine($"[ArduinoSim] Solicitando digital — Pessoa: {evento.PessoaID}");
+            _arduinoService.NotificarVerificarDigital(evento.PessoaID);
             return;
         }
 
-        if (!pessoa.Ativa)
+        // ── EVT|SENHA — Arduino mandou senha após pedido ──────────────
+        if (evento.TipoVerificacao == "senha")
         {
-            Console.WriteLine($"[ArduinoSim] Pessoa {evento.PessoaID} inativa");
-            _arduinoService.NotificarAcessoNegado(evento.PessoaID, "inativo");
-            return;
-        }
+            if (pessoa == null)
+            {
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
+                return;
+            }
 
-        // MotivoNegacao carrega a senha temporariamente (veja ArduinoConnector)
-        if (evento.MotivoNegacao != pessoa.Senha)
-        {
-            Console.WriteLine($"[ArduinoSim] Senha incorreta — Pessoa: {evento.PessoaID}");
-            _arduinoService.NotificarAcessoNegado(evento.PessoaID, "senha_incorreta");
-            return;
-        }
+            // MotivoNegacao carrega a senha temporariamente
+            if (evento.MotivoNegacao != pessoa.Senha)
+            {
+                Console.WriteLine($"[ArduinoSim] Senha incorreta — Pessoa: {evento.PessoaID}");
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "senha_incorreta");
+                return;
+            }
 
-        if (!pessoa.TemBiometria)
-        {
-            Console.WriteLine($"[ArduinoSim] Primeiro acesso — Pessoa: {evento.PessoaID}");
+            // Senha correta — cadastra biometria
+            Console.WriteLine($"[ArduinoSim] Senha correta — iniciando cadastro de digital — Pessoa: {evento.PessoaID}");
             _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID);
             return;
         }
-
-        Console.WriteLine($"[ArduinoSim] Solicitando digital — Pessoa: {evento.PessoaID}");
-        _arduinoService.NotificarVerificarDigital(evento.PessoaID);
     }
 
     private class PessoaMock
