@@ -1,108 +1,4 @@
 
-
-
-# Hardware & Serviço de Background
-
-## Sobre este módulo
-Worker Service em .NET 8 responsável pela comunicação com o dispositivo biométrico Anviz T50M e processamento dos eventos de acesso.
-
-## Como trocar simulador pelo hardware real
-
-No `Program.cs`, trocar:
-```
-builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
-builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-```
-Por:
-```
-builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();
-builder.Services.AddSingleton<IAnvizService, AnvizService>();
-```
-
-## Configuração do T50M
-
-- IP padrão do dispositivo: `192.168.0.218`
-- IP padrão do servidor: `192.168.0.7`
-- Porta de comunicação: `5010`
-
-## Observações importantes
-
-- `Mode = 4` → Somente Senha+ID
-- `Mode = 6` → Digital+ID e Senha+ID simultaneamente (padrão do SDK)
-- `BackupCode = 4` no evento de acesso → autenticação por senha; outros valores → digital
-
-## EventProcessor — trocar simulador pelo real
-
-No `Program.cs`, trocar:
-```
-builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
-```
-Por:
-```
-builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
-```
-## EventProcessor real — dependências adicionais
-
-Além dos repositórios do banco, o `EventProcessor` real vai precisar do `IAnvizService` injetado para:
-
-- `FluxoPrimeiroAcesso` → chamar `IniciarCapturaDigital(id)` para o T50M coletar a digital
-- Após coleta → chamar `UploadTemplate(id, template)` para salvar a digital
-
-No `Program.cs` já está registrado:
-```
-builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-```
-Trocar para `AnvizService` quando o hardware estiver disponível.
-
-## Formato da senha no T50M
-
-A senha é armazenada internamente em 3 bytes com formato especial:
-- Bits 23-20 (4 bits): comprimento da senha em dígitos
-- Bits 19-0 (20 bits): valor numérico da senha
-
-Exemplo para senha "123456" (6 dígitos):
-resultado = (123456 & 0xFFFFF) + ((6 & 0xF) << 20) = 6414912
-
-O SDK .NET (Anviz.SDK NuGet) pode fazer essa conversão internamente.
-Se a autenticação por senha falhar com hardware real, investigar o método
-`AdicionarPessoa` no `AnvizService.cs`.
-
-**Por isso as senhas geradas devem ter sempre 6 dígitos começando em 100000.**
-Senhas com zeros à esquerda teriam comprimento errado nesse formato.
-
-## RecordType — campo do evento de acesso
-
-`RecordType` é um byte onde o **bit 7** indica se a porta abriu:
-- `RecordType & 0x80 != 0` → porta abriu (AcessoLiberado = true)
-- `RecordType & 0x80 == 0` → porta não abriu (AcessoLiberado = false)
-Bits 3-0 indicam status de ponto (attendance status) — não usados no nosso sistema.
-
-## Tamanho do template biométrico
-
-O T50M usa 338 bytes por template de digital (FINGERPRINT_DATA_LEN_338).
-
-## Tentativas falhas de acesso — limitação do hardware
-
-O T50M **não envia eventos de rede** quando uma biometria ou senha não é reconhecida.
-O dispositivo rejeita localmente (bip de erro) sem notificar o software.
-
-Por isso, o sistema consegue registrar apenas dois cenários de falha:
-
-| Situação | AcessoLiberado | Registrado no banco? |
-|---|---|---|
-| Digital/senha reconhecida, porta abriu | true | ✅ sim |
-| Digital/senha reconhecida, porta NÃO abriu (falha da trava física) | false | ✅ sim |
-| Digital NÃO reconhecida pelo T50M | — | ❌ não (sem evento) |
-| Senha errada digitada no T50M | — | ❌ não (sem evento) |
-
-**Consequência prática:** o sistema não tem como distinguir "ninguém tentou entrar"
-de "alguém tentou entrar mas não foi reconhecido". Tentativas de acesso não
-autorizado com biometria ou senha inválida são invisíveis para o software —
-só ficam no log local do próprio dispositivo.
-
-Isso é uma limitação de protocolo do SDK Anviz, não do nosso sistema.
-
-
 # Arduino — Hardware Customizado (5º CTA)
 
 Este diretório contém o código embarcado do hardware customizado desenvolvido para substituir o T50M Anviz durante a apresentação do projeto.
@@ -118,7 +14,7 @@ Este diretório contém o código embarcado do hardware customizado desenvolvido
 
 ## Protocolo Serial
 
-Comunicação via USB Serial a 9600 baud. Formato: `TIPO\|CAMPO\|CAMPO\n`
+Comunicação via USB Serial a 9600 baud. Formato: `TIPO|CAMPO|CAMPO\n`
 
 ### Arduino → C# (Eventos)
 
@@ -195,6 +91,17 @@ C# consulta banco de dados
 | Fase 3 | ⏳ | Hardware real — substituir mock pelo AS608 físico |
 | Fase 4 | ⏳ | Integração completa com backend |
 
+## Pessoas Mockadas (para testes)
+
+Definidas em `EventProcessorArduinoSimulador.cs` dentro de `HardwareNosso/`.
+
+| ID | Senha | Status | Biometria |
+|---|---|---|---|
+| 100001 | 123456 | ativa | ❌ sem biometria — primeiro acesso |
+| 100002 | 654321 | ativa | ✅ com biometria |
+| 100003 | 111111 | inativa | ❌ |
+| 100004 | 999999 | ativa | ✅ com biometria |
+
 ## Como Testar o Fluxo (Wokwi sem C# conectado)
 
 Com o simulador rodando, use o Monitor Serial do Wokwi para simular os comandos que viriam do C#.
@@ -203,41 +110,48 @@ Com o simulador rodando, use o Monitor Serial do Wokwi para simular os comandos 
 1. Aperta 1, 2, 3 no teclado (só 3 dígitos)
 2. Aperta `*`
 3. Esperado no LCD: `ID: 6 digitos!` por 1,5s e volta
-4. Continua digitando 4, 5, 6
-5. Aperta `*`
-6. Esperado no LCD: muda para `Senha:`
+4. Continua digitando 4, 5, 6 e aperta `*`
+5. Esperado no LCD: muda para `Senha:`
 
-### Teste 2 — Fluxo completo até EVT|AUTH
-1. Digita 6 dígitos de ID + `*`
-2. Digita 6 dígitos de senha + `*`
+### Teste 2 — Primeiro acesso (ID 100001)
+1. Digita `100001` + `*`
+2. Digita `123456` + `*`
 3. Esperado no LCD: `Verificando... / Aguarde`
-4. Esperado no Serial: `EVT|AUTH|123456|123456`
+4. Esperado no Serial: `EVT|AUTH|100001|123456`
+5. No Monitor Serial digita: `CMD|FINGER|START_ENROLL`
+6. Esperado no LCD: `1o Acesso / Coloque o dedo`
+7. Aguarda 2 segundos
+8. Esperado no LCD: `Digital / Cadastrada!`
+9. Esperado no Serial: `EVT|FINGER|ENROLLED|100001`
+10. Esperado no LCD: `Acesso Liberado / Bem vindo!`
 
-### Teste 3 — Primeiro acesso
-1. Faz o Teste 2 até aparecer `EVT|AUTH` no Serial
-2. No Monitor Serial digita: `CMD|FINGER|START_ENROLL`
-3. Esperado no LCD: `1o Acesso / Coloque o dedo`
-4. Aguarda 2 segundos
-5. Esperado no LCD: `Digital / Cadastrada!`
-6. Esperado no Serial: `EVT|FINGER|ENROLLED|123456`
-7. Esperado no LCD: `Acesso Liberado / Bem vindo!`
+### Teste 3 — Acesso normal com biometria (ID 100002)
+1. Digita `100002` + `*`
+2. Digita `654321` + `*`
+3. Esperado no Serial: `EVT|AUTH|100002|654321`
+4. No Monitor Serial digita: `CMD|FINGER|START_VERIFY`
+5. Esperado no LCD: `Coloque o dedo`
+6. Aguarda 2 segundos
+7. Esperado no Serial: `EVT|FINGER|OK|100002`
+8. Esperado no LCD: `Acesso Liberado!`
 
-### Teste 4 — Acesso normal com biometria
-1. Faz o Teste 2 até aparecer `EVT|AUTH` no Serial
-2. No Monitor Serial digita: `CMD|FINGER|START_VERIFY`
-3. Esperado no LCD: `Coloque o dedo`
-4. Aguarda 2 segundos
-5. Esperado no Serial: `EVT|FINGER|OK|123456`
-6. Esperado no LCD: `Acesso Liberado!`
+### Teste 4 — Pessoa inativa (ID 100003)
+1. Digita `100003` + `*`
+2. Digita `111111` + `*`
+3. Esperado no Serial: `EVT|AUTH|100003|111111`
+4. No Monitor Serial digita: `CMD|ACCESS|DENIED|inativo`
+5. Esperado no LCD: `Acesso Negado! / inativo`
+6. Após 2s: `Sistema Pronto / Digite o ID:`
 
-### Teste 5 — Acesso negado
-1. Faz o Teste 2 até aparecer `EVT|AUTH` no Serial
-2. No Monitor Serial digita: `CMD|ACCESS|DENIED|sem_permissao`
-3. Esperado no LCD: `Acesso Negado! / sem_permissao`
-4. Após 2s: `Sistema Pronto / Digite o ID:`
+### Teste 5 — Pessoa não cadastrada
+1. Digita qualquer ID que não existe ex: `999999` + `*`
+2. Digita qualquer senha + `*`
+3. Esperado no Serial: `EVT|AUTH|999999|......`
+4. No Monitor Serial digita: `CMD|ACCESS|DENIED|nao_cadastrado`
+5. Esperado no LCD: `Acesso Negado! / nao_cadastrado`
 
 ### Teste 6 — Digital rejeitada (3ª tentativa)
-1. Faz o Teste 4 três vezes seguidas
+1. Faz o Teste 3 três vezes seguidas
 2. Na terceira vez esperado no Serial: `EVT|FINGER|FAIL`
 3. Esperado no LCD: `Nao reconhecido`
 
