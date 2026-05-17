@@ -1,79 +1,63 @@
-using InfraestruturaBloco1.Data;
-using InfraestruturaBloco1.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
 namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // protege os endpoints
     public class CamerasController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ICameraRepository _cameraRepo;
 
-        public CamerasController(AppDbContext context)
+        public CamerasController(ICameraRepository cameraRepo)
         {
-            _context = context;
+            _cameraRepo = cameraRepo;
         }
 
-        // GET: api/cameras (listagem com filtros)
+        // GET: api/cameras
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Camera>>> GetCameras(
-            string? nome = null,
-            bool? ativa = null)
+        public async Task<ActionResult<IEnumerable<Camera>>> GetCameras(string? nome = null, bool? ativa = null)
         {
-            var query = _context.Cameras.AsQueryable();
-
-            if (!string.IsNullOrEmpty(nome))
-                query = query.Where(c => c.Nome.Contains(nome));
-
-            if (ativa.HasValue)
-                query = query.Where(c => c.Ativa == ativa.Value);
-
-            return await query.ToListAsync();
+            var cameras = await _cameraRepo.ListarComFiltros(nome, ativa);
+            return Ok(cameras);
         }
 
-        // GET: api/cameras/5 (detalhe)
+        // GET: api/cameras/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Camera>> GetCamera(int id)
         {
-            var camera = await _context.Cameras.FindAsync(id);
+            var camera = await _cameraRepo.BuscarPorId(id);
             if (camera == null) return NotFound();
-            return camera;
+            return Ok(camera);
         }
 
-        // POST: api/cameras (cadastro)
+        // POST: api/cameras
         [HttpPost]
         public async Task<ActionResult<Camera>> PostCamera(Camera camera)
         {
-            _context.Cameras.Add(camera);
-            await _context.SaveChangesAsync();
+            await _cameraRepo.Adicionar(camera);
             return CreatedAtAction(nameof(GetCamera), new { id = camera.Id }, camera);
         }
 
-        // PUT: api/cameras/5 (edição)
+        // PUT: api/cameras/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCamera(int id, Camera camera)
         {
             if (id != camera.Id) return BadRequest();
 
-            _context.Entry(camera).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            var atualizado = await _cameraRepo.Atualizar(camera);
+            if (!atualizado) return NotFound();
 
             return NoContent();
         }
 
-        // DELETE: api/cameras/5 (remoção)
+        // DELETE: api/cameras/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCamera(int id)
         {
-            var camera = await _context.Cameras.FindAsync(id);
-            if (camera == null) return NotFound();
-
-            _context.Cameras.Remove(camera);
-            await _context.SaveChangesAsync();
+            var removido = await _cameraRepo.Remover(id);
+            if (!removido) return NotFound();
 
             return NoContent();
         }
