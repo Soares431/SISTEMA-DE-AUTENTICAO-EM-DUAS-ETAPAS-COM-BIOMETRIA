@@ -481,3 +481,8 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 Arduino/build/
+Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/Arduino/build/Arduino.ino.eep
+Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/Arduino/build/Arduino.ino.elf
+Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/Arduino/build/Arduino.ino.hex
+Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/Arduino/build/Arduino.ino.with_bootloader.bin
+Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/Arduino/build/Arduino.ino.with_bootloader.hex
