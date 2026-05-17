@@ -26,18 +26,37 @@ byte colPins[COLS] = {6, 7, 8, 9};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // ═══════════════════════════════════════
+// DADOS MOCKADOS
+// ═══════════════════════════════════════
+struct Pessoa {
+  long id;
+  char senha[7];
+  bool ativa;
+  bool temBiometria;
+};
+
+// Edite aqui para adicionar/remover pessoas de teste
+Pessoa pessoas[] = {
+  { 100001, "123456", true,  false },  // primeiro acesso
+  { 100002, "654321", true,  true  },  // acesso normal
+  { 100003, "111111", false, false },  // inativa
+  { 100004, "999999", true,  true  },  // acesso normal
+};
+const int totalPessoas = 4;
+
+// ═══════════════════════════════════════
 // ESTADOS DO SISTEMA
 // ═══════════════════════════════════════
 enum Estado {
   AGUARDANDO_ID,
   AGUARDANDO_SENHA,
-  AGUARDANDO_RESPOSTA_CS,
   AGUARDANDO_DIGITAL
 };
 
-Estado estadoAtual = AGUARDANDO_ID;
-String idDigitado    = "";
+Estado estadoAtual  = AGUARDANDO_ID;
+String idDigitado   = "";
 String senhaDigitada = "";
+int pessoaAtualIdx  = -1;
 
 // ═══════════════════════════════════════
 // SETUP
@@ -51,8 +70,8 @@ void setup() {
   lcd.backlight();
   delay(100);
   exibirMensagem("Sistema Pronto", "Digite o ID:");
-  Serial.println("EVT|READY");
 }
+
 // ═══════════════════════════════════════
 // FUNÇÕES DO LCD
 // ═══════════════════════════════════════
@@ -72,11 +91,20 @@ void exibirLinha(int linha, String texto) {
 }
 
 // ═══════════════════════════════════════
+// BUSCA PESSOA POR ID
+// ═══════════════════════════════════════
+int buscarPessoa(long id) {
+  for (int i = 0; i < totalPessoas; i++) {
+    if (pessoas[i].id == id) return i;
+  }
+  return -1;
+}
+
+// ═══════════════════════════════════════
 // LOOP
 // ═══════════════════════════════════════
 void loop() {
   lerTeclado();
-  lerComandoSerial();
 }
 
 // ═══════════════════════════════════════
@@ -99,19 +127,50 @@ void lerTeclado() {
         exibirLinha(0, "ID: 6 digitos!");
         delay(1500);
         exibirMensagem("Digite o ID:", "");
-        exibirLinha(1, "ID: " + idDigitado);
         return;
       }
-      // ID completo — pede a senha
+
+      long idNum = idDigitado.toInt();
+      int idx = buscarPessoa(idNum);
+
+      // Pessoa não existe
+      if (idx == -1) {
+        exibirMensagem("Acesso Negado!", "nao_cadastrado");
+        delay(2000);
+        idDigitado = "";
+        exibirMensagem("Sistema Pronto", "Digite o ID:");
+        return;
+      }
+
+      // Pessoa inativa
+      if (!pessoas[idx].ativa) {
+        exibirMensagem("Acesso Negado!", "inativo");
+        delay(2000);
+        idDigitado = "";
+        exibirMensagem("Sistema Pronto", "Digite o ID:");
+        return;
+      }
+
+      pessoaAtualIdx = idx;
+
+      // Tem biometria — vai direto para digital
+      if (pessoas[idx].temBiometria) {
+        estadoAtual = AGUARDANDO_DIGITAL;
+        exibirMensagem("ID: " + idDigitado, "Coloque o dedo");
+        delay(2000);
+        simularDigital();
+        return;
+      }
+
+      // Primeiro acesso — pede senha
       estadoAtual = AGUARDANDO_SENHA;
       senhaDigitada = "";
-      exibirMensagem("ID: " + idDigitado, "Senha:");
+      exibirMensagem("1o Acesso", "Senha:");
       return;
     }
 
     if (idDigitado.length() < 6) {
       idDigitado += tecla;
-      // Mostra asteriscos para privacidade
       String asteriscos = "";
       for (int i = 0; i < idDigitado.length(); i++) asteriscos += "*";
       exibirLinha(1, "ID: " + asteriscos);
@@ -122,9 +181,9 @@ void lerTeclado() {
   // ── AGUARDANDO SENHA ──
   if (estadoAtual == AGUARDANDO_SENHA) {
     if (tecla == '#') {
-      // Volta para o início
       idDigitado = "";
       senhaDigitada = "";
+      pessoaAtualIdx = -1;
       estadoAtual = AGUARDANDO_ID;
       exibirMensagem("Cancelado", "Digite o ID:");
       return;
@@ -134,19 +193,44 @@ void lerTeclado() {
       if (senhaDigitada.length() != 6) {
         exibirLinha(0, "Senha: 6 dig!");
         delay(1500);
-        exibirMensagem("ID: " + idDigitado, "Senha:");
+        exibirMensagem("1o Acesso", "Senha:");
         return;
       }
-      // Manda ID e senha pro C# decidir o próximo passo
-      estadoAtual = AGUARDANDO_RESPOSTA_CS;
-      exibirMensagem("Verificando...", "Aguarde");
-      Serial.println("EVT|AUTH|" + idDigitado + "|" + senhaDigitada);
+
+      // Valida senha
+      if (senhaDigitada != String(pessoas[pessoaAtualIdx].senha)) {
+        exibirMensagem("Acesso Negado!", "senha_incorreta");
+        delay(2000);
+        idDigitado = "";
+        senhaDigitada = "";
+        pessoaAtualIdx = -1;
+        estadoAtual = AGUARDANDO_ID;
+        exibirMensagem("Sistema Pronto", "Digite o ID:");
+        return;
+      }
+
+      // Senha correta — cadastra biometria
+      estadoAtual = AGUARDANDO_DIGITAL;
+      exibirMensagem("Coloque o dedo", "para cadastrar");
+      delay(2000);
+
+      // Mock — simula cadastro
+      pessoas[pessoaAtualIdx].temBiometria = true;
+      exibirMensagem("Digital", "Cadastrada!");
+      delay(1500);
+      exibirMensagem("Acesso Liberado", "Bem vindo!");
+      delay(1500);
+
+      idDigitado = "";
+      senhaDigitada = "";
+      pessoaAtualIdx = -1;
+      estadoAtual = AGUARDANDO_ID;
+      exibirMensagem("Sistema Pronto", "Digite o ID:");
       return;
     }
 
     if (senhaDigitada.length() < 6) {
       senhaDigitada += tecla;
-      // Mostra asteriscos para privacidade
       String asteriscos = "";
       for (int i = 0; i < senhaDigitada.length(); i++) asteriscos += "*";
       exibirLinha(1, "Senha: " + asteriscos);
@@ -156,98 +240,25 @@ void lerTeclado() {
 }
 
 // ═══════════════════════════════════════
-// LEITURA DE COMANDOS DO C#
+// SIMULAR DIGITAL
 // ═══════════════════════════════════════
-void lerComandoSerial() {
-  if (!Serial.available()) return;
+void simularDigital() {
+  static int tentativas = 0;
+  tentativas++;
 
-  String comando = Serial.readStringUntil('\n');
-  comando.trim();
+  if (tentativas % 3 == 0) {
+    // A cada 3 tentativas simula falha
+    exibirMensagem("Nao reconhecido", "Tente novamente");
+    delay(1500);
+  } else {
+    // Sucesso
+    exibirMensagem("Acesso Liberado!", "Bem vindo!");
+    delay(1500);
+  }
 
-  if (comando.startsWith("CMD|LCD|LINE1|")) {
-    exibirLinha(0, comando.substring(14));
-  }
-  else if (comando.startsWith("CMD|LCD|LINE2|")) {
-    exibirLinha(1, comando.substring(14));
-  }
-  else if (comando.startsWith("CMD|LCD|CLEAR")) {
-    lcd.clear();
-  }
-  // C# manda esse comando no primeiro acesso
-  else if (comando.startsWith("CMD|FINGER|START_ENROLL")) {
-    estadoAtual = AGUARDANDO_DIGITAL;
-    exibirMensagem("1o Acesso", "Coloque o dedo");
-    delay(2000);
-    // Mock — simula cadastro de digital bem sucedido
-    exibirMensagem("Digital", "Cadastrada!");
-    Serial.println("EVT|FINGER|ENROLLED|" + idDigitado);
-    delay(1500);
-    exibirMensagem("Acesso Liberado", "Bem vindo!");
-    delay(1500);
-    idDigitado = "";
-    senhaDigitada = "";
-    estadoAtual = AGUARDANDO_ID;
-    exibirMensagem("Sistema Pronto", "Digite o ID:");
-  }
-  // C# manda esse comando quando pessoa já tem biometria
-  else if (comando.startsWith("CMD|FINGER|START_VERIFY")) {
-    estadoAtual = AGUARDANDO_DIGITAL;
-    exibirMensagem("ID: " + idDigitado, "Coloque o dedo");
-    delay(2000);
-
-    static int tentativas = 0;
-    tentativas++;
-
-    if (tentativas % 3 == 0) {
-      Serial.println("EVT|FINGER|FAIL");
-      exibirLinha(0, "Nao reconhecido");
-      delay(1500);
-      idDigitado = "";
-      senhaDigitada = "";
-      estadoAtual = AGUARDANDO_ID;
-      exibirMensagem("Sistema Pronto", "Digite o ID:");
-    } else {
-      Serial.println("EVT|FINGER|OK|" + idDigitado);
-      // Mock local enquanto C# não está conectado
-      exibirLinha(0, "Acesso Liberado!");
-      delay(1500);
-      idDigitado = "";
-      senhaDigitada = "";
-      estadoAtual = AGUARDANDO_ID;
-      exibirMensagem("Sistema Pronto", "Digite o ID:");
-    }
-  }
-  // C# manda esse quando acesso negado
-  else if (comando.startsWith("CMD|ACCESS|DENIED|")) {
-    String motivo = comando.substring(18);
-    exibirLinha(0, "Acesso Negado!");
-    exibirLinha(1, motivo);
-    delay(2000);
-    idDigitado = "";
-    senhaDigitada = "";
-    estadoAtual = AGUARDANDO_ID;
-    exibirMensagem("Sistema Pronto", "Digite o ID:");
-  }
-  else if (comando.startsWith("CMD|FINGER|CANCEL")) {
-    idDigitado = "";
-    senhaDigitada = "";
-    estadoAtual = AGUARDANDO_ID;
-    exibirMensagem("Cancelado", "Digite o ID:");
-  }
-  else if (comando.startsWith("CMD|BUZZER|OK")) {
-    exibirLinha(0, "Acesso Liberado!");
-    delay(1500);
-    idDigitado = "";
-    senhaDigitada = "";
-    estadoAtual = AGUARDANDO_ID;
-    exibirMensagem("Sistema Pronto", "Digite o ID:");
-  }
-  else if (comando.startsWith("CMD|BUZZER|FAIL")) {
-    exibirLinha(0, "Acesso Negado!");
-    delay(1500);
-    idDigitado = "";
-    senhaDigitada = "";
-    estadoAtual = AGUARDANDO_ID;
-    exibirMensagem("Sistema Pronto", "Digite o ID:");
-  }
+  idDigitado = "";
+  senhaDigitada = "";
+  pessoaAtualIdx = -1;
+  estadoAtual = AGUARDANDO_ID;
+  exibirMensagem("Sistema Pronto", "Digite o ID:");
 }
