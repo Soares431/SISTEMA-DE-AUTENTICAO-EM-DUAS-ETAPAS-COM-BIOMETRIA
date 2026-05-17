@@ -39,37 +39,77 @@ public class EventProcessorArduino : IEventProcessor
         var ambienteId = dispositivo.Id;
         var pessoa = _pessoaRepository.BuscarPorId(evento.PessoaID);
 
-        if (pessoa == null)
+        // ── EVT|ID — Arduino mandou só o ID ──────────────────────────
+        // C# decide se pede senha (primeiro acesso) ou digital (já tem biometria)
+        if (evento.TipoVerificacao == "id")
         {
-            FluxoNaoCadastrado(evento, ambienteId);
+            if (pessoa == null)
+            {
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
+                RegistrarTentativa(evento, null, ambienteId, false, "nao_cadastrado");
+                return;
+            }
+
+            if (pessoa.Status == "inativo")
+            {
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "inativo");
+                RegistrarTentativa(evento, pessoa, ambienteId, false, "inativo");
+                return;
+            }
+
+            if (!_ambientePessoaRepository.PessoaTemAcesso(ambienteId, pessoa.Id))
+            {
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "sem_permissao");
+                RegistrarTentativa(evento, pessoa, ambienteId, false, "sem_permissao");
+                return;
+            }
+
+            if (pessoa.biometriaCadastrada == null)
+            {
+                // Primeiro acesso — pede senha
+                _arduinoService.NotificarPedirSenha(evento.PessoaID);
+                return;
+            }
+
+            // Já tem biometria — pede digital direto
+            _arduinoService.NotificarVerificarDigital(evento.PessoaID);
             return;
         }
 
-        if (pessoa.Status == "inativo")
-        {
-            FluxoAcessoNegado(evento, pessoa, ambienteId, "inativo");
-            return;
-        }
-
-        if (!_ambientePessoaRepository.PessoaTemAcesso(ambienteId, pessoa.Id))
-        {
-            FluxoAcessoNegado(evento, pessoa, ambienteId, "sem_permissao");
-            return;
-        }
-
-        // Evento de autenticação por senha — C# decide o próximo passo
+        // ── EVT|SENHA — Arduino mandou senha após pedido do C# ───────
+        // C# valida senha e decide se cadastra digital
         if (evento.TipoVerificacao == "senha")
         {
-            if (pessoa.biometriaCadastrada == null)
-                FluxoPrimeiroAcesso(evento, pessoa, ambienteId);
-            else
-                FluxoSolicitarDigital(evento, pessoa, ambienteId);
+            if (pessoa == null)
+            {
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
+                return;
+            }
 
+            // MotivoNegacao carrega a senha temporariamente
+            if (evento.MotivoNegacao != pessoa.senhaClear)
+            {
+                _arduinoService.NotificarAcessoNegado(evento.PessoaID, "senha_incorreta");
+                RegistrarTentativa(evento, pessoa, ambienteId, false, "senha_incorreta");
+                return;
+            }
+
+            // Senha correta — cadastra biometria
+            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID);
             return;
         }
 
-        // Evento de digital ou primeiro acesso — acesso já confirmado pelo sensor
-        FluxoAcessoNormal(evento, pessoa, ambienteId);
+        // ── Digital ou primeiro acesso concluído ─────────────────────
+        if (pessoa == null) return;
+
+        if (evento.TipoVerificacao == "primeiro_acesso")
+        {
+            _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
+            Console.WriteLine($"[Arduino] Biometria cadastrada — Pessoa: {pessoa.Id}");
+        }
+
+        _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
+        RegistrarTentativa(evento, pessoa, ambienteId, true, null);
     }
 
     private DispositivoT50 BuscarDispositivoPorIp(string ip)
@@ -81,57 +121,6 @@ public class EventProcessorArduino : IEventProcessor
                 return dispositivo;
         }
         return null;
-    }
-
-    private void FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, int ambienteId)
-    {
-        Console.WriteLine($"[Arduino] Primeiro acesso — Pessoa: {pessoa.Id}");
-
-        _arduinoService.NotificarPrimeiroAcesso((int)pessoa.Id);
-
-        // Biometria será cadastrada quando chegar EVT|FINGER|ENROLLED
-        // O ArduinoConnector vai gerar um novo EventoAcesso com TipoVerificacao = "primeiro_acesso"
-        // e esse evento vai passar pelo FluxoAcessoNormal
-        RegistrarTentativa(evento, pessoa, ambienteId, true, null);
-    }
-
-    private void FluxoSolicitarDigital(EventoAcesso evento, Pessoa pessoa, int ambienteId)
-    {
-        Console.WriteLine($"[Arduino] Solicitando digital — Pessoa: {pessoa.Id}");
-
-        _arduinoService.NotificarVerificarDigital((int)pessoa.Id);
-
-        // Não registra tentativa aqui — só registra quando chegar EVT|FINGER|OK ou FAIL
-    }
-
-    private void FluxoAcessoNormal(EventoAcesso evento, Pessoa pessoa, int ambienteId)
-    {
-        Console.WriteLine($"[Arduino] Acesso liberado — Pessoa: {pessoa.Id} | Tipo: {evento.TipoVerificacao}");
-
-        if (evento.TipoVerificacao == "primeiro_acesso")
-        {
-            _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
-            Console.WriteLine($"[Arduino] Biometria marcada como cadastrada — Pessoa: {pessoa.Id}");
-        }
-
-        _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
-        RegistrarTentativa(evento, pessoa, ambienteId, true, null);
-    }
-
-    private void FluxoNaoCadastrado(EventoAcesso evento, int ambienteId)
-    {
-        Console.WriteLine($"[Arduino] Pessoa {evento.PessoaID} não cadastrada");
-
-        _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
-        RegistrarTentativa(evento, null, ambienteId, false, "nao_cadastrado");
-    }
-
-    private void FluxoAcessoNegado(EventoAcesso evento, Pessoa pessoa, int ambienteId, string motivo)
-    {
-        Console.WriteLine($"[Arduino] Acesso negado — Pessoa: {pessoa.Id} | Motivo: {motivo}");
-
-        _arduinoService.NotificarAcessoNegado((int)pessoa.Id, motivo);
-        RegistrarTentativa(evento, pessoa, ambienteId, false, motivo);
     }
 
     private void RegistrarTentativa(EventoAcesso evento, Pessoa pessoa, int ambienteId, bool acessoLiberado, string motivo)
