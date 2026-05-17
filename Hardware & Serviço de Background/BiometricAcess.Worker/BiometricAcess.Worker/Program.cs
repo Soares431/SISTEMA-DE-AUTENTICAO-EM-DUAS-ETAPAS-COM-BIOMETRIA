@@ -8,26 +8,23 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddWindowsService();
 
-// ═══════════════════════════════════════════════
-// TROCA AQUI — comentar uma linha e descomentar outra
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// OPÇÃO 2 — Nosso Arduino (hardware físico)
+// Antes de ativar: ajuste a porta COM no ArduinoConnector
+// ═══════════════════════════════════════════════════════════════
 
-// OPÇÃO 1 — Simulador falso (dados mockados)
-builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
-builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
-
-// OPÇÃO 2 — Nosso Arduino
-//var arduinoConnector = new ArduinoConnector(porta: "COM3");
+//var arduinoConnector = new ArduinoConnector(porta: "COM3"); // ← ajuste a porta
 //builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
 //builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
 //builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
 
-// OPÇÃO 2A — Arduino com dados mockados (banco vazio)
+// OPÇÃO 2A — banco vazio / dados mockados
 //builder.Services.AddSingleton<IEventProcessor, EventProcessorArduinoSimulador>();
 
-// OPÇÃO 2B — Arduino com banco real
+// OPÇÃO 2B — banco real
 //builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
+
+// ═══════════════════════════════════════════════════════════════
 
 // OPÇÃO 3 — T50M real (hardware Anviz)
 //builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();

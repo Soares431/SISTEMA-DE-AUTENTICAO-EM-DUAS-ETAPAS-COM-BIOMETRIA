@@ -26,4 +26,10 @@ public class ArduinoServiceExtras : IAnvizArduinoService
         Console.WriteLine($"[ArduinoServiceExtras] Acesso negado — Pessoa: {pessoaId} | Motivo: {motivo}");
         _connector.EnviarComando($"{Comandos.AccessDenied}|{motivo}");
     }
+
+    public void NotificarPedirSenha(int pessoaId)
+    {
+        Console.WriteLine($"[ArduinoServiceExtras] Pedindo senha — ID {pessoaId}");
+        _connector.EnviarComando(Comandos.PedirSenha);
+    }
 }
