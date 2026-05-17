@@ -481,3 +481,4 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 Arduino/build/
+Banco/WebAbil8-Sistema_Verificação_dupla.slnx/banco.db
