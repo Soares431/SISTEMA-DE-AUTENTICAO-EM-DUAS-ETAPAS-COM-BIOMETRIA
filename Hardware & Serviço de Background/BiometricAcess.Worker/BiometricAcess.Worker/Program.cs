@@ -7,7 +7,14 @@ using BiometricAcess.Worker.HardwareNosso.Simulador;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddWindowsService();
+// ═══════════════════════════════════════════════════════════════
+// OPÇÃO 1 — Simulador falso (padrão, sem hardware)
+// ═══════════════════════════════════════════════════════════════
+builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
+builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
+builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
 
+// ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
 // OPÇÃO 2 — Nosso Arduino (hardware físico)
 // Antes de ativar: ajuste a porta COM no ArduinoConnector

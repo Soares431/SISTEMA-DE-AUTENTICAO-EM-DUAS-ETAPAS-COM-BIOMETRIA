@@ -14,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 
 // Serviços do Int4
 builder.Services.AddScoped<EmailService>();
