@@ -53,6 +53,7 @@ public class ArduinoConnector : IAnvizConnector
 
             Console.WriteLine($"[Arduino] Recebido: {linha.Trim()}");
 
+            // ── EVT|READY ────────────────────────────────────────────
             if (msg.EhEvento(Eventos.Pronto))
             {
                 EnviarComando($"{Comandos.LcdLinha1}|Sistema Pronto");
@@ -60,6 +61,56 @@ public class ArduinoConnector : IAnvizConnector
                 return;
             }
 
+            // ── EVT|ID|100001 ─────────────────────────────────────────
+            // Arduino digitou ID — C# decide se pede senha ou digital
+            if (msg.EhEvento(Eventos.Id))
+            {
+                if (!int.TryParse(msg.Acao, out var pessoaId))
+                {
+                    EnviarComando($"{Comandos.AccessDenied}|ID invalido");
+                    return;
+                }
+
+                _idEmAndamento = pessoaId;
+
+                _ultimoEvento = new EventoAcesso
+                {
+                    PessoaID = pessoaId,
+                    TipoVerificacao = "id",
+                    AcessoLiberado = false,
+                    DataHora = DateTime.Now,
+                    IpDispositivo = _porta,
+                    MotivoNegacao = string.Empty
+                };
+                return;
+            }
+
+            // ── EVT|SENHA|100001|123456 ───────────────────────────────
+            // Arduino digitou senha — C# valida e decide próximo passo
+            if (msg.EhEvento(Eventos.Senha))
+            {
+                if (!int.TryParse(msg.Acao, out var pessoaId))
+                {
+                    EnviarComando($"{Comandos.AccessDenied}|ID invalido");
+                    return;
+                }
+
+                _idEmAndamento = pessoaId;
+                _senhaEmAndamento = msg.Dado;
+
+                _ultimoEvento = new EventoAcesso
+                {
+                    PessoaID = pessoaId,
+                    TipoVerificacao = "senha",
+                    AcessoLiberado = false,
+                    DataHora = DateTime.Now,
+                    IpDispositivo = _porta,
+                    MotivoNegacao = msg.Dado  // senha temporariamente aqui
+                };
+                return;
+            }
+
+            // ── EVT|AUTH|ID|SENHA (legado) ────────────────────────────
             if (msg.EhEvento(Eventos.Auth))
             {
                 if (!int.TryParse(msg.Acao, out var pessoaId))
@@ -78,11 +129,12 @@ public class ArduinoConnector : IAnvizConnector
                     AcessoLiberado = false,
                     DataHora = DateTime.Now,
                     IpDispositivo = _porta,
-                    MotivoNegacao = msg.Dado  // senha aqui temporariamente
+                    MotivoNegacao = msg.Dado
                 };
                 return;
             }
 
+            // ── EVT|FINGER|OK|ID ─────────────────────────────────────
             if (msg.EhEvento(Eventos.DigitalOk))
             {
                 var id = int.TryParse(msg.Dado, out var fid) ? fid : _idEmAndamento;
@@ -103,6 +155,7 @@ public class ArduinoConnector : IAnvizConnector
                 return;
             }
 
+            // ── EVT|FINGER|FAIL ──────────────────────────────────────
             if (msg.EhEvento(Eventos.DigitalFalhou))
             {
                 _ultimoEvento = new EventoAcesso
@@ -121,6 +174,7 @@ public class ArduinoConnector : IAnvizConnector
                 return;
             }
 
+            // ── EVT|FINGER|ENROLLED|ID ───────────────────────────────
             if (msg.EhEvento(Eventos.DigitalCadastrada))
             {
                 var id = int.TryParse(msg.Dado, out var eid) ? eid : _idEmAndamento;
