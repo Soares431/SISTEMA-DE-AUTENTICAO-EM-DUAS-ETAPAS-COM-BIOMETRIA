@@ -1,11 +1,21 @@
 using InfraestruturaBloco1.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
-using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Registrar serviços
+// Banco do Int1
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Repositórios do Int1 — registrar ANTES dos serviços que dependem deles
+builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
+builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
+builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+
+// Serviços do Int4
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<AesService>();
@@ -15,14 +25,6 @@ builder.Services.AddScoped<CameraService>(provider =>
         provider.GetRequiredService<ILogAdminRepository>(),
         builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes"
     ));
-// Repositórios do Int1
-builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
-builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
-builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
-
-// Configuração do EF Core com SQLite (banco do Int1)
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Controllers e Swagger
 builder.Services.AddControllers();
@@ -31,7 +33,6 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
