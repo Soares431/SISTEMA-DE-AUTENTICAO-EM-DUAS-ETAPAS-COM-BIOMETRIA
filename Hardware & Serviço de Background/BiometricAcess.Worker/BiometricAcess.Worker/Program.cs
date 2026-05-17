@@ -20,7 +20,8 @@ builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
 //var arduinoConnector = new ArduinoConnector(porta: "COM3");
 //builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
 //builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
+//builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
+//builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
 
 // OPÇÃO 3 — T50M real (hardware Anviz)
 //builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();
