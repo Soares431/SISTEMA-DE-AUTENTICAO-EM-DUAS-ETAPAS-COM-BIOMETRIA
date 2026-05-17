@@ -1,7 +1,7 @@
 ﻿using BiometricAcess.Worker.Models;
 using BiometricAcess.Worker.Services;
 
-namespace BiometricAcess.Worker.HardwareNosso;
+namespace BiometricAcess.Worker.HardwareNosso.Simulador;
 
 public class EventProcessorArduinoSimulador : IEventProcessor
 {
