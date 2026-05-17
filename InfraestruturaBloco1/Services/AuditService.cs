@@ -27,6 +27,23 @@ public class AuditService
         await _logRepo.Registrar(log);
     }
 
+    // Novo método: registrar log com vídeo
+    public async Task RegistrarComVideoAsync(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
+    {
+        var log = new LogAdmin
+        {
+            AdminId = adminId,
+            Acao = acao,
+            EntidadeAfetada = entidade,
+            EntidadeId = entidadeId,
+            DataHora = DateTime.UtcNow,
+            DataExpiracao = DateTime.UtcNow.AddDays(180),
+            VideoUrl = videoUrl
+        };
+
+        await _logRepo.Registrar(log);
+    }
+
     public async Task<List<LogAdmin>> ConsultarAsync(
         int? adminId = null,
         string? acao = null,
