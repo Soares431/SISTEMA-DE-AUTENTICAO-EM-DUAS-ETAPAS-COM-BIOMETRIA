@@ -1,59 +1,56 @@
-using InfraestruturaBloco1.Data;
-using InfraestruturaBloco1.Models;
-using Microsoft.EntityFrameworkCore;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
-namespace InfraestruturaBloco1.Services
+namespace InfraestruturaBloco1.Services;
+
+public class AuditService
 {
-    public class AuditService
+    private readonly ILogAdminRepository _logRepo;
+
+    public AuditService(ILogAdminRepository logRepo)
     {
-        private readonly AppDbContext _context;
+        _logRepo = logRepo;
+    }
 
-        public AuditService(AppDbContext context)
+    public async Task RegistrarAsync(int adminId, string acao, string entidade, int? entidadeId = null)
+    {
+        var log = new LogAdmin
         {
-            _context = context;
-        }
+            AdminId = adminId,
+            Acao = acao,
+            EntidadeAfetada = entidade,
+            EntidadeId = entidadeId,
+            DataHora = DateTime.UtcNow,
+            DataExpiracao = DateTime.UtcNow.AddDays(180)
+        };
 
-        // Agora aceita opcionalmente o link da gravação
-        public async Task RegistrarAsync(string admin, string acao, string entidade, string? videoUrl = null)
+        await _logRepo.Registrar(log);
+    }
+
+    // Novo método: registrar log com vídeo
+    public async Task RegistrarComVideoAsync(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
+    {
+        var log = new LogAdmin
         {
-            var log = new AuditLog
-            {
-                Admin = admin,
-                Acao = acao,
-                Entidade = entidade,
-                DataHora = DateTime.UtcNow,
-                VideoUrl = videoUrl
-            };
+            AdminId = adminId,
+            Acao = acao,
+            EntidadeAfetada = entidade,
+            EntidadeId = entidadeId,
+            DataHora = DateTime.UtcNow,
+            DataExpiracao = DateTime.UtcNow.AddDays(180),
+            VideoUrl = videoUrl
+        };
 
-            _context.AuditLogs.Add(log);
-            await _context.SaveChangesAsync();
-        }
+        await _logRepo.Registrar(log);
+    }
 
-        public async Task<List<AuditLog>> ConsultarAsync(
-            string? admin = null,
-            string? acao = null,
-            string? entidade = null,
-            DateTime? dataInicio = null,
-            DateTime? dataFim = null)
-        {
-            var query = _context.AuditLogs.AsQueryable();
-
-            if (!string.IsNullOrEmpty(admin))
-                query = query.Where(l => l.Admin == admin);
-
-            if (!string.IsNullOrEmpty(acao))
-                query = query.Where(l => l.Acao == acao);
-
-            if (!string.IsNullOrEmpty(entidade))
-                query = query.Where(l => l.Entidade == entidade);
-
-            if (dataInicio.HasValue)
-                query = query.Where(l => l.DataHora >= dataInicio.Value);
-
-            if (dataFim.HasValue)
-                query = query.Where(l => l.DataHora <= dataFim.Value);
-
-            return await query.ToListAsync();
-        }
+    public async Task<List<LogAdmin>> ConsultarAsync(
+        int? adminId = null,
+        string? acao = null,
+        string? entidade = null,
+        DateTime? dataInicio = null,
+        DateTime? dataFim = null)
+    {
+        return await _logRepo.ListarComFiltros(adminId, acao, entidade, dataInicio, dataFim);
     }
 }
