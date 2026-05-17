@@ -1,0 +1,6 @@
+@WebAbil8_Sistema_Verificação_dupla.slnx_HostAddress = http://localhost:5018
+
+GET {{WebAbil8_Sistema_Verificação_dupla.slnx_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
