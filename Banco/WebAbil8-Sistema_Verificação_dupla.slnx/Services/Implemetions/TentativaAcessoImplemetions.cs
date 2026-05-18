@@ -29,7 +29,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             return tentativa;
         }
 
-        public TentativaAcesso BuscarPorId(long id)
+        public TentativaAcesso BuscarPorId(int id)
         {
             return _context.TentativasAcesso.Find(id);
         }
@@ -79,9 +79,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             return tentativa;
         }
 
-        public void Remover(long id)
+        public void Remover(int id)
         {
-            var existing = _context.TentativasAcesso.Find(id);
+            var existing = _context.TentativasAcesso.Find(id); // ← cast para int
             if (existing == null) throw new ArgumentNullException("Tentativa não encontrada");
             _context.TentativasAcesso.Remove(existing);
             _context.SaveChanges();

@@ -49,5 +49,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<List<Camera>> ListarPorAmbiente(int ambienteId)
+        {
+            return await _context.Cameras
+                .Where(c => c.AmbienteId == ambienteId)
+                .ToListAsync();
+        }
     }
+
 }
