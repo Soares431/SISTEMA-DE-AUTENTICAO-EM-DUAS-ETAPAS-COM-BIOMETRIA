@@ -37,12 +37,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         {
             // Garante range 100000 a 999999 — sem zeros à esquerda
             return _context.SenhasDisponiveis
-                .Where(s => !s.EmUso
-                    && s.PessoaId == null
-                    && string.Compare(s.Senha, "100000") >= 0
-                    && string.Compare(s.Senha, "999999") <= 0)
-                .OrderBy(s => Guid.NewGuid()) // aleatório
-                .FirstOrDefault();
+             .Where(s => !s.EmUso && s.PessoaId == null)
+             .AsEnumerable() // ← executa o Where acima no banco, resto em memória
+             .Where(s => int.TryParse(s.Senha, out var n) && n >= 100000 && n <= 999999)
+             .OrderBy(s => Guid.NewGuid()) // aleatório
+             .FirstOrDefault();
         }
 
 
