@@ -1,10 +1,11 @@
 using BCrypt.Net;
+using Microsoft.AspNetCore.OpenApi;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Configurations;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Jobs;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
-using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,12 @@ builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions
 builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
+builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
+builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
+builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
+
+builder.Services.AddHostedService<InativarUsuariosInativos2AnosJob>();
+builder.Services.AddHostedService<LimparDadosExpiradosJob>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -77,6 +84,17 @@ using (var scope = app.Services.CreateScope())
             SenhaHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
             NomeCompleto = "Administrador Padrão",
             DataCriacao = DateTime.UtcNow
+        });
+        db.SaveChanges();
+    }
+
+    if (!db.Configuracoes.Any())
+    {
+        db.Configuracoes.Add(new Configuracao
+        {
+            RetencaoGravacoesTentativasDias = 90,
+            RetencaoLogsDias = 180,
+            TempoEsperaGravacaoSeg = 60
         });
         db.SaveChanges();
     }

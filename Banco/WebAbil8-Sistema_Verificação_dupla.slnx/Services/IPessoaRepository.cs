@@ -4,16 +4,16 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
 {
     public interface IPessoaRepository
     {
-        Pessoa Adicionar(Pessoa pessoa);
-        Pessoa BuscarPorId(long id);
-        Pessoa BuscarPorCPF(string cpf);
-        List<Pessoa> ListarTodos();
-        Pessoa Atualizar(Pessoa pessoa);
-        void Remover(long id);
-        void AlterarStatus(long pessoaId, bool status);
-        Pessoa MarcarBiometriaCadastrada(long pessoaId);
-        Pessoa SalvarTemplate(long pessoaId, byte[] template);
-        Pessoa AtualizarUltimoAcesso(long pessoaId);
+        Task<Pessoa> Adicionar(Pessoa pessoa);
+        Task<Pessoa> BuscarPorId(long id);
+        Task<Pessoa> BuscarPorCPF(string cpf);
+        Task<List<Pessoa>> ListarTodos();
+        Task<Pessoa> Atualizar(Pessoa pessoa);
+        Task Remover(long id);
+        Task AlterarStatus(long pessoaId, bool status);
+        Task<Pessoa> MarcarBiometriaCadastrada(long pessoaId);
+        Task<Pessoa> SalvarTemplate(long pessoaId, byte[] template);
+        Task<Pessoa> AtualizarUltimoAcesso(long pessoaId);
 
     }
 }

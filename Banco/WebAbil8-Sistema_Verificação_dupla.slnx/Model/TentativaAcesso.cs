@@ -12,9 +12,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public int Id { get; set; }
 
         [Column("pessoaId")]
-        public int? PessoaId { get; set; } // NULL se não cadastrada
+        [ForeignKey("Pessoa")]
+        public long? PessoaId { get; set; } // NULL se não cadastrada
 
         [Column("ambienteId")]
+        [ForeignKey("Ambiente")]
         public int AmbienteId { get; set; }
 
         [Column("dataHora")]
@@ -39,10 +41,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public DateTime? DataExpiracao { get; set; }
 
         // Navegação
-        [ForeignKey("PessoaId")]
-        public long? Pessoa { get; set; }
-
-        [ForeignKey("AmbienteId")]
-        public Ambiente Ambiente { get; set; }
+        public Pessoa? Pessoa { get; set; }
+        public Ambiente Ambiente { get; set; } = null!;
     }
 }
