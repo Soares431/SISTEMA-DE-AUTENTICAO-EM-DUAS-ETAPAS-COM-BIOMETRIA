@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -10,9 +11,11 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518021845_final-bloco")]
+    partial class finalbloco
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.7");
@@ -376,7 +379,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Migrations
                         .HasColumnType("varchar(50)")
                         .HasColumnName("motivoNegacao");
 
-                    b.Property<long?>("PessoaId")
+                    b.Property<long?>("Pessoa")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PessoaId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("pessoaId");
 
@@ -388,8 +394,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AmbienteId");
-
-                    b.HasIndex("PessoaId");
 
                     b.ToTable("tentativaAcesso");
                 });
@@ -452,13 +456,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebAbil8_Sistema_Verificação_dupla.slnx.Model.Pessoa", "Pessoa")
-                        .WithMany()
-                        .HasForeignKey("PessoaId");
-
                     b.Navigation("Ambiente");
-
-                    b.Navigation("Pessoa");
                 });
 #pragma warning restore 612, 618
         }
