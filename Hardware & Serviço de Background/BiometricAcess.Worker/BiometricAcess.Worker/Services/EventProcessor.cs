@@ -1,6 +1,7 @@
 ﻿using BiometricAcess.Worker.Models;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
+using InfraestruturaBloco1.Services;
 
 namespace BiometricAcess.Worker.Services
 {
@@ -11,19 +12,22 @@ namespace BiometricAcess.Worker.Services
         private readonly IDispositivoT50Repository _dispositivoRepository;
         private readonly ITentativaAcessoRepository _tentativaRepository;
         private readonly IAnvizService _anvizService;
+        private readonly CameraService _cameraService;
 
         public EventProcessor(
             IPessoaRepository pessoaRepository,
             IAmbientePessoaRepository ambientePessoaRepository,
             IDispositivoT50Repository dispositivoRepository,
             ITentativaAcessoRepository tentativaRepository,
-            IAnvizService anvizService)
+            IAnvizService anvizService,
+            CameraService cameraService)
         {
             _pessoaRepository = pessoaRepository;
             _ambientePessoaRepository = ambientePessoaRepository;
             _dispositivoRepository = dispositivoRepository;
             _tentativaRepository = tentativaRepository;
             _anvizService = anvizService;
+            _cameraService = cameraService;
         }
 
         public async Task Processar(EventoAcesso evento)
@@ -101,7 +105,17 @@ namespace BiometricAcess.Worker.Services
         {
             Console.WriteLine($"Acesso liberado — Pessoa: {pessoa.Id} | Tipo: {evento.TipoVerificacao}");
             await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
-            RegistrarTentativa(evento, pessoa, ambienteId, true, null);
+
+            var tentativa = RegistrarTentativa(evento, pessoa, ambienteId, true, null);
+
+            // HW-16 — aguarda gravação da câmera e associa ao registro
+            var gravacaoPath = _cameraService.MonitorarNovoArquivo(ambienteId, evento.DataHora);
+            if (gravacaoPath != null)
+            {
+                tentativa.GravacaoPath = gravacaoPath;
+                _tentativaRepository.Registrar(tentativa);
+                Console.WriteLine($"Gravação associada — Pessoa: {pessoa.Id} | Path: {gravacaoPath}");
+            }
         }
 
         private void FluxoNaoCadastrado(EventoAcesso evento, int ambienteId)
@@ -116,7 +130,7 @@ namespace BiometricAcess.Worker.Services
             RegistrarTentativa(evento, pessoa, ambienteId, false, motivo);
         }
 
-        private void RegistrarTentativa(EventoAcesso evento, Pessoa pessoa, int ambienteId, bool acessoLiberado, string motivo)
+        private TentativaAcesso RegistrarTentativa(EventoAcesso evento, Pessoa? pessoa, int ambienteId, bool acessoLiberado, string? motivo)
         {
             var tentativa = new TentativaAcesso
             {
@@ -129,6 +143,7 @@ namespace BiometricAcess.Worker.Services
             };
 
             _tentativaRepository.Registrar(tentativa);
+            return tentativa;
         }
     }
 }
