@@ -26,7 +26,7 @@ namespace BiometricAcess.Worker.Services
             _anvizService = anvizService;
         }
 
-        public void Processar(EventoAcesso evento)
+        public async Task Processar(EventoAcesso evento)
         {
             var dispositivo = BuscarDispositivoPorIp(evento.IpDispositivo);
             if (dispositivo == null)
@@ -36,7 +36,7 @@ namespace BiometricAcess.Worker.Services
             }
 
             var ambiente = dispositivo.Id;
-            var pessoa = _pessoaRepository.BuscarPorId(evento.PessoaID);
+            var pessoa = await _pessoaRepository.BuscarPorId(evento.PessoaID);
 
             if (pessoa == null)
             {
@@ -60,11 +60,11 @@ namespace BiometricAcess.Worker.Services
                 && pessoa.modoAcesso == "digital_e_senha"
                 && pessoa.biometriaCadastrada == null)
             {
-                FluxoPrimeiroAcesso(evento, pessoa, ambiente);
+                await FluxoPrimeiroAcesso(evento, pessoa, ambiente);
                 return;
             }
 
-            FluxoAcessoNormal(evento, pessoa, ambiente);
+            await FluxoAcessoNormal(evento, pessoa, ambiente);
         }
 
         private DispositivoT50 BuscarDispositivoPorIp(string ip)
@@ -73,14 +73,12 @@ namespace BiometricAcess.Worker.Services
             foreach (var dispositivo in dispositivos)
             {
                 if (dispositivo.EnderecoIP == ip)
-                {
                     return dispositivo;
-                }
             }
             return null;
         }
 
-        private void FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, int ambienteId)
+        private async Task FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, int ambienteId)
         {
             Console.WriteLine($"Primeiro acesso — Pessoa: {pessoa.Id} | Iniciando captura de digital...");
 
@@ -89,37 +87,32 @@ namespace BiometricAcess.Worker.Services
             var template = _anvizService.DownloadTemplate((int)pessoa.Id);
             if (template != null)
             {
-                _pessoaRepository.SalvarTemplate(pessoa.Id, template);
-                _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
+                await _pessoaRepository.SalvarTemplate(pessoa.Id, template);
+                await _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
                 _anvizService.AlterarModo((int)pessoa.Id, "digital_id");
                 Console.WriteLine($"Biometria cadastrada — Pessoa: {pessoa.Id}");
             }
 
-            _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
-
+            await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
             RegistrarTentativa(evento, pessoa, ambienteId, true, null);
         }
 
-        private void FluxoAcessoNormal(EventoAcesso evento, Pessoa pessoa, int ambienteId)
+        private async Task FluxoAcessoNormal(EventoAcesso evento, Pessoa pessoa, int ambienteId)
         {
             Console.WriteLine($"Acesso liberado — Pessoa: {pessoa.Id} | Tipo: {evento.TipoVerificacao}");
-
-            _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
-
+            await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
             RegistrarTentativa(evento, pessoa, ambienteId, true, null);
         }
 
         private void FluxoNaoCadastrado(EventoAcesso evento, int ambienteId)
         {
             Console.WriteLine($"Acesso negado — Pessoa {evento.PessoaID} não cadastrada no sistema");
-
             RegistrarTentativa(evento, null, ambienteId, false, "nao_cadastrado");
         }
 
         private void FluxoAcessoNegado(EventoAcesso evento, Pessoa pessoa, int ambienteId, string motivo)
         {
             Console.WriteLine($"Acesso negado — Pessoa: {pessoa.Id} | Motivo: {motivo}");
-
             RegistrarTentativa(evento, pessoa, ambienteId, false, motivo);
         }
 

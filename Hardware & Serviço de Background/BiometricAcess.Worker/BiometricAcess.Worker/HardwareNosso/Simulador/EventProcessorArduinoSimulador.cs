@@ -21,7 +21,7 @@ public class EventProcessorArduinoSimulador : IEventProcessor
         _arduinoService = arduinoService;
     }
 
-    public void Processar(EventoAcesso evento)
+    public Task Processar(EventoAcesso evento)
     {
         Console.WriteLine($"[ArduinoSim] Evento — Pessoa: {evento.PessoaID} | Tipo: {evento.TipoVerificacao}");
 
@@ -36,7 +36,7 @@ public class EventProcessorArduinoSimulador : IEventProcessor
             }
 
             Console.WriteLine($"[ArduinoSim] Acesso liberado — Pessoa: {evento.PessoaID}");
-            return;
+            return Task.CompletedTask;
         }
 
         var pessoa = _pessoas.FirstOrDefault(p => p.Id == evento.PessoaID);
@@ -48,14 +48,14 @@ public class EventProcessorArduinoSimulador : IEventProcessor
             {
                 Console.WriteLine($"[ArduinoSim] Pessoa {evento.PessoaID} não cadastrada");
                 _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
-                return;
+                return Task.CompletedTask;
             }
 
             if (!pessoa.Ativa)
             {
                 Console.WriteLine($"[ArduinoSim] Pessoa {evento.PessoaID} inativa");
                 _arduinoService.NotificarAcessoNegado(evento.PessoaID, "inativo");
-                return;
+                return Task.CompletedTask;
             }
 
             if (!pessoa.TemBiometria)
@@ -63,13 +63,13 @@ public class EventProcessorArduinoSimulador : IEventProcessor
                 // Primeiro acesso — pede senha
                 Console.WriteLine($"[ArduinoSim] Primeiro acesso — pedindo senha — Pessoa: {evento.PessoaID}");
                 _arduinoService.NotificarPedirSenha(evento.PessoaID);
-                return;
+                return Task.CompletedTask;
             }
 
             // Já tem biometria — pede digital direto
             Console.WriteLine($"[ArduinoSim] Solicitando digital — Pessoa: {evento.PessoaID}");
             _arduinoService.NotificarVerificarDigital(evento.PessoaID);
-            return;
+            return Task.CompletedTask;
         }
 
         // ── EVT|SENHA — Arduino mandou senha após pedido ──────────────
@@ -78,7 +78,7 @@ public class EventProcessorArduinoSimulador : IEventProcessor
             if (pessoa == null)
             {
                 _arduinoService.NotificarAcessoNegado(evento.PessoaID, "nao_cadastrado");
-                return;
+                return Task.CompletedTask;
             }
 
             // MotivoNegacao carrega a senha temporariamente
@@ -86,14 +86,16 @@ public class EventProcessorArduinoSimulador : IEventProcessor
             {
                 Console.WriteLine($"[ArduinoSim] Senha incorreta — Pessoa: {evento.PessoaID}");
                 _arduinoService.NotificarAcessoNegado(evento.PessoaID, "senha_incorreta");
-                return;
+                return Task.CompletedTask;
             }
 
             // Senha correta — cadastra biometria
             Console.WriteLine($"[ArduinoSim] Senha correta — iniciando cadastro de digital — Pessoa: {evento.PessoaID}");
             _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID);
-            return;
+            return Task.CompletedTask;
         }
+
+        return Task.CompletedTask;
     }
 
     private class PessoaMock

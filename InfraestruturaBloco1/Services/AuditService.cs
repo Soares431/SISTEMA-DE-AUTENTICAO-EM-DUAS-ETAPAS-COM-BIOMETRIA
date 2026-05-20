@@ -12,45 +12,24 @@ public class AuditService
         _logRepo = logRepo;
     }
 
-    public async Task RegistrarAsync(int adminId, string acao, string entidade, int? entidadeId = null)
+    public void Registrar(int adminId, string acao, string entidade, int? entidadeId = null)
     {
-        var log = new LogAdmin
-        {
-            AdminId = adminId,
-            Acao = acao,
-            EntidadeAfetada = entidade,
-            EntidadeId = entidadeId,
-            DataHora = DateTime.UtcNow,
-            DataExpiracao = DateTime.UtcNow.AddDays(180)
-        };
-
-        await _logRepo.Registrar(log);
+        _logRepo.Registrar(adminId, acao, entidade, entidadeId);
     }
 
-    // Novo método: registrar log com vídeo
-    public async Task RegistrarComVideoAsync(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
+    public void RegistrarComVideo(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
     {
-        var log = new LogAdmin
-        {
-            AdminId = adminId,
-            Acao = acao,
-            EntidadeAfetada = entidade,
-            EntidadeId = entidadeId,
-            DataHora = DateTime.UtcNow,
-            DataExpiracao = DateTime.UtcNow.AddDays(180),
-            VideoUrl = videoUrl
-        };
-
-        await _logRepo.Registrar(log);
+        // VideoUrl não existe no LogAdmin ainda — registra sem o vídeo
+        _logRepo.Registrar(adminId, acao, entidade, entidadeId);
     }
 
-    public async Task<List<LogAdmin>> ConsultarAsync(
+    public List<LogAdmin> Consultar(
         int? adminId = null,
         string? acao = null,
         string? entidade = null,
         DateTime? dataInicio = null,
         DateTime? dataFim = null)
     {
-        return await _logRepo.ListarComFiltros(adminId, acao, entidade, dataInicio, dataFim);
+        return _logRepo.ListarComFiltros(adminId, acao, entidade, dataInicio, dataFim);
     }
 }

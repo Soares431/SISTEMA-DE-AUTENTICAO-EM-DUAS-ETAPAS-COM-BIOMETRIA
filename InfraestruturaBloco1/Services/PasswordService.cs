@@ -17,9 +17,9 @@ public class PasswordService
     public bool VerificarHash(string senha, string hash) =>
         BCrypt.Net.BCrypt.Verify(senha, hash);
 
-    public async Task<string> GerarSenhaAleatoriaAsync(int pessoaId)
+    public string GerarSenhaAleatoria()
     {
-        var disponivel = await _senhaRepo.BuscarDisponivel(pessoaId);
+        var disponivel = _senhaRepo.BuscarDisponivel();
         return disponivel?.Senha
             ?? throw new InvalidOperationException("Nenhuma senha disponível no banco.");
     }
