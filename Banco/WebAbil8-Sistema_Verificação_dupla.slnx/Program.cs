@@ -1,4 +1,6 @@
 using BCrypt.Net;
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.OpenApi;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Configurations;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Jobs;
@@ -11,16 +13,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-
 // Scoped é usado para criar uma nova instância do serviço para cada solicitação HTTP. Isso é útil para serviços que possuem estado ou que precisam ser isolados por solicitação, como um serviço de pessoa neste caso  
 // Scoped é instanciado uma vez por solicitação HTTP
 // É injentado a instancia do serviço em toda a solicitação, ou seja, em todos os controladores ou outras classes que dependem dele durante a mesma solicitação.
 
-
-// 
 builder.AddSeriLogLogging();
+
+builder.Services.AddControllers();
+
+builder.Services.AddHangfire(config =>
+    config.UseMemoryStorage()); // ou UseStorage para persistir os jobs
+
+builder.Services.AddHangfireServer();
 
 //builder.Services.AddDatabaseConfiguration(builder.Configuration);
 builder.Services.AddDataBaseConfiguration(builder.Configuration);
@@ -35,13 +39,16 @@ builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
 
-builder.Services.AddHostedService<InativarUsuariosInativos2AnosJob>();
-builder.Services.AddHostedService<LimparDadosExpiradosJob>();
+builder.Services.AddScoped<InativarUsuariosInativos2AnosJob>();
+builder.Services.AddScoped<LimparDadosExpiradosJob>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// ✅ Build() APENAS aqui, depois de todos os serviços registrados
 var app = builder.Build();
+
+app.UseHangfireDashboard("/hangfire");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -98,6 +105,20 @@ using (var scope = app.Services.CreateScope())
         });
         db.SaveChanges();
     }
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    // Roda uma vez por dia às meia-noite
+    RecurringJob.AddOrUpdate<InativarUsuariosInativos2AnosJob>(
+        "inativar-usuarios-inativos",
+        job => job.Executar(),
+        Cron.Daily);
+
+    RecurringJob.AddOrUpdate<LimparDadosExpiradosJob>(
+        "limpar-dados-expirados",
+        job => job.Executar(),
+        Cron.Daily);
 }
 
 app.UseHttpsRedirection();
