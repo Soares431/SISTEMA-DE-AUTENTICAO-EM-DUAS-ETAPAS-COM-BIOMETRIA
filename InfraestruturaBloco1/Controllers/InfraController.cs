@@ -23,14 +23,14 @@ namespace InfraestruturaBloco1.Controllers
         [HttpGet("hash")]
         public IActionResult Hash(string senha)
         {
-            var hash = _passwordService.HashPassword(senha);
+            var hash = _passwordService.GerarHash(senha);
             return Ok(hash);
         }
 
         [HttpGet("verify")]
         public IActionResult Verify(string senha, string hash)
         {
-            var isValid = _passwordService.VerifyPassword(senha, hash);
+            var isValid = _passwordService.VerificarHash(senha, hash);
             return Ok(isValid);
         }
 

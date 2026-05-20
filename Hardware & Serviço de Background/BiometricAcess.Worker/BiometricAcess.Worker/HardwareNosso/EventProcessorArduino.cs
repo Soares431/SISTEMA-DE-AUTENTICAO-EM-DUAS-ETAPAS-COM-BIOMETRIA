@@ -27,7 +27,7 @@ public class EventProcessorArduino : IEventProcessor
         _arduinoService = arduinoService;
     }
 
-    public void Processar(EventoAcesso evento)
+    public async Task Processar(EventoAcesso evento)
     {
         var dispositivo = BuscarDispositivoPorIp(evento.IpDispositivo);
         if (dispositivo == null)
@@ -37,7 +37,7 @@ public class EventProcessorArduino : IEventProcessor
         }
 
         var ambienteId = dispositivo.Id;
-        var pessoa = _pessoaRepository.BuscarPorId(evento.PessoaID);
+        var pessoa = await _pessoaRepository.BuscarPorId(evento.PessoaID);
 
         // ── EVT|ID — Arduino mandou só o ID ──────────────────────────
         // C# decide se pede senha (primeiro acesso) ou digital (já tem biometria)
@@ -104,11 +104,11 @@ public class EventProcessorArduino : IEventProcessor
 
         if (evento.TipoVerificacao == "primeiro_acesso")
         {
-            _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
+            await _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
             Console.WriteLine($"[Arduino] Biometria cadastrada — Pessoa: {pessoa.Id}");
         }
 
-        _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
+        await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
         RegistrarTentativa(evento, pessoa, ambienteId, true, null);
     }
 

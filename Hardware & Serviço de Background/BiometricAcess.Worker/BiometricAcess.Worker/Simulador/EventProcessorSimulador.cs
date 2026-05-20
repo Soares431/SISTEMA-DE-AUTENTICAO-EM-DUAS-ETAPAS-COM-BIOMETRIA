@@ -10,29 +10,30 @@ namespace BiometricAcess.Worker.Simulador
         private readonly List<int> _pessoasInativas = new List<int> { 6, 7 };
         private readonly List<int> _pessoasComBiometria = new List<int> { 1, 2, 3 };
 
-        public void Processar(EventoAcesso evento)
+        public Task Processar(EventoAcesso evento)
         {
             Console.WriteLine($"Processando evento — Pessoa: {evento.PessoaID} | Tipo: {evento.TipoVerificacao}");
 
             if (_pessoasInativas.Contains(evento.PessoaID))
             {
                 FluxoAcessoNegado(evento, "inativo");
-                return;
+                return Task.CompletedTask;
             }
 
             if (!_pessoasAtivas.Contains(evento.PessoaID))
             {
                 FluxoNaoCadastrado(evento);
-                return;
+                return Task.CompletedTask;
             }
 
             if (evento.TipoVerificacao == "senha_id" && !_pessoasComBiometria.Contains(evento.PessoaID))
             {
                 FluxoPrimeiroAcesso(evento);
-                return;
+                return Task.CompletedTask;
             }
 
             FluxoAcessoNormal(evento);
+            return Task.CompletedTask;
         }
 
         private void FluxoPrimeiroAcesso(EventoAcesso evento)
