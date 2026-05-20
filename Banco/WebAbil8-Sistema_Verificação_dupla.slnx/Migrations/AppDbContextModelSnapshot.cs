@@ -318,6 +318,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Cpf")
+                        .IsUnique();
+
                     b.ToTable("Pessoa");
                 });
 
