@@ -3,10 +3,22 @@ using BiometricAcess.Worker.Services;
 using BiometricAcess.Worker.Simulador;
 using BiometricAcess.Worker.HardwareNosso;
 using BiometricAcess.Worker.HardwareNosso.Simulador;
+using InfraestruturaBloco1.Services;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddWindowsService();
+
+// ═══════════════════════════════════════════════════════════════
+// Serviços compartilhados
+// ═══════════════════════════════════════════════════════════════
+builder.Services.AddScoped<CameraService>(sp =>
+    new CameraService(
+        sp.GetRequiredService<ILogAdminRepository>(),
+        Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras"
+    ));
+
 // ═══════════════════════════════════════════════════════════════
 // OPÇÃO 1 — Simulador falso (padrão, sem hardware)
 // ═══════════════════════════════════════════════════════════════
