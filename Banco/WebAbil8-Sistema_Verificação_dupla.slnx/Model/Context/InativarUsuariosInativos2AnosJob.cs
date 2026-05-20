@@ -1,49 +1,39 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+﻿// Jobs/InativarUsuariosInativos2AnosJob.cs
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
 {
-    public class InativarUsuariosInativos2AnosJob : BackgroundService
+    public class InativarUsuariosInativos2AnosJob
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly AppDbContext _context;
         private readonly ILogger<InativarUsuariosInativos2AnosJob> _logger;
 
         public InativarUsuariosInativos2AnosJob(
-            IServiceProvider serviceProvider,
+            AppDbContext context,
             ILogger<InativarUsuariosInativos2AnosJob> logger)
         {
-            _serviceProvider = serviceProvider;
+            _context = context;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        public void Executar()
         {
-            while (!stoppingToken.IsCancellationRequested)
+            _logger.LogInformation("Executando job: InativarUsuariosInativos2Anos");
+
+            var doisAnosAtras = DateTime.UtcNow.AddYears(-2);
+
+            var usuarios = _context.Pessoas
+                .Where(p => p.Status == "ativo"
+                    && p.dataUltimoAcesso < doisAnosAtras)
+                .ToList();
+
+            foreach (var usuario in usuarios)
             {
-                _logger.LogInformation("Executando job: InativarUsuariosInativos2Anos");
-
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-                var doisAnosAtras = DateTime.UtcNow.AddYears(-2);
-
-                var usuarios = db.Pessoas
-                    .Where(p => p.Status == "ativo"
-                        && p.dataUltimoAcesso < doisAnosAtras)
-                    .ToList();
-
-                foreach (var usuario in usuarios)
-                {
-                    usuario.Status = "inativo";
-                    _logger.LogInformation("Usuário {id} inativado por inatividade.", usuario.Id);
-                }
-
-                await db.SaveChangesAsync();
-
-                // Roda uma vez por dia
-                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
+                usuario.Status = "inativo";
+                _logger.LogInformation("Usuário {id} inativado por inatividade.", usuario.Id);
             }
+
+            _context.SaveChanges();
         }
     }
 }

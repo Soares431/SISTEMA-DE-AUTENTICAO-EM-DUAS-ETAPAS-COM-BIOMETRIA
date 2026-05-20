@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 {
     [Table("Pessoa")]
+    [Index(nameof(Cpf), IsUnique = true)]
     public class Pessoa
     {
         [Key]
