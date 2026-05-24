@@ -4,7 +4,6 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
-using Hangfire.SQLite;
 
 var builder = WebApplication.CreateBuilder(args);
 
