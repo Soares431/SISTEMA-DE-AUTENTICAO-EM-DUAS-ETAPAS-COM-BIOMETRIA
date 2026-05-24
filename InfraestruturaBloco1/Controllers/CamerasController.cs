@@ -7,6 +7,7 @@ namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // protege todos os endpoints
     public class CamerasController : ControllerBase
     {
         private readonly ICameraRepository _cameraRepo;

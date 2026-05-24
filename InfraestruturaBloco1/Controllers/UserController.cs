@@ -1,10 +1,12 @@
 using InfraestruturaBloco1.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // protege todos os endpoints
     public class UserController : ControllerBase
     {
         private readonly AuditService _auditService;

@@ -16,6 +16,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
 
     <!-- Hangfire para jobs e dashboard -->
 	<PackageReference Include="Hangfire.MemoryStorage" Version="1.8.0" />

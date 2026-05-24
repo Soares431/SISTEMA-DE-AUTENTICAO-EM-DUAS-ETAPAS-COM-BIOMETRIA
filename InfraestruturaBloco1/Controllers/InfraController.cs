@@ -6,6 +6,7 @@ namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // protege todos os endpoints
     public class InfraController : ControllerBase
     {
         private readonly PasswordService _passwordService;
