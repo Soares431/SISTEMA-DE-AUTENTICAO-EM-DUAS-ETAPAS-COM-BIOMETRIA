@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
+using InfraestruturaBloco1.Services;
 
 namespace InfraestruturaBloco1.Controllers
 {
@@ -9,10 +10,12 @@ namespace InfraestruturaBloco1.Controllers
     public class CamerasController : ControllerBase
     {
         private readonly ICameraRepository _cameraRepo;
+        private readonly CameraService _cameraService;
 
-        public CamerasController(ICameraRepository cameraRepo)
+        public CamerasController(ICameraRepository cameraRepo, CameraService cameraService)
         {
             _cameraRepo = cameraRepo;
+            _cameraService = cameraService;
         }
 
         // GET: api/cameras
@@ -30,6 +33,15 @@ namespace InfraestruturaBloco1.Controllers
             var camera = await _cameraRepo.BuscarPorId(id);
             if (camera == null) return NotFound();
             return Ok(camera);
+        }
+
+        // GET: api/cameras/stream/5
+        [HttpGet("stream/{id}")]
+        public async Task<ActionResult<string>> GetCameraStream(int id)
+        {
+            var url = await _cameraService.ObterUrlStream(id);
+            if (url == null) return NotFound("Câmera não encontrada ou sem URL RTSP configurada.");
+            return Ok(url);
         }
 
         // POST: api/cameras
