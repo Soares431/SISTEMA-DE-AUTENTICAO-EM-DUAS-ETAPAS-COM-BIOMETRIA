@@ -17,22 +17,12 @@ public class AuditService
         _logRepo.Registrar(adminId, acao, entidade, entidadeId);
     }
 
-    public async Task RegistrarComVideo(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
+    public void RegistrarComVideo(int adminId, string acao, string entidade, int? entidadeId, string? videoPath)
     {
-        var log = new LogAdmin
-        {
-            AdminId = adminId,
-            Acao = acao,
-            EntidadeAfetada = entidade,
-            EntidadeId = entidadeId,
-            DataHora = DateTime.UtcNow,
-            DataExpiracao = DateTime.UtcNow.AddDays(730), // 2 anos de retenção
-            VideoUrl = videoUrl // agora o vídeo é registrado
-        };
-
-        await _logRepo.Registrar(log);
-}
-
+        // VideoUrl não existe no LogAdmin — registra a ação normalmente
+        // o path do vídeo fica em TentativaAcesso.GravacaoPath
+        _logRepo.Registrar(adminId, acao, entidade, entidadeId);
+    }
 
     public List<LogAdmin> Consultar(
         int? adminId = null,
