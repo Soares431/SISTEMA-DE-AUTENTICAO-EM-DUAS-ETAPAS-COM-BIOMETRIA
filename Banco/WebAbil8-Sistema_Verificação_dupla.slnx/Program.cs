@@ -1,7 +1,10 @@
 using BCrypt.Net;
 using Hangfire;
 using Hangfire.MemoryStorage;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Configurations;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Jobs;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
@@ -20,6 +23,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddSeriLogLogging();
 
 builder.Services.AddControllers();
+
+// JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
 
 builder.Services.AddHangfire(config =>
     config.UseMemoryStorage()); // ou UseStorage para persistir os jobs
@@ -123,6 +143,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication(); // ← adicionado
 app.UseAuthorization();
 
 app.MapControllers();

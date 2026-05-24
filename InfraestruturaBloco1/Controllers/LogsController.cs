@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using InfraestruturaBloco1.Services;
-
+using Microsoft.AspNetCore.Authorization;
 namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
