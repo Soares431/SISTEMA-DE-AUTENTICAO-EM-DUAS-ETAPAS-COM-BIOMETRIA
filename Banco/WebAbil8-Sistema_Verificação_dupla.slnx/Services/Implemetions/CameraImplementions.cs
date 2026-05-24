@@ -4,11 +4,11 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 {
-    public class CameraImplemetions : ICameraRepository
+    public class CameraImplementions : ICameraRepository
     {
         private readonly AppDbContext _context;
 
-        public CameraImplemetions(AppDbContext context)
+        public CameraImplementions(AppDbContext context)
         {
             _context = context;
         }

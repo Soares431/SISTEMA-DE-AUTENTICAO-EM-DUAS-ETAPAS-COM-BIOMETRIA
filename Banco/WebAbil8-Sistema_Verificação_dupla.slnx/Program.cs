@@ -36,7 +36,7 @@ builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetio
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
-builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
+builder.Services.AddScoped<ICameraRepository, CameraImplementions>();
 builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
 
 builder.Services.AddScoped<InativarUsuariosInativos2AnosJob>();
