@@ -28,6 +28,9 @@ builder.Services.AddScoped<CameraService>(provider =>
         provider.GetRequiredService<ICameraRepository>(),
         builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes"
     ));
+// Serviços do Bloco 4 — Relatórios
+builder.Services.AddScoped<RelatorioAmbienteService>(); 
+builder.Services.AddScoped<ExportService>();
 
 // Configuração do Hangfire sem SQLite
 builder.Services.AddHangfire(config => config.UseMemoryStorage());
