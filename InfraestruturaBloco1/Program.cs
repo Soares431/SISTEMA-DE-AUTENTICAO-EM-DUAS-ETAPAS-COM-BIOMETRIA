@@ -16,7 +16,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
-builder.Services.AddScoped<ICameraRepository, CameraImplementions>();
+builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 
 // Serviços do Int4
 builder.Services.AddScoped<EmailService>();
@@ -30,9 +30,8 @@ builder.Services.AddScoped<CameraService>(provider =>
         builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes"
     ));
 
-// Configuração do Hangfire com SQLite
-builder.Services.AddHangfire(config =>
-    config.UseSQLiteStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Configuração do Hangfire sem SQLite
+builder.Services.AddHangfire(config => config.UseMemoryStorage());
 builder.Services.AddHangfireServer();
 
 // Controllers e Swagger
