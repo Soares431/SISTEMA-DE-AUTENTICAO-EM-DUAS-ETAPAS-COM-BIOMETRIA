@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using InfraestruturaBloco1.Services;
-
+using Microsoft.AspNetCore.Authorization;
 namespace InfraestruturaBloco1.Controllers
 {
     [ApiController]
