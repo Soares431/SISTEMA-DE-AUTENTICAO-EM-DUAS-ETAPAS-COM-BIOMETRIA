@@ -4,6 +4,8 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 using Microsoft.EntityFrameworkCore;
 using Hangfire; 
+
+
 using Hangfire.MemoryStorage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,7 +32,7 @@ builder.Services.AddScoped<CameraService>(provider =>
         builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes"
     ));
 // Serviços do Bloco 4 — Relatórios
-builder.Services.AddScoped<RelatorioAmbienteService>(); 
+builder.Services.AddScoped<RelatorioAmbienteService>();
 builder.Services.AddScoped<ExportService>();
 
 // Configuração do Hangfire sem SQLite

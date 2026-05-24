@@ -1,4 +1,7 @@
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
+
+namespace InfraestruturaBloco1.Services;
 
 public class RelatorioAmbienteService
 {
@@ -9,34 +12,37 @@ public class RelatorioAmbienteService
         _logRepo = logRepo;
     }
 
-    // Gera PDF
-    public async Task Gerar(int ambienteId, DateTime de, DateTime ate, string nomeArquivo)
+    public void Gerar(int ambienteId, DateTime de, DateTime ate, string nomeArquivo)
     {
-        var logs = await _logRepo.BuscarPorAmbiente(ambienteId, de, ate);
+        var logs = _logRepo.ListarComFiltros(null, null, null, de, ate)
+            .Where(l => l.EntidadeId == ambienteId)
+            .ToList();
 
-        var cabecalhos = new List<string> { "Data", "Admin", "Ação", "Entidade", "Video" };
+        var cabecalhos = new List<string> { "Data", "Admin", "Ação", "Entidade" };
         var linhas = logs.Select(l => new List<string>
         {
             l.DataHora.ToString("dd/MM/yyyy HH:mm"),
             l.AdminId.ToString(),
             l.Acao,
-            l.EntidadeAfetada,
-            l.VideoUrl ?? "-"
+            l.EntidadeAfetada
         }).ToList();
 
         ExportService.ExportarPDF($"Relatório do Ambiente {ambienteId}", cabecalhos, linhas, nomeArquivo);
     }
 
-    // Gera CSV
-    public async Task GerarCSV(int ambienteId, DateTime de, DateTime ate, string nomeArquivo)
+    public void GerarCSV(int ambienteId, DateTime de, DateTime ate, string nomeArquivo)
     {
-        var logs = await _logRepo.BuscarPorAmbiente(ambienteId, de, ate);
+        var logs = _logRepo.ListarComFiltros(null, null, null, de, ate)
+            .Where(l => l.EntidadeId == ambienteId)
+            .ToList();
+
         ExportService.ExportarCSV(logs, nomeArquivo);
     }
 
-    // Método auxiliar para controller
-    public async Task<List<LogAdmin>> BuscarLogs(int ambienteId, DateTime de, DateTime ate)
+    public List<LogAdmin> BuscarLogs(int ambienteId, DateTime de, DateTime ate)
     {
-        return await _logRepo.BuscarPorAmbiente(ambienteId, de, ate);
+        return _logRepo.ListarComFiltros(null, null, null, de, ate)
+            .Where(l => l.EntidadeId == ambienteId)
+            .ToList();
     }
 }
