@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -17,10 +16,15 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+
+    <!-- Hangfire para jobs e dashboard -->
+    <PackageReference Include="Hangfire.Core" Version="1.7.35" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.7.35" />
+    <PackageReference Include="Hangfire.SQLite" Version="1.7.35" />
   </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\WebAbil8-Sistema_Verificação_dupla.slnx.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\WebAbil8-Sistema_Verificação_dupla.slnx.csproj" />
+  </ItemGroup>
 
 </Project>

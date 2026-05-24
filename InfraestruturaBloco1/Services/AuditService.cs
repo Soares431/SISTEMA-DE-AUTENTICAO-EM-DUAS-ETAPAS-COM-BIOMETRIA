@@ -17,11 +17,22 @@ public class AuditService
         _logRepo.Registrar(adminId, acao, entidade, entidadeId);
     }
 
-    public void RegistrarComVideo(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
+    public async Task RegistrarComVideo(int adminId, string acao, string entidade, int? entidadeId, string? videoUrl)
     {
-        // VideoUrl não existe no LogAdmin ainda — registra sem o vídeo
-        _logRepo.Registrar(adminId, acao, entidade, entidadeId);
-    }
+        var log = new LogAdmin
+        {
+            AdminId = adminId,
+            Acao = acao,
+            EntidadeAfetada = entidade,
+            EntidadeId = entidadeId,
+            DataHora = DateTime.UtcNow,
+            DataExpiracao = DateTime.UtcNow.AddDays(730), // 2 anos de retenção
+            VideoUrl = videoUrl // agora o vídeo é registrado
+        };
+
+        await _logRepo.Registrar(log);
+}
+
 
     public List<LogAdmin> Consultar(
         int? adminId = null,
