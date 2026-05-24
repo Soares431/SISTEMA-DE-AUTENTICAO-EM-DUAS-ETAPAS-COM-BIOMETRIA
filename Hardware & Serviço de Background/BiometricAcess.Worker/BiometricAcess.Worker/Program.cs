@@ -16,8 +16,9 @@ builder.Services.AddWindowsService();
 builder.Services.AddScoped<CameraService>(sp =>
     new CameraService(
         sp.GetRequiredService<ILogAdminRepository>(),
+        sp.GetRequiredService<ICameraRepository>(),
         Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras"
-    ));
+    )); 
 
 // ═══════════════════════════════════════════════════════════════
 // OPÇÃO 1 — Simulador falso (padrão, sem hardware)
