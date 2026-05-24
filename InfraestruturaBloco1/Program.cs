@@ -11,11 +11,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Repositórios do Int1 — registrar ANTES dos serviços que dependem deles
+
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
-builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
-
+builder.Services.AddScoped<ICameraRepository, CameraImplementions>();
 // Serviços do Int4
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<PasswordService>();
