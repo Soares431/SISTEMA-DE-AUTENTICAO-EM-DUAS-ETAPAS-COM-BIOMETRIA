@@ -1,100 +1,174 @@
 @page "/ambientes/{Id:int}"
-
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject IAmbienteRepository AmbienteRepo
+@inject IAmbientePessoaRepository AmbientePessoaRepo
+@inject IDispositivoT50Repository DispositivoRepo
+@inject ICameraRepository CameraRepo
+@inject IPessoaRepository PessoaRepo
 <div class="space-y">
-    <div class="flex items-center gap-4">
-        <a href="/ambientes" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
-        <div class="flex-1"><h1 class="text-2xl font-bold">@ambiente.Nome</h1><p class="text-muted">@ambiente.Descricao</p></div>
-        <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online</span>
-    </div>
-
-    <div class="tabs-list">
-        <button class="tab-trigger @(activeTab == "t50" ? "active" : "")" @onclick='() => activeTab = "t50"'>Dispositivo T50</button>
-        <button class="tab-trigger @(activeTab == "pessoas" ? "active" : "")" @onclick='() => activeTab = "pessoas"'>Pessoas com Acesso</button>
-        <button class="tab-trigger @(activeTab == "cameras" ? "active" : "")" @onclick='() => activeTab = "cameras"'>Câmeras</button>
-        <button class="tab-trigger @(activeTab == "config" ? "active" : "")" @onclick='() => activeTab = "config"'>Configurações</button>
-    </div>
-
-    @if (activeTab == "t50")
+    @if (ambiente == null)
     {
-        <div class="grid grid-2">
-            <div class="card"><div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Informacoes do Dispositivo</div></div>
-                <div class="card-content"><div class="grid grid-2" style="gap: 1rem;">
-                    <div><p class="text-sm text-muted">Endereco IP</p><p class="font-mono">@ambiente.T50Ip</p></div>
-                    <div><p class="text-sm text-muted">Firmware</p><p class="font-mono">@ambiente.T50Firmware</p></div>
-                    <div><p class="text-sm text-muted">Status</p><span class="badge badge-success">Online</span></div>
-                    <div><p class="text-sm text-muted">Ultima Sincronizacao</p><p>@ambiente.UltimaSincronizacao</p></div>
-                </div></div>
-            </div>
-            <div class="card"><div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biometrica</div><p class="card-description">Armazenamento de templates biometricos</p></div>
-                <div class="card-content space-y-sm">
-                    <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium text-warning">@(ambiente.T50Capacidade)%</span></div>
-                    <div class="progress-bar"><div class="progress-fill" style="width: @(ambiente.T50Capacidade)%; background: var(--warning);"></div></div>
-                    <p class="text-sm text-muted">Atenção: A capacidade está acima de 85%. Considere limpar templates inativos.</p>
-                    <button class="btn btn-outline btn-block">Gerenciar Templates</button>
-                </div>
-            </div>
+        <p class="text-muted">Carregando...</p>
+    }
+    else
+    {
+        <div class="flex items-center gap-4">
+            <a href="/ambientes" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
+            <div class="flex-1"><h1 class="text-2xl font-bold">@ambiente.Nome</h1><p class="text-muted">Criado em @ambiente.DataCriacao.ToString("dd/MM/yyyy")</p></div>
+            @if (dispositivo != null && dispositivo.DigitaisCadastradas >= 950)
+            {
+                <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> Alerta</span>
+            }
+            else
+            {
+                <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online</span>
+            }
         </div>
-    }
-    else if (activeTab == "pessoas")
-    {
-        <div class="card"><div class="card-header card-header-row"><div><div class="card-title"><Icon Name="users" Size="20" /> Pessoas com Acesso</div><p class="card-description">3 pessoas autorizadas</p></div>
-            <button class="btn btn-primary" @onclick="() => showAddPessoa = true"><Icon Name="plus" Size="16" /> Adicionar Pessoa</button></div>
-            <div class="card-content"><table><thead><tr><th>Nome</th><th>Cargo</th><th>Último Acesso</th><th class="text-right">Ações</th></tr></thead>
-                <tbody>
-                    <tr><td class="font-medium"><a href="/pessoas/1" class="text-primary">Carlos Silva</a></td><td class="text-muted">Administrador de Sistemas</td><td class="text-muted">Hoje, 14:32</td><td class="text-right"><button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button></td></tr>
-                    <tr><td class="font-medium"><a href="/pessoas/2" class="text-primary">Ana Santos</a></td><td class="text-muted">Engenheira de Redes</td><td class="text-muted">Hoje, 11:15</td><td class="text-right"><button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button></td></tr>
-                    <tr><td class="font-medium"><a href="/pessoas/3" class="text-primary">Pedro Oliveira</a></td><td class="text-muted">Técnico de Suporte</td><td class="text-muted">Ontem, 16:45</td><td class="text-right"><button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button></td></tr>
-                </tbody></table></div></div>
-    }
-    else if (activeTab == "cameras")
-    {
-        <div class="card"><div class="card-header card-header-row"><div><div class="card-title"><Icon Name="camera" Size="20" /> Câmeras</div><p class="card-description">3 câmeras configuradas</p></div>
-            <button class="btn btn-primary" @onclick="() => showAddCamera = true"><Icon Name="plus" Size="16" /> Adicionar Câmera</button></div>
-            <div class="card-content"><div class="grid grid-2" style="gap: 1.5rem;">
-                @{ var cams = new[] { ("Câmera Entrada", "192.168.1.101", "online"), ("Câmera Racks", "192.168.1.102", "online"), ("Câmera Saída", "192.168.1.103", "offline") }; }
-                @foreach (var (nome, ip, status) in cams)
-                {
-                    <div class="card" style="background: color-mix(in srgb, var(--muted) 30%, transparent);">
-                        <div class="card-content pt-6">
-                            <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;"><Icon Name="camera" Size="48" CssClass="text-muted" /></div>
-                            <div class="flex justify-between items-center"><span class="font-medium">@nome</span><span class="badge @(status == "online" ? "badge-success" : "badge-muted")">@status</span></div>
-                            <p class="text-sm font-mono text-muted">@ip</p>
-                            <button class="btn btn-outline btn-block mt-4" disabled="@(status == "offline")">Ver Ao Vivo</button>
+
+        <div class="tabs-list">
+            <button class="tab-trigger @(activeTab == "t50" ? "active" : "")" @onclick='() => activeTab = "t50"'>Dispositivo T50</button>
+            <button class="tab-trigger @(activeTab == "pessoas" ? "active" : "")" @onclick='() => activeTab = "pessoas"'>Pessoas com Acesso</button>
+            <button class="tab-trigger @(activeTab == "cameras" ? "active" : "")" @onclick='() => activeTab = "cameras"'>Câmeras</button>
+            <button class="tab-trigger @(activeTab == "config" ? "active" : "")" @onclick='() => activeTab = "config"'>Configurações</button>
+        </div>
+
+        @if (activeTab == "t50")
+        {
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Informações do Dispositivo</div></div>
+                    <div class="card-content">
+                        <div class="grid grid-2" style="gap: 1rem;">
+                            <div><p class="text-sm text-muted">Endereço IP</p><p class="font-mono">@(dispositivo?.EnderecoIP ?? "-")</p></div>
+                            <div><p class="text-sm text-muted">Porta</p><p class="font-mono">@(dispositivo?.Porta ?? 0)</p></div>
+                            <div><p class="text-sm text-muted">Nome</p><p>@(dispositivo?.Nome ?? "-")</p></div>
+                            <div><p class="text-sm text-muted">Digitais Cadastradas</p><p class="font-medium">@(dispositivo?.DigitaisCadastradas ?? 0)</p></div>
                         </div>
                     </div>
-                }
-            </div></div></div>
-    }
-    else if (activeTab == "config")
-    {
-        <div class="card"><div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravacao</div><p class="card-description">Tempo em segundos que o sistema aguarda apos uma tentativa de acesso para salvar a gravacao</p></div>
-            <div class="card-content space-y-sm">
-                <div class="flex items-center gap-4"><input type="number" class="form-input w-32" value="10" min="1" max="60" /><span class="text-muted">segundos</span></div>
-                <button class="btn btn-primary">Salvar Configuracoes</button>
-            </div></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biométrica</div><p class="card-description">Armazenamento de templates biométricos</p></div>
+                    <div class="card-content space-y-sm">
+                        @{
+                            var pct = dispositivo != null ? (dispositivo.DigitaisCadastradas * 100 / 1000) : 0;
+                        }
+                        <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium @(pct >= 95 ? "text-destructive" : pct >= 85 ? "text-warning" : "")">@(dispositivo?.DigitaisCadastradas ?? 0) / 1000</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>
+                        @if (pct >= 95)
+                        {
+                            <p class="text-sm text-destructive">Atenção: Capacidade crítica! Remova templates inativos urgentemente.</p>
+                        }
+                        else if (pct >= 85)
+                        {
+                            <p class="text-sm text-muted">Atenção: Capacidade acima de 85%. Considere limpar templates inativos.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else if (activeTab == "pessoas")
+        {
+            <div class="card">
+                <div class="card-header card-header-row">
+                    <div><div class="card-title"><Icon Name="users" Size="20" /> Pessoas com Acesso</div><p class="card-description">@pessoas.Count pessoas autorizadas</p></div>
+                    <button class="btn btn-primary" @onclick="() => showAddPessoa = true"><Icon Name="plus" Size="16" /> Adicionar Pessoa</button>
+                </div>
+                <div class="card-content">
+                    <table>
+                        <thead><tr><th>Nome</th><th>Cargo</th><th class="text-right">Ações</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in pessoas)
+                            {
+                                <tr>
+                                    <td class="font-medium"><a href="/pessoas/@p.Id" class="text-primary">@p.Nome</a></td>
+                                    <td class="text-muted">@p.Cargo</td>
+                                    <td class="text-right">
+                                        <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => HandleRemoverPessoa(p.Id)"><Icon Name="trash" Size="16" /></button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else if (activeTab == "cameras")
+        {
+            <div class="card">
+                <div class="card-header card-header-row">
+                    <div><div class="card-title"><Icon Name="camera" Size="20" /> Câmeras</div><p class="card-description">@cameras.Count câmeras configuradas</p></div>
+                    <button class="btn btn-primary" @onclick="() => showAddCamera = true"><Icon Name="plus" Size="16" /> Adicionar Câmera</button>
+                </div>
+                <div class="card-content">
+                    <div class="grid grid-2" style="gap: 1.5rem;">
+                        @foreach (var cam in cameras)
+                        {
+                            <div class="card" style="background: color-mix(in srgb, var(--muted) 30%, transparent);">
+                                <div class="card-content pt-6">
+                                    <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;"><Icon Name="camera" Size="48" CssClass="text-muted" /></div>
+                                    <div class="flex justify-between items-center"><span class="font-medium">@cam.Nome</span><span class="badge @(cam.Ativa ? "badge-success" : "badge-muted")">@(cam.Ativa ? "Ativa" : "Inativa")</span></div>
+                                    <p class="text-sm font-mono text-muted">@(cam.UrlRTSP ?? "-")</p>
+                                    <button class="btn btn-outline btn-block mt-4" disabled="@(!cam.Ativa)">Ver Ao Vivo</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else if (activeTab == "config")
+        {
+            <div class="card">
+                <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravação</div><p class="card-description">Tempo em segundos que o sistema aguarda após uma tentativa de acesso para salvar a gravação</p></div>
+                <div class="card-content space-y-sm">
+                    <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="1" max="120" /><span class="text-muted">segundos</span></div>
+                    <button class="btn btn-primary" @onclick="HandleSalvarConfig">Salvar Configurações</button>
+                </div>
+            </div>
+        }
     }
 </div>
 
 @if (showAddPessoa)
 {
-    <div class="modal-overlay" @onclick="() => showAddPessoa = false"><div class="modal" @onclick:stopPropagation="true">
-        <div class="modal-header"><h3>Adicionar Pessoa</h3><p>Selecione uma pessoa para conceder acesso a este ambiente</p></div>
-        <div class="modal-body"><div class="form-group"><label class="form-label">Pessoa</label><select class="form-select"><option>Maria Costa - Gerente</option><option>Jose Lima - Desenvolvedor</option><option>Paula Souza - Analista</option></select></div></div>
-        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showAddPessoa = false">Adicionar</button></div>
-    </div></div>
+    <div class="modal-overlay" @onclick="() => showAddPessoa = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3>Adicionar Pessoa</h3><p>Selecione uma pessoa para conceder acesso a este ambiente</p></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Pessoa</label>
+                    <select class="form-select" @bind="pessoaSelecionadaId">
+                        @foreach (var p in todasPessoas)
+                        {
+                            <option value="@p.Id">@p.Nome - @p.Cargo</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button><button class="btn btn-primary" @onclick="HandleAdicionarPessoa">Adicionar</button></div>
+        </div>
+    </div>
 }
 
 @if (showAddCamera)
 {
-    <div class="modal-overlay" @onclick="() => showAddCamera = false"><div class="modal" @onclick:stopPropagation="true">
-        <div class="modal-header"><h3>Adicionar Camera</h3><p>Configure uma nova camera para este ambiente</p></div>
-        <div class="modal-body space-y-sm">
-            <div class="form-group"><label class="form-label">Nome</label><input class="form-input" placeholder="Ex: Camera Principal" /></div>
-            <div class="form-group"><label class="form-label">Endereco IP</label><input class="form-input" placeholder="192.168.1.xxx" /></div>
-            <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://..." /></div>
+    <div class="modal-overlay" @onclick="() => showAddCamera = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3>Adicionar Câmera</h3><p>Configure uma nova câmera para este ambiente</p></div>
+            <div class="modal-body space-y-sm">
+                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" placeholder="Ex: Câmera Principal" @bind="novaCameraNome" /></div>
+                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://..." @bind="novaCameraRtsp" /></div>
+                <div class="form-group">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" @bind="novaCameraTipo">
+                        <option value="interna">Interna</option>
+                        <option value="externa">Externa</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddCamera = false">Cancelar</button><button class="btn btn-primary" @onclick="HandleAdicionarCamera">Adicionar</button></div>
         </div>
-        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddCamera = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showAddCamera = false">Adicionar</button></div>
-    </div></div>
+    </div>
 }
 
 @code {
@@ -102,5 +176,64 @@
     private string activeTab = "t50";
     private bool showAddPessoa = false;
     private bool showAddCamera = false;
-    private Ambiente ambiente => MockData.Ambientes.FirstOrDefault(a => a.Id == Id) ?? MockData.Ambientes[1];
+    private Ambiente? ambiente = null;
+    private DispositivoT50? dispositivo = null;
+    private List<Pessoa> pessoas = new();
+    private List<Pessoa> todasPessoas = new();
+    private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera> cameras = new();
+    private int tempoEspera = 60;
+    private long pessoaSelecionadaId = 0;
+    private string novaCameraNome = "";
+    private string novaCameraRtsp = "";
+    private string novaCameraTipo = "interna";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ambiente = AmbienteRepo.BuscarPorId(Id);
+        if (ambiente != null)
+        {
+            tempoEspera = ambiente.TempoEsperaGravacaoSeg;
+            dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente.DispositivoT50Id);
+        }
+        pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
+        todasPessoas = await PessoaRepo.ListarTodos();
+        cameras = await CameraRepo.ListarPorAmbiente(Id);
+    }
+
+    private void HandleRemoverPessoa(long pessoaId)
+    {
+        AmbientePessoaRepo.RemoverPessoa(Id, pessoaId);
+        pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
+    }
+
+    private void HandleAdicionarPessoa()
+    {
+        if (pessoaSelecionadaId == 0) return;
+        AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
+        pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
+        showAddPessoa = false;
+    }
+
+    private async Task HandleAdicionarCamera()
+    {
+        if (string.IsNullOrWhiteSpace(novaCameraNome)) return;
+        await CameraRepo.Adicionar(new WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera
+        {
+            Nome = novaCameraNome,
+            AmbienteId = Id,
+            UrlRTSP = novaCameraRtsp,
+            Tipo = novaCameraTipo,
+            Ativa = true
+        });
+        cameras = await CameraRepo.ListarPorAmbiente(Id);
+        showAddCamera = false;
+        novaCameraNome = novaCameraRtsp = "";
+    }
+
+    private void HandleSalvarConfig()
+    {
+        if (ambiente == null) return;
+        ambiente.TempoEsperaGravacaoSeg = tempoEspera;
+        AmbienteRepo.Atualizar(ambiente);
+    }
 }

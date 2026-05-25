@@ -8,6 +8,7 @@
 @page "/login"
 @layout LoginLayout
 @inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
 
 <div class="login-page">
     <div class="login-blob" style="top: 25%; left: 25%;"></div>
@@ -25,8 +26,8 @@
             <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
                 <div class="space-y-sm">
                     <div class="form-group">
-                        <label class="form-label" for="email">Email</label>
-                        <input id="email" type="email" class="form-input" placeholder="admin@empresa.com"
+                        <label class="form-label" for="email">Login</label>
+                        <input id="email" type="text" class="form-input" placeholder="admin"
                                @bind="loginModel.Email" required />
                     </div>
                     <div class="form-group">
@@ -42,6 +43,12 @@
                             </button>
                         </div>
                     </div>
+                    @if (errorMessage != null)
+                    {
+                        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: color-mix(in srgb, var(--destructive) 10%, transparent); border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent); border-radius: var(--radius); color: var(--destructive); font-size: 0.875rem;">
+                            <Icon Name="x-circle" Size="16" /> @errorMessage
+                        </div>
+                    }
                     <button type="submit" class="btn btn-primary btn-block" disabled="@isLoading">
                         @(isLoading ? "Entrando..." : "Entrar")
                     </button>
@@ -58,15 +65,46 @@
     private LoginModel loginModel = new();
     private bool showPassword = false;
     private bool isLoading = false;
+    private string? errorMessage = null;
 
     private void TogglePassword() => showPassword = !showPassword;
 
     private async Task HandleLogin()
     {
         isLoading = true;
+        errorMessage = null;
         StateHasChanged();
-        await Task.Delay(1000);
-        Nav.NavigateTo("/");
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("BancoAPI");
+            var response = await client.PostAsJsonAsync("api/auth/login", new
+            {
+                Login = loginModel.Email,
+                Senha = loginModel.Password
+            });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                TokenStore.Token = result?.Token;
+                TokenStore.AdminId = result?.AdminId ?? 0;
+                TokenStore.NomeCompleto = result?.NomeCompleto ?? "";
+                Nav.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Login ou senha inválidos.";
+            }
+        }
+        catch
+        {
+            errorMessage = "Erro ao conectar com o servidor.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     public class LoginModel
@@ -74,5 +112,11 @@
         public string Email { get; set; } = "";
         public string Password { get; set; } = "";
     }
-}
 
+    public class LoginResponse
+    {
+        public string Token { get; set; } = "";
+        public int AdminId { get; set; }
+        public string NomeCompleto { get; set; } = "";
+    }
+}

@@ -8,6 +8,10 @@
     <AssemblyName>FrontendControleAcesso</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Data\MockData.cs" />
+  </ItemGroup>
+
 	<ItemGroup>
 		<ProjectReference Include="..\..\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\WebAbil8-Sistema_Verificação_dupla.slnx.csproj" />
 	</ItemGroup>

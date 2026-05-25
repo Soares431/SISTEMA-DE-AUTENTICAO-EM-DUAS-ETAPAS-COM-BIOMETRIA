@@ -1,83 +1,172 @@
 @page "/pessoas/{Id:int}"
-
-@{ var p = MockData.Pessoas.FirstOrDefault(x => x.Id == Id) ?? MockData.Pessoas[0]; }
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject IPessoaRepository PessoaRepo
+@inject ITentativaAcessoRepository TentativaRepo
+@inject IAmbientePessoaRepository AmbientePessoaRepo
+@inject IAmbienteRepository AmbienteRepo
 
 <div class="space-y">
-    <div class="flex items-center gap-4">
-        <a href="/pessoas" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
-        <div class="flex-1"><h1 class="text-2xl font-bold">@p.Nome</h1><p class="text-muted">@p.Cargo - @p.Departamento</p></div>
-        <span class="badge @(p.Status == "ativo" ? "badge-success" : "badge-muted")">@p.Status</span>
-    </div>
-
-    <div class="grid grid-1-2" style="gap: 1.5rem;">
-        <!-- Profile Sidebar -->
-        <div class="card"><div class="card-content pt-6" style="text-align: center;">
-            <div class="avatar avatar-lg" style="margin: 0 auto 1rem;">@GetInitials(p.Nome)</div>
-            <h2 class="text-xl font-semibold">@p.Nome</h2><p class="text-muted">@p.Cargo</p>
-            <div style="text-align: left; margin-top: 1.5rem;" class="space-y-xs">
-                <div class="flex items-center gap-3 text-sm"><Icon Name="mail" Size="16" CssClass="text-muted" /> @p.Email</div>
-                <div class="flex items-center gap-3 text-sm"><Icon Name="phone" Size="16" CssClass="text-muted" /> @p.Telefone</div>
-                <div class="flex items-center gap-3 text-sm"><Icon Name="building" Size="16" CssClass="text-muted" /> @p.Departamento</div>
-                <div class="flex items-center gap-3 text-sm"><Icon Name="fingerprint" Size="16" CssClass="text-muted" /><span class="badge @(p.BiometriaStatus == "cadastrada" ? "badge-success" : "badge-warning")">Biometria @p.BiometriaStatus</span></div>
-                <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Ultimo acesso: @p.UltimoAcesso</span></div>
-            </div>
-            <div class="mt-6 pt-6 border-t space-y-xs">
-                <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
-                <button class="btn btn-outline btn-block"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
-                <button class="btn btn-outline btn-block"><Icon Name="send" Size="16" /> Reenviar Senha</button>
-                <button class="btn btn-outline btn-block text-destructive"><Icon Name="user-x" Size="16" /> Inativar Pessoa</button>
-            </div>
-        </div></div>
-
-        <!-- Content Area -->
-        <div class="space-y">
-            <div class="tabs-list">
-                <button class="tab-trigger @(tab == "ambientes" ? "active" : "")" @onclick='() => tab = "ambientes"'>Ambientes com Acesso</button>
-                <button class="tab-trigger @(tab == "historico" ? "active" : "")" @onclick='() => tab = "historico"'>Histórico de Entradas</button>
-            </div>
-
-            @if (tab == "ambientes")
-            {
-                <div class="card"><div class="card-header"><div class="card-title"><Icon Name="key" Size="20" /> Ambientes com Acesso</div><p class="card-description">5 ambientes autorizados</p></div>
-                    <div class="card-content"><table><thead><tr><th>Ambiente</th><th>Último Acesso</th><th>Ação</th></tr></thead><tbody>
-                        @{ var ambs = new[] { ("Recepcao Principal", "Hoje, 08:30"), ("Sala de Servidores", "Hoje, 14:32"), ("Laboratorio 1", "Ontem, 16:15"), ("Diretoria", "12/01/2024"), ("Almoxarifado", "10/01/2024") }; }
-                        @foreach (var (nome, acesso) in ambs)
-                        {
-                            <tr><td class="font-medium"><span class="flex items-center gap-2"><Icon Name="map-pin" Size="16" CssClass="text-muted" /> @nome</span></td><td class="text-muted">@acesso</td><td class="text-right"><button class="btn btn-ghost btn-sm text-destructive">Remover Acesso</button></td></tr>
-                        }
-                    </tbody></table></div></div>
-            }
-            else
-            {
-                <div class="card"><div class="card-header card-header-row"><div><div class="card-title"><Icon Name="history" Size="20" /> Histórico de Entradas</div><p class="card-description">Últimas tentativas de acesso</p></div><a href="/historico" class="btn btn-outline btn-sm">Ver Todos</a></div>
-                    <div class="card-content"><table><thead><tr><th>Data/Hora</th><th>Ambiente</th><th>Status</th></tr></thead><tbody>
-                        @{ var hist = new[] { ("15/01/2024 14:32", "Sala de Servidores", "permitido"), ("15/01/2024 08:30", "Recepcao Principal", "permitido"), ("14/01/2024 17:45", "Sala de Servidores", "permitido"), ("14/01/2024 16:15", "Laboratorio 1", "permitido"), ("14/01/2024 14:00", "Diretoria", "negado"), ("14/01/2024 08:15", "Recepcao Principal", "permitido") }; }
-                        @foreach (var (data, amb, status) in hist)
-                        {
-                            <tr><td class="font-mono text-sm text-muted">@data</td><td>@amb</td><td><span class="badge @(status == "permitido" ? "badge-success" : "badge-destructive")"><Icon Name="@(status == "permitido" ? "check-circle" : "x-circle")" Size="12" /> @(status == "permitido" ? "Permitido" : "Negado")</span></td></tr>
-                        }
-                    </tbody></table></div></div>
-            }
+    @if (pessoa == null)
+    {
+        <p class="text-muted">Carregando...</p>
+    }
+    else
+    {
+        <div class="flex items-center gap-4">
+            <a href="/pessoas" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
+            <div class="flex-1"><h1 class="text-2xl font-bold">@pessoa.Nome</h1><p class="text-muted">@pessoa.Cargo</p></div>
+            <span class="badge @(pessoa.Status == "ativo" ? "badge-success" : "badge-muted")">@pessoa.Status</span>
         </div>
-    </div>
+
+        <div class="grid grid-1-2" style="gap: 1.5rem;">
+            <!-- Profile Sidebar -->
+            <div class="card">
+                <div class="card-content pt-6" style="text-align: center;">
+                    <div class="avatar avatar-lg" style="margin: 0 auto 1rem;">@GetInitials(pessoa.Nome)</div>
+                    <h2 class="text-xl font-semibold">@pessoa.Nome</h2><p class="text-muted">@pessoa.Cargo</p>
+                    <div style="text-align: left; margin-top: 1.5rem;" class="space-y-xs">
+                        <div class="flex items-center gap-3 text-sm"><Icon Name="mail" Size="16" CssClass="text-muted" /> @pessoa.Email</div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <Icon Name="fingerprint" Size="16" CssClass="text-muted" />
+                            <span class="badge @(pessoa.biometriaCadastrada != null ? "badge-success" : "badge-warning")">
+                                Biometria @(pessoa.biometriaCadastrada != null ? "cadastrada" : "pendente")
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Ultimo acesso: @(pessoa.dataUltimoAcesso?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
+                    </div>
+                    <div class="mt-6 pt-6 border-t space-y-xs">
+                        <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
+                        <button class="btn btn-outline btn-block" @onclick="HandleResetarBiometria"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
+                        <button class="btn btn-outline btn-block text-destructive" @onclick="HandleInativar"><Icon Name="user-x" Size="16" /> @(pessoa.Status == "ativo" ? "Inativar Pessoa" : "Ativar Pessoa")</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="space-y">
+                <div class="tabs-list">
+                    <button class="tab-trigger @(tab == "ambientes" ? "active" : "")" @onclick='() => tab = "ambientes"'>Ambientes com Acesso</button>
+                    <button class="tab-trigger @(tab == "historico" ? "active" : "")" @onclick='() => tab = "historico"'>Histórico de Entradas</button>
+                </div>
+
+                @if (tab == "ambientes")
+                {
+                    <div class="card">
+                        <div class="card-header"><div class="card-title"><Icon Name="key" Size="20" /> Ambientes com Acesso</div><p class="card-description">@ambientesPessoa.Count ambientes autorizados</p></div>
+                        <div class="card-content">
+                            <table>
+                                <thead><tr><th>Ambiente</th><th>Ação</th></tr></thead>
+                                <tbody>
+                                    @foreach (var amb in ambientesPessoa)
+                                    {
+                                        <tr>
+                                            <td class="font-medium"><span class="flex items-center gap-2"><Icon Name="map-pin" Size="16" CssClass="text-muted" /> @amb.Nome</span></td>
+                                            <td class="text-right"><button class="btn btn-ghost btn-sm text-destructive">Remover Acesso</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card">
+                        <div class="card-header card-header-row"><div><div class="card-title"><Icon Name="history" Size="20" /> Histórico de Entradas</div><p class="card-description">Últimas tentativas de acesso</p></div><a href="/historico" class="btn btn-outline btn-sm">Ver Todos</a></div>
+                        <div class="card-content">
+                            <table>
+                                <thead><tr><th>Data/Hora</th><th>Ambiente</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    @foreach (var t in historico)
+                                    {
+                                        <tr>
+                                            <td class="font-mono text-sm text-muted">@t.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td>Ambiente @t.AmbienteId</td>
+                                            <td><span class="badge @(t.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(t.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(t.AcessoLiberado ? "Permitido" : "Negado")</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
 
-@if (showEdit)
+@if (showEdit && pessoa != null)
 {
-    <div class="modal-overlay" @onclick="() => showEdit = false"><div class="modal" @onclick:stopPropagation="true">
-        <div class="modal-header"><h3>Editar Perfil</h3><p>Atualize as informacoes da pessoa</p></div>
-        <div class="modal-body space-y-sm">
-            <div class="form-group"><label class="form-label">Nome</label><input class="form-input" value="@p.Nome" /></div>
-            <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" value="@p.Email" /></div>
-            <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" value="@p.Telefone" /></div>
-            <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" value="@p.Cargo" /></div>
+    <div class="modal-overlay" @onclick="() => showEdit = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3>Editar Perfil</h3><p>Atualize as informacoes da pessoa</p></div>
+            <div class="modal-body space-y-sm">
+                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" @bind="editNome" /></div>
+                <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" @bind="editEmail" /></div>
+                <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" @bind="editCargo" /></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showEdit = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleSalvarEdicao">Salvar</button>
+            </div>
         </div>
-        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showEdit = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showEdit = false">Salvar</button></div>
-    </div></div>
+    </div>
 }
 
 @code {
     [Parameter] public int Id { get; set; }
-    private string tab = "ambientes"; private bool showEdit = false;
+    private string tab = "ambientes";
+    private bool showEdit = false;
+    private Pessoa? pessoa = null;
+    private List<Ambiente> ambientesPessoa = new();
+    private List<TentativaAcesso> historico = new();
+    private string editNome = "";
+    private string editEmail = "";
+    private string editCargo = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        pessoa = await PessoaRepo.BuscarPorId(Id);
+        if (pessoa != null)
+        {
+            editNome = pessoa.Nome;
+            editEmail = pessoa.Email;
+            editCargo = pessoa.Cargo;
+
+            ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
+
+            historico = TentativaRepo.ListarPorPessoa(pessoa.Id)
+                .OrderByDescending(t => t.DataHora)
+                .Take(10)
+                .ToList();
+        }
+    }
+
     private string GetInitials(string nome) => string.Join("", nome.Split(' ').Take(2).Select(n => n[0])).ToUpper();
+
+    private async Task HandleSalvarEdicao()
+    {
+        if (pessoa == null) return;
+        pessoa.Nome = editNome;
+        pessoa.Email = editEmail;
+        pessoa.Cargo = editCargo;
+        await PessoaRepo.Atualizar(pessoa);
+        showEdit = false;
+    }
+
+    private async Task HandleInativar()
+    {
+        if (pessoa == null) return;
+        await PessoaRepo.AlterarStatus(pessoa.Id, pessoa.Status != "ativo");
+        pessoa = await PessoaRepo.BuscarPorId(Id);
+    }
+
+    private async Task HandleResetarBiometria()
+    {
+        if (pessoa == null) return;
+        pessoa.biometriaCadastrada = null;
+        pessoa.templateBackup = null;
+        await PessoaRepo.Atualizar(pessoa);
+        pessoa = await PessoaRepo.BuscarPorId(Id);
+    }
 }

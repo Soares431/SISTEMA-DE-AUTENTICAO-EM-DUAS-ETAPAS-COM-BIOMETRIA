@@ -6,11 +6,14 @@
    ============================================================================= *@
 @page "/"
 @inject IJSRuntime JS
-
+@inject ITentativaAcessoRepository TentativaRepo
+@inject IPessoaRepository PessoaRepo
+@inject IDispositivoT50Repository DispositivoRepo
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 <div class="space-y">
     <div>
         <h1 class="text-2xl font-bold">Dashboard</h1>
-        <p class="text-muted">Resumo do dia - Acesso</p>
+        <p class="text-muted">Resumo do dia - @DateTime.Now.ToString("dd/MM/yyyy")</p>
     </div>
 
     <!-- Stats -->
@@ -21,8 +24,8 @@
                 <div class="icon-bg icon-bg-success"><Icon Name="check-circle" Size="16" /></div>
             </div>
             <div class="card-content">
-                <div class="stat-value">1,247</div>
-                <p class="text-xs text-muted">+12% vs ontem</p>
+                <div class="stat-value">@totalPermitidos</div>
+                <p class="text-xs text-muted">acessos hoje</p>
             </div>
         </div>
         <div class="card">
@@ -31,8 +34,8 @@
                 <div class="icon-bg icon-bg-destructive"><Icon Name="x-circle" Size="16" /></div>
             </div>
             <div class="card-content">
-                <div class="stat-value">23</div>
-                <p class="text-xs text-muted">-5% vs ontem</p>
+                <div class="stat-value">@totalNegados</div>
+                <p class="text-xs text-muted">acessos hoje</p>
             </div>
         </div>
         <div class="card">
@@ -41,8 +44,8 @@
                 <div class="icon-bg icon-bg-warning"><Icon Name="alert-triangle" Size="16" /></div>
             </div>
             <div class="card-content">
-                <div class="stat-value">3</div>
-                <p class="text-xs text-muted">2 ambientes</p>
+                <div class="stat-value">@totalAlertas</div>
+                <p class="text-xs text-muted">dispositivos</p>
             </div>
         </div>
         <div class="card">
@@ -51,8 +54,8 @@
                 <div class="icon-bg icon-bg-primary"><Icon Name="users" Size="16" /></div>
             </div>
             <div class="card-content">
-                <div class="stat-value">342</div>
-                <p class="text-xs text-muted">8 novos hoje</p>
+                <div class="stat-value">@totalPessoas</div>
+                <p class="text-xs text-muted">cadastradas</p>
             </div>
         </div>
     </div>
@@ -75,17 +78,20 @@
                 <p class="card-description">Dispositivos T50 precisando de atenção</p>
             </div>
             <div class="card-content space-y-sm">
-                @foreach (var alert in MockData.Alertas)
+                @if (!alertasT50.Any())
+                {
+                    <p class="text-sm text-muted">Nenhum alerta ativo no momento.</p>
+                }
+                @foreach (var disp in alertasT50)
                 {
                     <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--muted) 30%, transparent);">
                         <div class="icon-bg icon-bg-warning"><Icon Name="building" Size="16" /></div>
                         <div style="flex: 1;">
                             <div class="flex items-center gap-2">
-                                <span class="font-medium">@alert.Ambiente</span>
-                                <span class="badge @GetGravidadeBadge(alert.Gravidade)">@(alert.Gravidade == "alta" ? "Alta" : alert.Gravidade == "media" ? "Média" : "Baixa")</span>
+                                <span class="font-medium">@disp.Nome</span>
+                                <span class="badge badge-warning">Alerta</span>
                             </div>
-                            <p class="text-sm text-muted">@alert.Mensagem</p>
-                            <p class="text-xs text-muted">@alert.Hora</p>
+                            <p class="text-sm text-muted">IP: @disp.EnderecoIP</p>
                         </div>
                     </div>
                 }
@@ -107,19 +113,23 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Pessoa</th><th>Ambiente</th><th>Motivo</th><th>Hora</th><th>Gravação</th>
+                            <th>Pessoa</th>
+                            <th>Ambiente</th>
+                            <th>Motivo</th>
+                            <th>Hora</th>
+                            <th>Gravação</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in MockData.UltimosNegados)
+                        @foreach (var item in ultimosNegados)
                         {
                             <tr>
-                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @item.Pessoa</span></td>
-                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @item.Ambiente</span></td>
-                                <td><span class="badge badge-destructive">@item.Motivo</span></td>
-                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @item.Hora</span></td>
+                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(item.Pessoa?.Nome ?? "Desconhecido")</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> Ambiente @item.AmbienteId</span></td>
+                                <td><span class="badge badge-destructive">@(item.MotivoNegacao ?? "-")</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @item.DataHora.ToString("HH:mm")</span></td>
                                 <td>
-                                    @if (item.TemGravacao)
+                                    @if (item.GravacaoPath != null)
                                     {
                                         <button class="btn btn-ghost btn-sm text-primary">Ver vídeo</button>
                                     }
@@ -138,6 +148,35 @@
 </div>
 
 @code {
+    private int totalPermitidos = 0;
+    private int totalNegados = 0;
+    private int totalAlertas = 0;
+    private int totalPessoas = 0;
+    private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.TentativaAcesso> ultimosNegados = new();
+    private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.DispositivoT50> alertasT50 = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoje = DateTime.UtcNow.Date;
+        var amanha = hoje.AddDays(1);
+
+        var tentativasHoje = TentativaRepo.ListarComFiltros(null, null, null, hoje, amanha);
+        totalPermitidos = tentativasHoje.Count(t => t.AcessoLiberado);
+        totalNegados = tentativasHoje.Count(t => !t.AcessoLiberado);
+
+        ultimosNegados = TentativaRepo.ListarComFiltros(null, null, false, hoje, amanha)
+            .OrderByDescending(t => t.DataHora)
+            .Take(5)
+            .ToList();
+
+        var pessoas = await PessoaRepo.ListarTodos();
+        totalPessoas = pessoas.Count(p => p.Status == "ativo");
+
+        var dispositivos = DispositivoRepo.ListarTodos();
+        alertasT50 = dispositivos.Where(d => d.DigitaisCadastradas >= 950).ToList();
+        totalAlertas = alertasT50.Count;
+    }
+
     private string GetGravidadeBadge(string gravidade) => gravidade switch
     {
         "alta" => "badge-destructive",

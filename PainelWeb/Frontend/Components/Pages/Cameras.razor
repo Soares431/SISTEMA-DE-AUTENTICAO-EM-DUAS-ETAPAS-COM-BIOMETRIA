@@ -6,6 +6,9 @@
    Rota: /cameras
    ============================================================================= *@
 @page "/cameras"
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject ICameraRepository CameraRepo
+@inject IAmbienteRepository AmbienteRepo
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -14,9 +17,19 @@
     </div>
 
     <div class="flex gap-4" style="flex-wrap: wrap;">
-        <div class="input-icon-wrapper flex-1" style="min-width: 200px;"><Icon Name="search" /><input class="form-input" placeholder="Buscar por nome, IP ou ambiente..." @bind="search" @bind:event="oninput" /></div>
-        <select class="form-select" style="width: 150px;" @bind="statusFilter"><option value="todos">Todos</option><option value="online">Online</option><option value="offline">Offline</option></select>
-        <select class="form-select" style="width: 180px;" @bind="ambienteFilter"><option value="todos">Todos os Ambientes</option>@foreach (var a in MockData.AmbientesSimples){<option value="@a.Id">@a.Nome</option>}</select>
+        <div class="input-icon-wrapper flex-1" style="min-width: 200px;"><Icon Name="search" /><input class="form-input" placeholder="Buscar por nome ou RTSP..." @bind="search" @bind:event="oninput" /></div>
+        <select class="form-select" style="width: 150px;" @bind="ativaFilter">
+            <option value="todos">Todos</option>
+            <option value="ativa">Ativas</option>
+            <option value="inativa">Inativas</option>
+        </select>
+        <select class="form-select" style="width: 180px;" @bind="ambienteFilter">
+            <option value="0">Todos os Ambientes</option>
+            @foreach (var a in ambientes)
+            {
+                <option value="@a.Id">@a.Nome</option>
+            }
+        </select>
     </div>
 
     <div class="grid grid-3">
@@ -24,27 +37,29 @@
         {
             <div class="card" style="overflow: hidden;">
                 <div class="camera-preview">
-                    @if (cam.Status == "online")
+                    @if (cam.Ativa)
                     {
                         <div class="camera-overlay"></div>
                         <Icon Name="camera" Size="64" CssClass="text-muted" />
-                        @if (cam.Gravando) { <div class="rec-indicator"><div class="rec-dot"></div><span style="font-size: 0.75rem; font-weight: 500; color: white;">REC</span></div> }
                         <button class="btn btn-icon" style="position: absolute; bottom: 0.75rem; right: 0.75rem; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);" @onclick="() => OpenLiveView(cam)"><Icon Name="maximize" Size="16" CssClass="text-foreground" /></button>
                     }
                     else
                     {
-                        <div class="flex-col items-center gap-2" style="display: flex;"><Icon Name="wifi-off" Size="48" CssClass="text-muted" /><span class="text-sm text-muted">Offline</span></div>
+                        <div class="flex-col items-center gap-2" style="display: flex;"><Icon Name="wifi-off" Size="48" CssClass="text-muted" /><span class="text-sm text-muted">Inativa</span></div>
                     }
                 </div>
                 <div class="card-content" style="padding-top: 1rem;">
                     <div class="flex items-start justify-between">
-                        <div class="flex-1 min-w-0"><h3 class="font-semibold truncate">@cam.Nome</h3><div class="flex items-center gap-2 mt-4"><Icon Name="map-pin" Size="12" CssClass="text-muted" /><span class="text-sm text-muted">@cam.Ambiente</span></div><p class="text-xs font-mono text-muted" style="margin-top: 0.25rem;">@cam.Ip</p></div>
-                        <span class="badge @(cam.Status == "online" ? "badge-success" : "badge-muted")"><Icon Name="@(cam.Status == "online" ? "wifi" : "wifi-off")" Size="12" /> @cam.Status</span>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold truncate">@cam.Nome</h3>
+                            <div class="flex items-center gap-2 mt-1"><Icon Name="map-pin" Size="12" CssClass="text-muted" /><span class="text-sm text-muted">Ambiente @cam.AmbienteId</span></div>
+                            <p class="text-xs font-mono text-muted" style="margin-top: 0.25rem;">@(cam.UrlRTSP ?? "-")</p>
+                        </div>
+                        <span class="badge @(cam.Ativa ? "badge-success" : "badge-muted")"><Icon Name="@(cam.Ativa ? "wifi" : "wifi-off")" Size="12" /> @(cam.Ativa ? "Ativa" : "Inativa")</span>
                     </div>
                     <div class="flex items-center gap-2 mt-4 pt-4 border-t">
-                        <button class="btn btn-outline btn-sm flex-1" disabled="@(cam.Status == "offline")" @onclick="() => OpenLiveView(cam)"><Icon Name="play" Size="16" /> Ao Vivo</button>
-                        <button class="btn btn-ghost btn-icon"><Icon Name="settings" Size="16" /></button>
-                        <button class="btn btn-ghost btn-icon text-destructive"><Icon Name="trash" Size="16" /></button>
+                        <button class="btn btn-outline btn-sm flex-1" disabled="@(!cam.Ativa)" @onclick="() => OpenLiveView(cam)"><Icon Name="play" Size="16" /> Ao Vivo</button>
+                        <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => HandleRemover(cam.Id)"><Icon Name="trash" Size="16" /></button>
                     </div>
                 </div>
             </div>
@@ -59,40 +74,102 @@
 
 @if (liveCamera != null)
 {
-    <div class="modal-overlay" @onclick="() => liveCamera = null"><div class="modal modal-lg" @onclick:stopPropagation="true">
-        <div class="modal-header"><h3><Icon Name="video" Size="20" /> @liveCamera.Nome</h3><p>Visualizacao ao vivo via RTSP - @liveCamera.RtspUrl</p></div>
-        <div class="modal-body">
-            <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center;">
-                <div style="text-align: center;" class="space-y-sm"><Icon Name="camera" Size="96" CssClass="text-muted" /><p class="font-medium">Feed ao Vivo</p><p class="text-sm text-muted">Conectando a @liveCamera.RtspUrl...</p>
-                @if (liveCamera.Gravando) { <div class="flex items-center justify-center gap-2"><div class="rec-dot"></div><span class="text-sm font-medium text-destructive">Gravando</span></div> }</div>
+    <div class="modal-overlay" @onclick="() => liveCamera = null">
+        <div class="modal modal-lg" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3><Icon Name="video" Size="20" /> @liveCamera.Nome</h3><p>Visualização ao vivo via RTSP - @(liveCamera.UrlRTSP ?? "-")</p></div>
+            <div class="modal-body">
+                <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center;">
+                    <div style="text-align: center;" class="space-y-sm">
+                        <Icon Name="camera" Size="96" CssClass="text-muted" />
+                        <p class="font-medium">Feed ao Vivo</p>
+                        <p class="text-sm text-muted">Conectando a @(liveCamera.UrlRTSP ?? "-")...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-between" style="justify-content: space-between;">
+                <div class="flex items-center gap-4 text-sm text-muted"><span>Ambiente: @liveCamera.AmbienteId</span><span>Tipo: @liveCamera.Tipo</span></div>
+                <div class="flex gap-2"><button class="btn btn-outline btn-sm" @onclick="() => liveCamera = null">Fechar</button></div>
             </div>
         </div>
-        <div class="modal-footer justify-between" style="justify-content: space-between;">
-            <div class="flex items-center gap-4 text-sm text-muted"><span>Ambiente: @liveCamera.Ambiente</span><span>IP: @liveCamera.Ip</span></div>
-            <div class="flex gap-2"><button class="btn btn-outline btn-sm"><Icon Name="square" Size="16" /> Parar Gravação</button><button class="btn btn-outline btn-sm" @onclick="() => liveCamera = null">Fechar</button></div>
-        </div>
-    </div></div>
+    </div>
 }
 
 @if (showCreate)
 {
-    <div class="modal-overlay" @onclick="() => showCreate = false"><div class="modal" @onclick:stopPropagation="true">
-        <div class="modal-header"><h3>Cadastrar Nova Câmera</h3><p>Adicione uma nova câmera ao sistema de monitoramento</p></div>
-        <div class="modal-body space-y-sm">
-            <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" placeholder="Ex: Recepção - Entrada" /></div>
-            <div class="grid grid-2"><div class="form-group"><label class="form-label">Endereco IP</label><input class="form-input" placeholder="192.168.1.xxx" /></div><div class="form-group"><label class="form-label">Porta</label><input class="form-input" placeholder="554" /></div></div>
-            <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://usuario:senha@ip:porta/stream" /></div>
-            <div class="form-group"><label class="form-label">Ambiente</label><select class="form-select">@foreach (var a in MockData.AmbientesSimples){<option value="@a.Id">@a.Nome</option>}</select></div>
+    <div class="modal-overlay" @onclick="() => showCreate = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3>Cadastrar Nova Câmera</h3><p>Adicione uma nova câmera ao sistema de monitoramento</p></div>
+            <div class="modal-body space-y-sm">
+                <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" placeholder="Ex: Recepção - Entrada" @bind="novoNome" /></div>
+                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://usuario:senha@ip:porta/stream" @bind="novoRtsp" /></div>
+                <div class="form-group">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" @bind="novoTipo">
+                        <option value="interna">Interna</option>
+                        <option value="externa">Externa</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ambiente</label>
+                    <select class="form-select" @bind="novoAmbienteId">
+                        @foreach (var a in ambientes)
+                        {
+                            <option value="@a.Id">@a.Nome</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showCreate = false">Cancelar</button><button class="btn btn-primary" @onclick="HandleCadastrar">Cadastrar</button></div>
         </div>
-        <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showCreate = false">Cancelar</button><button class="btn btn-primary" @onclick="() => showCreate = false">Cadastrar</button></div>
-    </div></div>
+    </div>
 }
 
 @code {
-    private string search = ""; private string statusFilter = "todos"; private string ambienteFilter = "todos"; private bool showCreate = false;
+    private string search = "";
+    private string ativaFilter = "todos";
+    private string ambienteFilter = "0";
+    private bool showCreate = false;
     private Camera? liveCamera = null;
+    private List<Camera> todasCameras = new();
+    private List<Ambiente> ambientes = new();
+    private string novoNome = "";
+    private string novoRtsp = "";
+    private string novoTipo = "interna";
+    private int novoAmbienteId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        todasCameras = await CameraRepo.ListarComFiltros(null, null);
+        ambientes = AmbienteRepo.ListarTodos();
+        if (ambientes.Any()) novoAmbienteId = ambientes.First().Id;
+    }
+
     private void OpenLiveView(Camera cam) => liveCamera = cam;
-    private IEnumerable<Camera> Filtered => MockData.CamerasData.Where(c =>
-        (string.IsNullOrEmpty(search) || c.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) || c.Ip.Contains(search) || c.Ambiente.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
-        (statusFilter == "todos" || c.Status == statusFilter) && (ambienteFilter == "todos" || c.AmbienteId.ToString() == ambienteFilter));
+
+    private IEnumerable<Camera> Filtered => todasCameras.Where(c =>
+        (string.IsNullOrEmpty(search) || c.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) || (c.UrlRTSP != null && c.UrlRTSP.Contains(search, StringComparison.OrdinalIgnoreCase))) &&
+        (ativaFilter == "todos" || (ativaFilter == "ativa" && c.Ativa) || (ativaFilter == "inativa" && !c.Ativa)) &&
+        (ambienteFilter == "0" || c.AmbienteId.ToString() == ambienteFilter));
+
+    private async Task HandleRemover(int id)
+    {
+        await CameraRepo.Remover(id);
+        todasCameras = await CameraRepo.ListarComFiltros(null, null);
+    }
+
+    private async Task HandleCadastrar()
+    {
+        if (string.IsNullOrWhiteSpace(novoNome)) return;
+        await CameraRepo.Adicionar(new Camera
+        {
+            Nome = novoNome,
+            UrlRTSP = novoRtsp,
+            Tipo = novoTipo,
+            AmbienteId = novoAmbienteId,
+            Ativa = true
+        });
+        todasCameras = await CameraRepo.ListarComFiltros(null, null);
+        showCreate = false;
+        novoNome = novoRtsp = "";
+    }
 }

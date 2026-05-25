@@ -6,6 +6,8 @@
    Rota: /logs
    ============================================================================= *@
 @page "/logs"
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject ILogAdminRepository LogRepo
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -13,35 +15,90 @@
         <button class="btn btn-outline"><Icon Name="download" Size="16" /> Exportar</button>
     </div>
 
-    <div class="card"><div class="card-header"><div class="card-title"><Icon Name="filter" Size="20" /> Filtros</div></div>
-        <div class="card-content"><div class="grid grid-4" style="gap: 1rem;">
-            <div class="input-icon-wrapper" style="grid-column: span 2;"><Icon Name="search" /><input class="form-input" placeholder="Buscar por ação, descrição ou usuário..." @bind="search" @bind:event="oninput" /></div>
-            <select class="form-select" @bind="catFilter"><option value="todos">Todas as Categorias</option>@foreach (var c in Categorias){<option value="@c">@(char.ToUpper(c[0]) + c[1..])</option>}</select>
-            <select class="form-select" @bind="userFilter"><option value="todos">Todos os Usuários</option>@foreach (var u in Usuarios){<option value="@u">@u</option>}</select>
-        </div></div></div>
+    <div class="card">
+        <div class="card-header"><div class="card-title"><Icon Name="filter" Size="20" /> Filtros</div></div>
+        <div class="card-content">
+            <div class="grid grid-4" style="gap: 1rem;">
+                <div class="input-icon-wrapper" style="grid-column: span 2;"><Icon Name="search" /><input class="form-input" placeholder="Buscar por ação, entidade ou admin..." @bind="search" @bind:event="oninput" /></div>
+                <select class="form-select" @bind="acaoFilter">
+                    <option value="todos">Todas as Ações</option>
+                    @foreach (var a in Acoes)
+                    {
+                        <option value="@a">@a</option>
+                    }
+                </select>
+                <select class="form-select" @bind="entidadeFilter">
+                    <option value="todos">Todas as Entidades</option>
+                    @foreach (var e in Entidades)
+                    {
+                        <option value="@e">@e</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
 
-    <div class="card"><div class="card-content pt-6"><div class="table-wrapper"><table><thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th><th>IP</th></tr></thead><tbody>
-        @foreach (var log in Filtered)
-        {
-            <tr>
-                <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@log.Data</p><p class="font-mono text-xs text-muted">@log.Hora</p></div></div></td>
-                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @log.Usuario</span></td>
-                <td><span class="badge @GetCatBadge(log.Categoria)"><Icon Name="@GetCatIcon(log.Categoria)" Size="12" /> @log.Acao</span></td>
-                <td class="text-muted" style="max-width: 20rem;"><span class="truncate" style="display: block;">@log.Descricao</span></td>
-                <td class="font-mono text-sm text-muted">@log.Ip</td>
-            </tr>
-        }
-    </tbody></table></div></div></div>
+    <div class="card">
+        <div class="card-content pt-6">
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Data/Hora</th><th>Admin ID</th><th>Ação</th><th>Entidade</th><th>ID Entidade</th></tr></thead>
+                    <tbody>
+                        @foreach (var log in Filtered)
+                        {
+                            <tr>
+                                <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@log.DataHora.ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@log.DataHora.ToString("HH:mm:ss")</p></div></div></td>
+                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @log.AdminId</span></td>
+                                <td><span class="badge @GetAcaoBadge(log.Acao)"><Icon Name="@GetAcaoIcon(log.Acao)" Size="12" /> @log.Acao</span></td>
+                                <td class="text-muted">@log.EntidadeAfetada</td>
+                                <td class="font-mono text-sm text-muted">@(log.EntidadeId?.ToString() ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
-    private string search = ""; private string catFilter = "todos"; private string userFilter = "todos";
-    private string[] Categorias => MockData.Logs.Select(l => l.Categoria).Distinct().ToArray();
-    private string[] Usuarios => MockData.Logs.Select(l => l.Usuario).Distinct().ToArray();
-    private IEnumerable<LogSistema> Filtered => MockData.Logs.Where(l =>
-        (string.IsNullOrEmpty(search) || l.Acao.Contains(search, StringComparison.OrdinalIgnoreCase) || l.Descricao.Contains(search, StringComparison.OrdinalIgnoreCase) || l.Usuario.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
-        (catFilter == "todos" || l.Categoria == catFilter) && (userFilter == "todos" || l.Usuario == userFilter));
+    private string search = "";
+    private string acaoFilter = "todos";
+    private string entidadeFilter = "todos";
+    private List<LogAdmin> todosLogs = new();
 
-    private string GetCatBadge(string cat) => cat switch { "pessoas" => "badge-primary", "acessos" => "badge-success", "biometria" => "badge-warning", "cameras" => "badge-secondary", "configuracoes" => "badge-muted", "ambientes" => "badge-primary", "senhas" => "badge-destructive", "autenticacao" => "badge-secondary", _ => "badge-muted" };
-    private string GetCatIcon(string cat) => cat switch { "pessoas" => "user-plus", "acessos" => "key", "biometria" => "activity", "cameras" => "camera", "configuracoes" => "settings", "ambientes" => "building", "senhas" => "key", "autenticacao" => "user", _ => "activity" };
+    protected override void OnInitialized()
+    {
+        todosLogs = LogRepo.ListarTodos();
+    }
+
+    private string[] Acoes => todosLogs.Select(l => l.Acao).Distinct().ToArray();
+    private string[] Entidades => todosLogs.Select(l => l.EntidadeAfetada).Distinct().ToArray();
+
+    private IEnumerable<LogAdmin> Filtered => todosLogs.Where(l =>
+        (string.IsNullOrEmpty(search) ||
+         l.Acao.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+         l.EntidadeAfetada.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
+        (acaoFilter == "todos" || l.Acao == acaoFilter) &&
+        (entidadeFilter == "todos" || l.EntidadeAfetada == entidadeFilter));
+
+    private string GetAcaoBadge(string acao) => acao switch
+    {
+        "Remocao" => "badge-destructive",
+        "Inativacao" => "badge-warning",
+        "ResetBiometria" => "badge-warning",
+        "Adicionar" => "badge-success",
+        "Atualizar" => "badge-primary",
+        _ => "badge-muted"
+    };
+
+    private string GetAcaoIcon(string acao) => acao switch
+    {
+        "Remocao" => "trash",
+        "Inativacao" => "user-x",
+        "ResetBiometria" => "fingerprint",
+        "Adicionar" => "user-plus",
+        "Atualizar" => "edit",
+        _ => "activity"
+    };
 }

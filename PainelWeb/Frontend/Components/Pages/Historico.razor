@@ -6,6 +6,9 @@
    Rota: /historico
    ============================================================================= *@
 @page "/historico"
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject ITentativaAcessoRepository TentativaRepo
+@inject IAmbienteRepository AmbienteRepo
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -14,37 +17,81 @@
     </div>
 
     <div class="grid grid-4">
-        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-primary"><Icon Name="history" Size="20" /></div><div><p class="stat-value">@MockData.Historico.Count</p><p class="text-sm text-muted">Total de Registros</p></div></div></div></div>
-        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-success"><Icon Name="check-circle" Size="20" /></div><div><p class="stat-value">@MockData.Historico.Count(h => h.Status == "permitido")</p><p class="text-sm text-muted">Acessos Permitidos</p></div></div></div></div>
-        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-destructive"><Icon Name="x-circle" Size="20" /></div><div><p class="stat-value">@MockData.Historico.Count(h => h.Status == "negado")</p><p class="text-sm text-muted">Acessos Negados</p></div></div></div></div>
-        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-warning"><Icon Name="video" Size="20" /></div><div><p class="stat-value">@MockData.Historico.Count(h => h.TemGravacao)</p><p class="text-sm text-muted">Com Gravação</p></div></div></div></div>
+        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-primary"><Icon Name="history" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count</p><p class="text-sm text-muted">Total de Registros</p></div></div></div></div>
+        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-success"><Icon Name="check-circle" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => h.AcessoLiberado)</p><p class="text-sm text-muted">Acessos Permitidos</p></div></div></div></div>
+        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-destructive"><Icon Name="x-circle" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => !h.AcessoLiberado)</p><p class="text-sm text-muted">Acessos Negados</p></div></div></div></div>
+        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-warning"><Icon Name="video" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => h.GravacaoPath != null)</p><p class="text-sm text-muted">Com Gravação</p></div></div></div></div>
     </div>
 
-    <div class="card"><div class="card-header"><div class="card-title"><Icon Name="filter" Size="20" /> Filtros</div></div>
-        <div class="card-content"><div class="grid grid-4" style="gap: 1rem;">
-            <div class="input-icon-wrapper" style="grid-column: span 2;"><Icon Name="search" /><input class="form-input" placeholder="Buscar por pessoa ou ambiente..." @bind="search" @bind:event="oninput" /></div>
-            <select class="form-select" @bind="statusFilter"><option value="todos">Todos</option><option value="permitido">Permitido</option><option value="negado">Negado</option></select>
-            <select class="form-select" @bind="ambFilter"><option value="todos">Todos</option>@foreach (var a in MockData.AmbientesSimples){<option value="@a.Id">@a.Nome</option>}</select>
-        </div></div></div>
+    <div class="card">
+        <div class="card-header"><div class="card-title"><Icon Name="filter" Size="20" /> Filtros</div></div>
+        <div class="card-content">
+            <div class="grid grid-4" style="gap: 1rem;">
+                <div class="input-icon-wrapper" style="grid-column: span 2;"><Icon Name="search" /><input class="form-input" placeholder="Buscar por pessoa ou ambiente..." @bind="search" @bind:event="oninput" /></div>
+                <select class="form-select" @bind="statusFilter">
+                    <option value="todos">Todos</option>
+                    <option value="permitido">Permitido</option>
+                    <option value="negado">Negado</option>
+                </select>
+                <select class="form-select" @bind="ambFilter">
+                    <option value="todos">Todos</option>
+                    @foreach (var a in ambientes)
+                    {
+                        <option value="@a.Id">@a.Nome</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
 
-    <div class="card"><div class="card-content pt-6"><div class="table-wrapper"><table><thead><tr><th>Data/Hora</th><th>Pessoa</th><th>Ambiente</th><th>Status</th><th>Motivo</th><th>Gravação</th></tr></thead><tbody>
-        @foreach (var item in Filtered)
-        {
-            <tr>
-                <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@item.Data</p><p class="font-mono text-xs text-muted">@item.Hora</p></div></div></td>
-                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @item.Pessoa</span></td>
-                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @item.Ambiente</span></td>
-                <td><span class="badge @(item.Status == "permitido" ? "badge-success" : "badge-destructive")"><Icon Name="@(item.Status == "permitido" ? "check-circle" : "x-circle")" Size="12" /> @(item.Status == "permitido" ? "Permitido" : "Negado")</span></td>
-                <td class="text-muted">@(item.Motivo ?? "-")</td>
-                <td>@if (item.TemGravacao) { <button class="btn btn-ghost btn-sm text-primary"><Icon Name="video" Size="16" /> Ver</button> } else { <span class="text-sm text-muted">-</span> }</td>
-            </tr>
-        }
-    </tbody></table></div></div></div>
+    <div class="card">
+        <div class="card-content pt-6">
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Data/Hora</th><th>Pessoa</th><th>Ambiente</th><th>Status</th><th>Motivo</th><th>Gravação</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in Filtered)
+                        {
+                            <tr>
+                                <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@item.DataHora.ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@item.DataHora.ToString("HH:mm:ss")</p></div></div></td>
+                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(item.Pessoa?.Nome ?? $"ID {item.PessoaId}")</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
+                                <td><span class="badge @(item.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(item.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(item.AcessoLiberado ? "Permitido" : "Negado")</span></td>
+                                <td class="text-muted">@(item.MotivoNegacao ?? "-")</td>
+                                <td>@if (item.GravacaoPath != null) {
+                                    <button class="btn btn-ghost btn-sm text-primary"><Icon Name="video" Size="16" /> Ver</button>
+                                } else
+                                {
+
+                                    <span class="text-sm text-muted">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 </div>
 
 @code {
-    private string search = ""; private string statusFilter = "todos"; private string ambFilter = "todos";
-    private IEnumerable<RegistroAcesso> Filtered => MockData.Historico.Where(h =>
-        (string.IsNullOrEmpty(search) || h.Pessoa.Contains(search, StringComparison.OrdinalIgnoreCase) || h.Ambiente.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
-        (statusFilter == "todos" || h.Status == statusFilter) && (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter));
+    private string search = "";
+    private string statusFilter = "todos";
+    private string ambFilter = "todos";
+    private List<TentativaAcesso> todasTentativas = new();
+    private List<Ambiente> ambientes = new();
+
+    protected override Task OnInitializedAsync()
+    {
+        todasTentativas = TentativaRepo.ListarTodos();
+        ambientes = AmbienteRepo.ListarTodos();
+        return Task.CompletedTask;
+    }
+
+    private IEnumerable<TentativaAcesso> Filtered => todasTentativas.Where(h =>
+        (string.IsNullOrEmpty(search) ||
+         (h.Pessoa?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+        (statusFilter == "todos" || (statusFilter == "permitido" ? h.AcessoLiberado : !h.AcessoLiberado)) &&
+        (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter));
 }

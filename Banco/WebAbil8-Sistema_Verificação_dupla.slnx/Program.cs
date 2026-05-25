@@ -14,6 +14,11 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Banco — força caminho absoluto na pasta do projeto Int1
+var dbPath = Path.Combine(builder.Environment.ContentRootPath, "banco.db");
+builder.Configuration["SQLiteConnection:SQLiteConnectionString"] = $"Data Source={dbPath}";
+Console.WriteLine($"[INT1 DB] {dbPath}");
+
 // Add services to the container.
 
 // Scoped é usado para criar uma nova instância do serviço para cada solicitação HTTP. Isso é útil para serviços que possuem estado ou que precisam ser isolados por solicitação, como um serviço de pessoa neste caso  
