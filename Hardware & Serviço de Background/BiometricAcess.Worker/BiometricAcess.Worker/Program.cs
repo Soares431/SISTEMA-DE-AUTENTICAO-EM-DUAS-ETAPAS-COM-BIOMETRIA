@@ -4,11 +4,33 @@ using BiometricAcess.Worker.Simulador;
 using BiometricAcess.Worker.HardwareNosso;
 using BiometricAcess.Worker.HardwareNosso.Simulador;
 using InfraestruturaBloco1.Services;
+using Microsoft.EntityFrameworkCore;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddWindowsService();
+
+// ═══════════════════════════════════════════════════════════════
+// Banco compartilhado com Int1
+// ═══════════════════════════════════════════════════════════════
+var dbPath = Path.GetFullPath(
+    Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..",
+    "Banco", "WebAbil8-Sistema_Verificação_dupla.slnx", "banco.db"));
+Console.WriteLine($"[INT2 DB] {dbPath}");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
+builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
+builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();
+builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
+builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
+builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 
 // ═══════════════════════════════════════════════════════════════
 // Serviços compartilhados
@@ -18,14 +40,21 @@ builder.Services.AddScoped<CameraService>(sp =>
         sp.GetRequiredService<ILogAdminRepository>(),
         sp.GetRequiredService<ICameraRepository>(),
         Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras"
-    )); 
+    ));
 
 // ═══════════════════════════════════════════════════════════════
-// OPÇÃO 1 — Simulador falso (padrão, sem hardware)
+// OPÇÃO 1 — Simulador falso (sem banco, apenas console)
+// ═══════════════════════════════════════════════════════════════
+//builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
+
+// ═══════════════════════════════════════════════════════════════
+// OPÇÃO 1B — Simulador com banco real (padrão para demonstração)
+// Grava TentativasAcesso no SQLite — o painel exibe os dados em tempo real
+// Requer pelo menos um Ambiente cadastrado no painel
 // ═══════════════════════════════════════════════════════════════
 builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
 builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
+builder.Services.AddSingleton<IEventProcessor, EventProcessorSimuladorBanco>();
 
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
