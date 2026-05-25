@@ -10,11 +10,31 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="FrontendControleAcesso.styles.css" />
     <HeadOutlet @rendermode="Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer" />
+    <style>
+            #app-loading {
+                background: #0f1729;
+                width: 100vw;
+                height: 100vh;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 9999;
+            }
+    </style>
 </head>
 <body>
+    <div id="app-loading"></div>
     <Routes @rendermode="Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="app.js"></script>
+    <script>
+        function removeAppLoading() {
+            const loading = document.getElementById('app-loading');
+            if (loading) loading.remove();
+        }
+        // Remove o overlay em navegações client-side (fallback)
+        Blazor.addEventListener('enhancedload', removeAppLoading);
+    </script>
 </body>
 </html>

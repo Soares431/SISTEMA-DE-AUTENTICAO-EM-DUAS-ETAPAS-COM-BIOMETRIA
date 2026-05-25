@@ -1,7 +1,19 @@
 @inherits LayoutComponentBase
+@inject IJSRuntime JS
 
 @Body
 
 <div id="blazor-error-ui">
     Ocorreu um erro no sistema. <a href="" class="dismiss">🗙</a>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Remove o overlay de loading quando a tela de login renderiza
+            await JS.InvokeVoidAsync("removeAppLoading");
+        }
+    }
+}
