@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
 {
@@ -13,11 +14,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
+        private readonly ILogAdminRepository _logRepo;
 
-        public AuthController(AppDbContext context, IConfiguration config)
+        public AuthController(AppDbContext context, IConfiguration config, ILogAdminRepository logRepo)
         {
             _context = context;
             _config = config;
+            _logRepo = logRepo;
         }
 
         [HttpPost("login")]
@@ -30,6 +33,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 return Unauthorized("Login ou senha inválidos.");
 
             var token = GerarToken(admin.Id, admin.NomeCompleto);
+
+            _logRepo.Registrar(admin.Id, "Login", "Administrador", admin.Id);
 
             return Ok(new
             {
