@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Arquivo de contexto local para ClaudeCode — não versionar
+CLAUDE.md
+
 # dotenv files
 .env
 
