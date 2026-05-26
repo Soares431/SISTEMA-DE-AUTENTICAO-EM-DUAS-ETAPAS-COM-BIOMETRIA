@@ -25,6 +25,22 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [MaxLength(100)]
         public string NomeCompleto { get; set; }
 
+        [Column("cpf", TypeName = "varchar(15)")]
+        [MaxLength(15)]
+        public string? Cpf { get; set; }
+
+        [Column("email", TypeName = "varchar(150)")]
+        [MaxLength(150)]
+        public string? Email { get; set; }
+
+        [Column("cargo", TypeName = "varchar(100)")]
+        [MaxLength(100)]
+        public string? Cargo { get; set; }
+
+        [Column("telefone", TypeName = "varchar(20)")]
+        [MaxLength(20)]
+        public string? Telefone { get; set; }
+
         [Column("dataCriacao")]
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }

@@ -2,13 +2,15 @@
    Logs.razor - Logs de auditoria do sistema
    Features: Filtros por categoria, usuário e busca textual,
              tabela de logs com badges coloridos por tipo de ação,
-             ícones dinâmicos por categoria, botão de exportar
+             ícones dinâmicos por categoria, botão de exportar,
+             ordenação por coluna, navegação clicável para entidades
    Rota: /logs
    ============================================================================= *@
 @page "/logs"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ILogAdminRepository LogRepo
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -43,15 +45,46 @@
         <div class="card-content pt-6">
             <div class="table-wrapper">
                 <table>
-                    <thead><tr><th>Data/Hora</th><th>Admin</th><th>Ação</th><th>Entidade</th><th>ID Entidade</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th @onclick="@(() => AlternarOrdem("dataHora"))" style="cursor:pointer;user-select:none">Data/Hora @SortIcon("dataHora")</th>
+                            <th @onclick="@(() => AlternarOrdem("admin"))" style="cursor:pointer;user-select:none">Admin @SortIcon("admin")</th>
+                            <th @onclick="@(() => AlternarOrdem("acao"))" style="cursor:pointer;user-select:none">Ação @SortIcon("acao")</th>
+                            <th @onclick="@(() => AlternarOrdem("entidade"))" style="cursor:pointer;user-select:none">Entidade @SortIcon("entidade")</th>
+                            <th>ID Entidade</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        @foreach (var log in Filtered)
+                        @foreach (var log in Sorted)
                         {
                             <tr>
                                 <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@log.DataHora.ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@log.DataHora.ToString("HH:mm:ss")</p></div></div></td>
-                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(log.Administrador?.NomeCompleto ?? $"Admin {log.AdminId}")</span></td>
+                                <td>
+                                    <span class="flex items-center gap-2">
+                                        <Icon Name="user" Size="16" CssClass="text-muted" />
+                                        <a href="/admins/@log.AdminId" class="text-primary" style="text-decoration:none;cursor:pointer">
+                                            @(log.Administrador?.NomeCompleto ?? $"Admin {log.AdminId}")
+                                        </a>
+                                    </span>
+                                </td>
                                 <td><span class="badge @GetAcaoBadge(log.Acao)"><Icon Name="@GetAcaoIcon(log.Acao)" Size="12" /> @log.Acao</span></td>
-                                <td class="text-muted">@log.EntidadeAfetada</td>
+                                <td>
+                                    @{
+                                        var entHref = log.EntidadeAfetada switch
+                                        {
+                                            "Pessoa" when log.EntidadeId.HasValue => $"/pessoas/{log.EntidadeId}",
+                                            "Ambiente" when log.EntidadeId.HasValue => $"/ambientes/{log.EntidadeId}",
+                                            "Administrador" when log.EntidadeId.HasValue => $"/admins/{log.EntidadeId}",
+                                            "Configuracao" => "/configuracoes",
+                                            _ => (string?)null
+                                        };
+                                    }
+                                    @if (entHref != null) {
+                                        <a href="@entHref" class="text-muted" style="text-decoration:none">@log.EntidadeAfetada</a>
+                                    } else {
+                                        @log.EntidadeAfetada
+                                    }
+                                </td>
                                 <td class="font-mono text-sm text-muted">@(log.EntidadeId?.ToString() ?? "-")</td>
                             </tr>
                         }
@@ -66,6 +99,8 @@
     private string search = "";
     private string acaoFilter = "todos";
     private string entidadeFilter = "todos";
+    private string sortColumn = "dataHora";
+    private bool sortAsc = false;
     private List<LogAdmin> todosLogs = new();
 
     protected override void OnInitialized()
@@ -73,15 +108,33 @@
         todosLogs = LogRepo.ListarTodos();
     }
 
-    private string[] Acoes => todosLogs.Select(l => l.Acao).Distinct().ToArray();
-    private string[] Entidades => todosLogs.Select(l => l.EntidadeAfetada).Distinct().ToArray();
+    private string[] Acoes => todosLogs.Select(l => l.Acao).Distinct().Order().ToArray();
+    private string[] Entidades => todosLogs.Select(l => l.EntidadeAfetada).Distinct().Order().ToArray();
 
     private IEnumerable<LogAdmin> Filtered => todosLogs.Where(l =>
         (string.IsNullOrEmpty(search) ||
          l.Acao.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-         l.EntidadeAfetada.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
+         l.EntidadeAfetada.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+         (l.Administrador?.NomeCompleto.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
         (acaoFilter == "todos" || l.Acao == acaoFilter) &&
         (entidadeFilter == "todos" || l.EntidadeAfetada == entidadeFilter));
+
+    private IEnumerable<LogAdmin> Sorted => sortColumn switch
+    {
+        "admin" => sortAsc ? Filtered.OrderBy(l => l.Administrador?.NomeCompleto ?? "") : Filtered.OrderByDescending(l => l.Administrador?.NomeCompleto ?? ""),
+        "acao" => sortAsc ? Filtered.OrderBy(l => l.Acao) : Filtered.OrderByDescending(l => l.Acao),
+        "entidade" => sortAsc ? Filtered.OrderBy(l => l.EntidadeAfetada) : Filtered.OrderByDescending(l => l.EntidadeAfetada),
+        _ => sortAsc ? Filtered.OrderBy(l => l.DataHora) : Filtered.OrderByDescending(l => l.DataHora),
+    };
+
+    private void AlternarOrdem(string coluna)
+    {
+        if (sortColumn == coluna) sortAsc = !sortAsc;
+        else { sortColumn = coluna; sortAsc = true; }
+    }
+
+    private string SortIcon(string coluna) =>
+        sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
 
     private string GetAcaoBadge(string acao) => acao switch
     {
@@ -106,10 +159,11 @@
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Data/Hora,AdminId,Acao,Entidade,ID Entidade");
-        foreach (var log in Filtered)
+        sb.AppendLine("Data/Hora,Admin,Acao,Entidade,ID Entidade");
+        foreach (var log in Sorted)
         {
-            sb.AppendLine($"{log.DataHora:dd/MM/yyyy HH:mm:ss},{log.AdminId},{log.Acao},{log.EntidadeAfetada},{log.EntidadeId?.ToString() ?? ""}");
+            var admin = log.Administrador?.NomeCompleto ?? $"Admin {log.AdminId}";
+            sb.AppendLine($"{log.DataHora:dd/MM/yyyy HH:mm:ss},\"{admin}\",{log.Acao},{log.EntidadeAfetada},{log.EntidadeId?.ToString() ?? ""}");
         }
         await JS.InvokeVoidAsync("downloadCsv", $"logs_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
     }

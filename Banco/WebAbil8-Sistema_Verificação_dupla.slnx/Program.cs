@@ -1,5 +1,6 @@
 using BCrypt.Net;
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OpenApi;
@@ -63,6 +64,7 @@ builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
+builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
 
 builder.Services.AddScoped<InativarUsuariosInativos2AnosJob>();
 builder.Services.AddScoped<LimparDadosExpiradosJob>();
@@ -86,6 +88,31 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+
+    // Migração inline — adiciona colunas novas ao administrador sem perder dados existentes
+    var conn = db.Database.GetDbConnection();
+    if (conn.State == System.Data.ConnectionState.Closed) conn.Open();
+    var colsExistentes = new HashSet<string>();
+    using (var pragmaCmd = conn.CreateCommand())
+    {
+        pragmaCmd.CommandText = "SELECT name FROM pragma_table_info('administrador')";
+        using var rdr = pragmaCmd.ExecuteReader();
+        while (rdr.Read()) colsExistentes.Add(rdr.GetString(0));
+    }
+    foreach (var (col, def) in new[] {
+        ("cpf", "cpf VARCHAR(15)"),
+        ("email", "email VARCHAR(150)"),
+        ("cargo", "cargo VARCHAR(100)"),
+        ("telefone", "telefone VARCHAR(20)")
+    })
+    {
+        if (!colsExistentes.Contains(col))
+        {
+            using var alterCmd = conn.CreateCommand();
+            alterCmd.CommandText = $"ALTER TABLE administrador ADD COLUMN {def}";
+            alterCmd.ExecuteNonQuery();
+        }
+    }
 
     if (!db.SenhasDisponiveis.Any())
     {

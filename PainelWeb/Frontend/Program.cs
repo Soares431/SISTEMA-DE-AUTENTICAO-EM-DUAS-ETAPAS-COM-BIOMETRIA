@@ -37,6 +37,7 @@ builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
+builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
 
 // HttpClient para chamar API do Int1 (autenticação JWT)
 builder.Services.AddHttpClient("BancoAPI", client =>

@@ -1,8 +1,9 @@
 @* =============================================================================
    Historico.razor - Histórico completo de tentativas de acesso
-   Features: 4 cards de resumo, filtros (busca, status, ambiente),
+   Features: 4 cards de resumo, filtros (busca, status, ambiente, período),
              tabela com data/hora, pessoa, status (Permitido/Negado),
-             motivo da negação e link para gravação de vídeo
+             motivo da negação e link para gravação de vídeo,
+             ordenação por coluna, navegação clicável para entidades
    Rota: /historico
    ============================================================================= *@
 @page "/historico"
@@ -10,6 +11,7 @@
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbienteRepository AmbienteRepo
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -62,37 +64,62 @@
             }
             <div class="table-wrapper">
                 <table>
-                    <thead><tr><th>Data/Hora</th><th>Pessoa</th><th>Ambiente</th><th>Status</th><th>Motivo</th><th>Gravação</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th @onclick="@(() => AlternarOrdem("dataHora"))" style="cursor:pointer;user-select:none">Data/Hora @SortIcon("dataHora")</th>
+                            <th @onclick="@(() => AlternarOrdem("pessoa"))" style="cursor:pointer;user-select:none">Pessoa @SortIcon("pessoa")</th>
+                            <th @onclick="@(() => AlternarOrdem("ambiente"))" style="cursor:pointer;user-select:none">Ambiente @SortIcon("ambiente")</th>
+                            <th @onclick="@(() => AlternarOrdem("status"))" style="cursor:pointer;user-select:none">Status @SortIcon("status")</th>
+                            <th>Motivo</th>
+                            <th>Gravação</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        @foreach (var item in Filtered)
+                        @foreach (var item in Sorted)
                         {
                             <tr>
                                 <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@item.DataHora.ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@item.DataHora.ToString("HH:mm:ss")</p></div></div></td>
-                                <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(item.Pessoa?.Nome ?? $"ID {item.PessoaId}")</span></td>
-                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
+                                <td>
+                                    @if (item.PessoaId.HasValue)
+                                    {
+                                        <a href="/pessoas/@item.PessoaId" class="flex items-center gap-2" style="text-decoration:none;cursor:pointer">
+                                            <Icon Name="user" Size="16" CssClass="text-muted" />
+                                            <span>@(item.Pessoa?.Nome ?? $"ID {item.PessoaId}")</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="flex items-center gap-2 text-muted"><Icon Name="user-x" Size="16" /> Não cadastrado</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="/ambientes/@item.AmbienteId" class="flex items-center gap-2 text-muted" style="text-decoration:none;cursor:pointer">
+                                        <Icon Name="map-pin" Size="16" />
+                                        @(item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}")
+                                    </a>
+                                </td>
                                 <td><span class="badge @(item.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(item.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(item.AcessoLiberado ? "Permitido" : "Negado")</span></td>
                                 <td class="text-muted">@(item.MotivoNegacao ?? "-")</td>
                                 <td>@if (item.GravacaoPath != null) {
                                     <button class="btn btn-ghost btn-sm text-primary"><Icon Name="video" Size="16" /> Ver</button>
-                                } else
-                                {
-
+                                } else {
                                     <span class="text-sm text-muted">-</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                                }</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 </div>
 
 @code {
     private string search = "";
     private string statusFilter = "todos";
     private string ambFilter = "todos";
+    private string sortColumn = "dataHora";
+    private bool sortAsc = false;
     private DateTime? dataInicio = null;
     private DateTime? dataFim = null;
     private List<TentativaAcesso> todasTentativas = new();
@@ -117,13 +144,30 @@
         (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
         (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
 
+    private IEnumerable<TentativaAcesso> Sorted => sortColumn switch
+    {
+        "pessoa" => sortAsc ? Filtered.OrderBy(h => h.Pessoa?.Nome ?? "") : Filtered.OrderByDescending(h => h.Pessoa?.Nome ?? ""),
+        "ambiente" => sortAsc ? Filtered.OrderBy(h => h.Ambiente?.Nome ?? "") : Filtered.OrderByDescending(h => h.Ambiente?.Nome ?? ""),
+        "status" => sortAsc ? Filtered.OrderBy(h => h.AcessoLiberado) : Filtered.OrderByDescending(h => h.AcessoLiberado),
+        _ => sortAsc ? Filtered.OrderBy(h => h.DataHora) : Filtered.OrderByDescending(h => h.DataHora),
+    };
+
+    private void AlternarOrdem(string coluna)
+    {
+        if (sortColumn == coluna) sortAsc = !sortAsc;
+        else { sortColumn = coluna; sortAsc = true; }
+    }
+
+    private string SortIcon(string coluna) =>
+        sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
+
     private void LimparDatas() { dataInicio = null; dataFim = null; }
 
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Data/Hora,Pessoa,Ambiente,Status,Motivo,Gravacao");
-        foreach (var item in Filtered)
+        foreach (var item in Sorted)
         {
             var pessoa = item.Pessoa?.Nome ?? $"ID {item.PessoaId}";
             var amb = item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}";

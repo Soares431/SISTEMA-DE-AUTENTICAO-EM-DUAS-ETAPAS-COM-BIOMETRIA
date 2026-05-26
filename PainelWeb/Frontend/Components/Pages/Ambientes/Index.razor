@@ -25,10 +25,16 @@
             <option value="alerta">Com Alerta</option>
             <option value="ok">Sem Alerta</option>
         </select>
+        <select class="form-select" style="width: 180px;" @bind="sortOpcao">
+            <option value="nome_az">Nome A→Z</option>
+            <option value="nome_za">Nome Z→A</option>
+            <option value="digitais_mais">Mais Digitais</option>
+            <option value="digitais_menos">Menos Digitais</option>
+        </select>
     </div>
 
     <div class="grid grid-3">
-        @foreach (var amb in FilteredAmbientes)
+        @foreach (var amb in SortedAmbientes)
         {
             var dispositivo = dispositivos.FirstOrDefault(d => d.Id == amb.DispositivoT50Id);
             var pessoasCount = AmbientePessoaRepo.ContarPessoasPorAmbiente(amb.Id);
@@ -63,7 +69,7 @@
         }
     </div>
 
-    @if (!FilteredAmbientes.Any())
+    @if (!SortedAmbientes.Any())
     {
         <div class="card">
             <div class="card-content pt-6" style="text-align: center; padding: 3rem;">
@@ -108,6 +114,7 @@
 @code {
     private string search = "";
     private string alertaFilter = "todos";
+    private string sortOpcao = "nome_az";
     private bool showDialog = false;
     private string novoNome = "";
     private int novoT50Id = 0;
@@ -126,6 +133,14 @@
     (alertaFilter == "todos" ||
      (alertaFilter == "alerta" && dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id)?.DigitaisCadastradas >= 950) ||
      (alertaFilter == "ok" && !(dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id)?.DigitaisCadastradas >= 950))));
+
+    private IEnumerable<Ambiente> SortedAmbientes => sortOpcao switch
+    {
+        "nome_za" => FilteredAmbientes.OrderByDescending(a => a.Nome),
+        "digitais_mais" => FilteredAmbientes.OrderByDescending(a => dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id)?.DigitaisCadastradas ?? 0),
+        "digitais_menos" => FilteredAmbientes.OrderBy(a => dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id)?.DigitaisCadastradas ?? 0),
+        _ => FilteredAmbientes.OrderBy(a => a.Nome),
+    };
 
     private void HandleCriar()
     {

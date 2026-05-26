@@ -16,10 +16,19 @@
             <Icon Name="search" /><input class="form-input" placeholder="Buscar por nome, email ou cargo..." @bind="search" @bind:event="oninput" />
         </div>
         <select class="form-select" style="width: 150px;" @bind="statusFilter"><option value="todos">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select>
+        <select class="form-select" style="width: 200px;" @bind="sortOpcao">
+            <option value="nome_az">Nome A→Z</option>
+            <option value="nome_za">Nome Z→A</option>
+            <option value="status_ativo">Status (Ativo primeiro)</option>
+            <option value="status_inativo">Status (Inativo primeiro)</option>
+            <option value="cargo_az">Cargo A→Z</option>
+            <option value="biometria">Biometria (cadastrada primeiro)</option>
+            <option value="cadastro_rec">Cadastro (mais recente)</option>
+        </select>
     </div>
 
     <div class="grid grid-3">
-        @foreach (var p in Filtered)
+        @foreach (var p in Sorted)
         {
             <div class="card">
                 <div class="card-content pt-6">
@@ -48,7 +57,7 @@
         }
     </div>
 
-    @if (!Filtered.Any())
+    @if (!Sorted.Any())
     {
         <div class="card"><div class="card-content pt-6" style="text-align: center; padding: 3rem;"><Icon Name="user" Size="48" CssClass="text-muted" /><p class="font-medium mt-4">Nenhuma pessoa encontrada</p><p class="text-muted">Tente ajustar os filtros</p></div></div>
     }
@@ -111,6 +120,7 @@
 @code {
     private string search = "";
     private string statusFilter = "todos";
+    private string sortOpcao = "nome_az";
     private bool showDialog = false;
     private string novoNome = "";
     private string novoEmail = "";
@@ -135,6 +145,17 @@
          p.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
          p.Cargo.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
         (statusFilter == "todos" || p.Status == statusFilter));
+
+    private IEnumerable<Pessoa> Sorted => sortOpcao switch
+    {
+        "nome_za" => Filtered.OrderByDescending(p => p.Nome),
+        "status_ativo" => Filtered.OrderByDescending(p => p.Status == "ativo"),
+        "status_inativo" => Filtered.OrderByDescending(p => p.Status == "inativo"),
+        "cargo_az" => Filtered.OrderBy(p => p.Cargo),
+        "biometria" => Filtered.OrderByDescending(p => p.biometriaCadastrada.HasValue),
+        "cadastro_rec" => Filtered.OrderByDescending(p => p.dataCadastro),
+        _ => Filtered.OrderBy(p => p.Nome),
+    };
 
     private void FecharDialog()
     {
