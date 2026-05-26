@@ -76,17 +76,17 @@ namespace BiometricAcess.Worker.Services
             }
         }
 
-        public bool IniciarCapturaDigital(int id)
+        public byte[]? IniciarCapturaDigital(int id)
         {
             try
             {
-                _device.EnrollFingerprint((ulong)id).Wait();
-                return true;
+                // EnrollFingerprint bloqueia até o usuário colocar o dedo 2x (verifyCount=2) e retorna o template diretamente
+                return _device.EnrollFingerprint((ulong)id).Result;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Erro ao iniciar captura de digital: {ex.Message}");
-                return false;
+                return null;
             }
         }
 

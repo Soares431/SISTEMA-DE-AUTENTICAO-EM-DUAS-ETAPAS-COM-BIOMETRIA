@@ -16,7 +16,7 @@ public class CameraService
         _basePath = basePath;
     }
 
-    public string? MonitorarNovoArquivo(int ambienteId, DateTime timestamp, int tempoEsperaSeg = 30)
+    public async Task<string?> MonitorarNovoArquivo(int ambienteId, DateTime timestamp, int tempoEsperaSeg = 30)
     {
         string ambientePath = Path.Combine(_basePath, $"ambiente_{ambienteId}");
         if (!Directory.Exists(ambientePath))
@@ -35,15 +35,15 @@ public class CameraService
             if (arquivos.Any())
                 return arquivos.First().FullName;
 
-            Thread.Sleep(1000);
+            await Task.Delay(1000);
         }
 
         return null;
     }
 
-    public void RegistrarAcessoComVideo(int adminId, string acao, string entidade, int entidadeId, int ambienteId, DateTime timestamp)
+    public async Task RegistrarAcessoComVideo(int adminId, string acao, string entidade, int entidadeId, int ambienteId, DateTime timestamp)
     {
-        var videoPath = MonitorarNovoArquivo(ambienteId, timestamp);
+        var videoPath = await MonitorarNovoArquivo(ambienteId, timestamp);
         // VideoUrl não existe no LogAdmin — registra sem vídeo, path fica apenas no GravacaoPath da TentativaAcesso
         _logRepo.Registrar(adminId, acao, entidade, entidadeId);
     }

@@ -1,4 +1,4 @@
-﻿using BiometricAcess.Worker.Models;
+using BiometricAcess.Worker.Models;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using InfraestruturaBloco1.Services;
@@ -10,7 +10,9 @@ namespace BiometricAcess.Worker.Services
         private readonly IPessoaRepository _pessoaRepository;
         private readonly IAmbientePessoaRepository _ambientePessoaRepository;
         private readonly IDispositivoT50Repository _dispositivoRepository;
+        private readonly IAmbienteRepository _ambienteRepository;
         private readonly ITentativaAcessoRepository _tentativaRepository;
+        private readonly IConfiguracaoRepository _configuracaoRepository;
         private readonly IAnvizService _anvizService;
         private readonly CameraService _cameraService;
 
@@ -18,14 +20,18 @@ namespace BiometricAcess.Worker.Services
             IPessoaRepository pessoaRepository,
             IAmbientePessoaRepository ambientePessoaRepository,
             IDispositivoT50Repository dispositivoRepository,
+            IAmbienteRepository ambienteRepository,
             ITentativaAcessoRepository tentativaRepository,
+            IConfiguracaoRepository configuracaoRepository,
             IAnvizService anvizService,
             CameraService cameraService)
         {
             _pessoaRepository = pessoaRepository;
             _ambientePessoaRepository = ambientePessoaRepository;
             _dispositivoRepository = dispositivoRepository;
+            _ambienteRepository = ambienteRepository;
             _tentativaRepository = tentativaRepository;
+            _configuracaoRepository = configuracaoRepository;
             _anvizService = anvizService;
             _cameraService = cameraService;
         }
@@ -39,24 +45,32 @@ namespace BiometricAcess.Worker.Services
                 return;
             }
 
-            var ambiente = dispositivo.Id;
+            // C2: busca o Ambiente pelo DispositivoT50Id — antes usava o ID do dispositivo como ambienteId
+            var ambiente = _ambienteRepository.ListarTodos()
+                .FirstOrDefault(a => a.DispositivoT50Id == dispositivo.Id);
+            if (ambiente == null)
+            {
+                Console.WriteLine($"Nenhum ambiente configurado para o dispositivo {dispositivo.Id}");
+                return;
+            }
+
             var pessoa = await _pessoaRepository.BuscarPorId(evento.PessoaID);
 
             if (pessoa == null)
             {
-                FluxoNaoCadastrado(evento, ambiente);
+                await FluxoNaoCadastrado(evento, ambiente.Id);
                 return;
             }
 
             if (pessoa.Status == "inativo")
             {
-                FluxoAcessoNegado(evento, pessoa, ambiente, "inativo");
+                await FluxoAcessoNegado(evento, pessoa, ambiente.Id, "inativo");
                 return;
             }
 
-            if (!_ambientePessoaRepository.PessoaTemAcesso(ambiente, pessoa.Id))
+            if (!_ambientePessoaRepository.PessoaTemAcesso(ambiente.Id, pessoa.Id))
             {
-                FluxoAcessoNegado(evento, pessoa, ambiente, "sem_permissao");
+                await FluxoAcessoNegado(evento, pessoa, ambiente.Id, "sem_permissao");
                 return;
             }
 
@@ -64,31 +78,25 @@ namespace BiometricAcess.Worker.Services
                 && pessoa.modoAcesso == "digital_e_senha"
                 && pessoa.biometriaCadastrada == null)
             {
-                await FluxoPrimeiroAcesso(evento, pessoa, ambiente);
+                await FluxoPrimeiroAcesso(evento, pessoa, ambiente.Id);
                 return;
             }
 
             await FluxoAcessoNormal(evento, pessoa, ambiente);
         }
 
-        private DispositivoT50 BuscarDispositivoPorIp(string ip)
+        private DispositivoT50? BuscarDispositivoPorIp(string ip)
         {
-            var dispositivos = _dispositivoRepository.ListarTodos();
-            foreach (var dispositivo in dispositivos)
-            {
-                if (dispositivo.EnderecoIP == ip)
-                    return dispositivo;
-            }
-            return null;
+            return _dispositivoRepository.ListarTodos()
+                .FirstOrDefault(d => d.EnderecoIP == ip);
         }
 
         private async Task FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, int ambienteId)
         {
             Console.WriteLine($"Primeiro acesso — Pessoa: {pessoa.Id} | Iniciando captura de digital...");
 
-            _anvizService.IniciarCapturaDigital((int)pessoa.Id);
-
-            var template = _anvizService.DownloadTemplate((int)pessoa.Id);
+            // I1: EnrollFingerprint retorna o template diretamente — elimina chamada redundante ao DownloadTemplate
+            var template = _anvizService.IniciarCapturaDigital((int)pessoa.Id);
             if (template != null)
             {
                 await _pessoaRepository.SalvarTemplate(pessoa.Id, template);
@@ -98,48 +106,54 @@ namespace BiometricAcess.Worker.Services
             }
 
             await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
-            RegistrarTentativa(evento, pessoa, ambienteId, true, null);
+            await RegistrarTentativa(evento, pessoa, ambienteId, true, null);
         }
 
-        private async Task FluxoAcessoNormal(EventoAcesso evento, Pessoa pessoa, int ambienteId)
+        private async Task FluxoAcessoNormal(EventoAcesso evento, Pessoa pessoa, Ambiente ambiente)
         {
             Console.WriteLine($"Acesso liberado — Pessoa: {pessoa.Id} | Tipo: {evento.TipoVerificacao}");
             await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
 
-            var tentativa = RegistrarTentativa(evento, pessoa, ambienteId, true, null);
+            var tentativa = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
 
-            // HW-16 — aguarda gravação da câmera e associa ao registro
-            var gravacaoPath = _cameraService.MonitorarNovoArquivo(ambienteId, evento.DataHora);
+            // HW-16 — aguarda gravação da câmera; I5: usa TempoEsperaGravacaoSeg do ambiente
+            var gravacaoPath = await _cameraService.MonitorarNovoArquivo(ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
             if (gravacaoPath != null)
             {
+                // C3: usa Atualizar para evitar registro duplicado (antes chamava Registrar novamente)
                 tentativa.GravacaoPath = gravacaoPath;
-                _tentativaRepository.Registrar(tentativa);
+                _tentativaRepository.Atualizar(tentativa);
                 Console.WriteLine($"Gravação associada — Pessoa: {pessoa.Id} | Path: {gravacaoPath}");
             }
         }
 
-        private void FluxoNaoCadastrado(EventoAcesso evento, int ambienteId)
+        private async Task FluxoNaoCadastrado(EventoAcesso evento, int ambienteId)
         {
             Console.WriteLine($"Acesso negado — Pessoa {evento.PessoaID} não cadastrada no sistema");
-            RegistrarTentativa(evento, null, ambienteId, false, "nao_cadastrado");
+            await RegistrarTentativa(evento, null, ambienteId, false, "nao_cadastrado");
         }
 
-        private void FluxoAcessoNegado(EventoAcesso evento, Pessoa pessoa, int ambienteId, string motivo)
+        private async Task FluxoAcessoNegado(EventoAcesso evento, Pessoa pessoa, int ambienteId, string motivo)
         {
             Console.WriteLine($"Acesso negado — Pessoa: {pessoa.Id} | Motivo: {motivo}");
-            RegistrarTentativa(evento, pessoa, ambienteId, false, motivo);
+            await RegistrarTentativa(evento, pessoa, ambienteId, false, motivo);
         }
 
-        private TentativaAcesso RegistrarTentativa(EventoAcesso evento, Pessoa? pessoa, int ambienteId, bool acessoLiberado, string? motivo)
+        private async Task<TentativaAcesso> RegistrarTentativa(EventoAcesso evento, Pessoa? pessoa, int ambienteId, bool acessoLiberado, string? motivo)
         {
+            // C4: preenche DataExpiracao com base na configuração (antes ficava null, job de limpeza nunca removia)
+            var config = await _configuracaoRepository.BuscarPorChave();
+            var retencaoDias = config?.RetencaoGravacoesTentativasDias ?? 90;
+
             var tentativa = new TentativaAcesso
             {
-                PessoaId = pessoa != null ? (int)pessoa.Id : null,
+                PessoaId = pessoa?.Id,
                 AmbienteId = ambienteId,
                 DataHora = evento.DataHora,
                 AcessoLiberado = acessoLiberado,
                 MotivoNegacao = motivo,
-                TipoVerificacao = evento.TipoVerificacao
+                TipoVerificacao = evento.TipoVerificacao,
+                DataExpiracao = DateTime.UtcNow.AddDays(retencaoDias)
             };
 
             _tentativaRepository.Registrar(tentativa);

@@ -7,7 +7,7 @@ namespace BiometricAcess.Worker.Services
         bool RemoverPessoa(int id);
         bool UploadTemplate(int id, byte[] template);
         byte[]? DownloadTemplate(int id);
-        bool IniciarCapturaDigital(int id);
+        byte[]? IniciarCapturaDigital(int id);
         bool AlterarModo(int id, string modo);
         bool SincronizarHora();
     }

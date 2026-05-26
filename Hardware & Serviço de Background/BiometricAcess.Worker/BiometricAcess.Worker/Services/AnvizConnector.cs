@@ -1,6 +1,7 @@
 ﻿using Anviz.SDK;
 using Anviz.SDK.Responses;
 using BiometricAcess.Worker.Models;
+using System.Collections.Concurrent;
 
 namespace BiometricAcess.Worker.Services
 {
@@ -9,7 +10,7 @@ namespace BiometricAcess.Worker.Services
         private AnvizDevice? _device;
         private readonly string _ip;
         private readonly int _porta;
-        private EventoAcesso? _ultimoEvento;
+        private readonly ConcurrentQueue<EventoAcesso> _filaEventos = new();
 
         public AnvizConnector(string ip, int porta)
         {
@@ -51,7 +52,7 @@ namespace BiometricAcess.Worker.Services
             // Fonte: documentação oficial Anviz SDK "New SDK API 2019.docx"
             bool acessoLiberado = (record.RecordType & 0x80) != 0;
 
-            _ultimoEvento = new EventoAcesso
+            _filaEventos.Enqueue(new EventoAcesso
             {
                 PessoaID = (int)record.UserCode,
                 TipoVerificacao = tipoVerificacao,
@@ -59,7 +60,7 @@ namespace BiometricAcess.Worker.Services
                 DataHora = record.DateTime,
                 IpDispositivo = _ip,
                 MotivoNegacao = string.Empty
-            };
+            });
         }
 
         private void OnDeviceError(object? sender, Exception ex)
@@ -72,12 +73,9 @@ namespace BiometricAcess.Worker.Services
         public EventoAcesso? BuscarNovoEvento()
         {
             if (_device == null)
-            {
                 return null;
-            }
 
-            var evento = _ultimoEvento;
-            _ultimoEvento = null;
+            _filaEventos.TryDequeue(out var evento);
             return evento;
         }
 

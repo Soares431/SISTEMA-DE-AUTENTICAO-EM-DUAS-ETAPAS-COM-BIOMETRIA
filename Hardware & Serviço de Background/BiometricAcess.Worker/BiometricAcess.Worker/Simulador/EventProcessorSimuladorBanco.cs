@@ -65,9 +65,8 @@ namespace BiometricAcess.Worker.Simulador
             }
             else
             {
-                acessoLiberado          = true;
-                pessoa.dataUltimoAcesso = DateTime.UtcNow;
-                await pessoaRepo.Atualizar(pessoa);
+                acessoLiberado = true;
+                await pessoaRepo.AtualizarUltimoAcesso(pessoa.Id);
             }
 
             var tentativa = new TentativaAcesso

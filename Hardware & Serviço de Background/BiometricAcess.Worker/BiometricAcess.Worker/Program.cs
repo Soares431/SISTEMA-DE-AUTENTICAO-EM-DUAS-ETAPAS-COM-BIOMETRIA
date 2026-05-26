@@ -26,6 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
 builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
+builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
 builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();
 builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();

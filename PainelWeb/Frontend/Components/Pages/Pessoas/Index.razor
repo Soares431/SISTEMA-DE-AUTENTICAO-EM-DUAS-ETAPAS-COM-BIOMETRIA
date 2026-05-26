@@ -147,7 +147,8 @@
 
     private async Task HandleCadastrar()
     {
-        if (string.IsNullOrWhiteSpace(novoNome) || string.IsNullOrWhiteSpace(novoEmail)) return;
+        if (string.IsNullOrWhiteSpace(novoNome) || string.IsNullOrWhiteSpace(novoEmail) ||
+            string.IsNullOrWhiteSpace(novoCpf) || string.IsNullOrWhiteSpace(novoCargo)) return;
 
         isCadastrando = true;
         erroDialog = null;

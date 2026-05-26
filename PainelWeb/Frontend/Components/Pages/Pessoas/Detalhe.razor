@@ -1,4 +1,4 @@
-@page "/pessoas/{Id:int}"
+@page "/pessoas/{Id:long}"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject IPessoaRepository PessoaRepo
 @inject ITentativaAcessoRepository TentativaRepo
@@ -161,7 +161,7 @@
 }
 
 @code {
-    [Parameter] public int Id { get; set; }
+    [Parameter] public long Id { get; set; }
     private string tab = "ambientes";
     private bool showEdit = false;
     private bool showConfirmInativar = false;
@@ -204,7 +204,7 @@
         showEdit = false;
     }
 
-    private void HandleRemoverAcesso(int ambienteId)
+    private async Task HandleRemoverAcesso(int ambienteId)
     {
         if (pessoa == null) return;
         AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoa.Id);
@@ -213,7 +213,7 @@
         // Se ficou sem nenhum ambiente, inativa a pessoa
         if (ambientesPessoa.Count == 0 && pessoa.Status == "ativo")
         {
-            _ = PessoaRepo.AlterarStatus(pessoa.Id, false);
+            await PessoaRepo.AlterarStatus(pessoa.Id, false);
             pessoa.Status = "inativo";
         }
     }

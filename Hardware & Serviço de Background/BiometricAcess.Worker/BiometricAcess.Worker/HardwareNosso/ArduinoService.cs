@@ -25,11 +25,12 @@ public class ArduinoService : IAnvizService
         return true;
     }
 
-    public bool IniciarCapturaDigital(int id)
+    public byte[]? IniciarCapturaDigital(int id)
     {
+        // AS608 não retorna template via serial — captura fica no sensor
         _connector.EnviarComando($"{Comandos.DigitalCapturar}|{id}");
         Console.WriteLine($"[ArduinoService] Iniciando captura digital para ID {id}");
-        return true;
+        return null;
     }
 
     public byte[]? DownloadTemplate(int id)

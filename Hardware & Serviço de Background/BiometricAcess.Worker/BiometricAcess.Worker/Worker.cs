@@ -33,7 +33,7 @@ namespace BiometricAcess.Worker
                 var eventosArmazenados = _connector.BuscarEventosArmazenados();
                 foreach (var eventoArmazenado in eventosArmazenados)
                 {
-                    _eventProcessor.Processar(eventoArmazenado);
+                    await _eventProcessor.Processar(eventoArmazenado);
                 }
 
                 _logger.LogInformation("Iniciando polling de eventos em tempo real...");
@@ -46,7 +46,7 @@ namespace BiometricAcess.Worker
 
                         if (evento != null)
                         {
-                            _eventProcessor.Processar(evento);
+                            await _eventProcessor.Processar(evento);
                         }
 
                         await Task.Delay(2000, stoppingToken);

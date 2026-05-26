@@ -1,4 +1,5 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+﻿using Microsoft.EntityFrameworkCore;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
@@ -53,7 +54,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<LogAdmin> ListarTodos()
         {
-            return _context.LogsAdmin.ToList();
+            return _context.LogsAdmin.Include(l => l.Administrador).ToList();
         }
 
         public LogAdmin Registrar(int adminId, string acao, string entidadeAfetada, int? entidadeId)

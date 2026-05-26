@@ -24,7 +24,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
 
             var usuarios = _context.Pessoas
                 .Where(p => p.Status == "ativo"
-                    && p.dataUltimoAcesso < doisAnosAtras)
+                    && (p.dataUltimoAcesso < doisAnosAtras
+                        || (p.dataUltimoAcesso == null && p.dataCadastro < doisAnosAtras)))
                 .ToList();
 
             foreach (var usuario in usuarios)

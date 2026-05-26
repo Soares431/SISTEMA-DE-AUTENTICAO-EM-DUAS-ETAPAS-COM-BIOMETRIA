@@ -243,6 +243,12 @@
         var ambientesDaPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId);
         if (ambientesDaPessoa.Count == 0)
             await PessoaRepo.AlterarStatus(pessoaId, false);
+        // Decrementa o contador de digitais do dispositivo
+        if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+        {
+            dispositivo.DigitaisCadastradas--;
+            DispositivoRepo.Atualizar(dispositivo);
+        }
     }
 
     private async Task HandleAdicionarPessoa()
@@ -252,6 +258,12 @@
         AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
         await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
         LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
+        // Incrementa o contador de digitais do dispositivo
+        if (dispositivo != null)
+        {
+            dispositivo.DigitaisCadastradas++;
+            DispositivoRepo.Atualizar(dispositivo);
+        }
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
         showAddPessoa = false;

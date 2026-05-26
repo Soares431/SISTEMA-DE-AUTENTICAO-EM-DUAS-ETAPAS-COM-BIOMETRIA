@@ -28,10 +28,10 @@ namespace BiometricAcess.Worker.Simulador
             return new byte[338]; 
         }
 
-        public bool IniciarCapturaDigital(int id)
+        public byte[]? IniciarCapturaDigital(int id)
         {
             Console.WriteLine($"Simulador: Captura de digital iniciada — ID: {id} | T50M exibiria PLACE FINGER");
-            return true;
+            return new byte[338];
         }
 
         public bool AlterarModo(int id, string modo)

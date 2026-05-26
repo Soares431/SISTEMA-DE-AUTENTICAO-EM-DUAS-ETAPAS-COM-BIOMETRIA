@@ -41,6 +41,15 @@
                         <option value="@a.Id">@a.Nome</option>
                     }
                 </select>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Período</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="date" class="form-input" @bind="dataInicio" />
+                        <span class="text-muted">até</span>
+                        <input type="date" class="form-input" @bind="dataFim" />
+                        <button class="btn btn-ghost btn-sm" @onclick="LimparDatas">Limpar</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -84,6 +93,8 @@
     private string search = "";
     private string statusFilter = "todos";
     private string ambFilter = "todos";
+    private DateTime? dataInicio = null;
+    private DateTime? dataFim = null;
     private List<TentativaAcesso> todasTentativas = new();
     private List<Ambiente> ambientes = new();
 
@@ -102,7 +113,11 @@
          (h.Pessoa?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
          (h.Ambiente?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
         (statusFilter == "todos" || (statusFilter == "permitido" ? h.AcessoLiberado : !h.AcessoLiberado)) &&
-        (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter));
+        (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter) &&
+        (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
+        (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
+
+    private void LimparDatas() { dataInicio = null; dataFim = null; }
 
     private async Task ExportarCsv()
     {
