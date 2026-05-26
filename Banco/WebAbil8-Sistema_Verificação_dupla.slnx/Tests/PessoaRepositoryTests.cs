@@ -3,12 +3,16 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
 {
     public class PessoaRepositoryTests
     {
+        private static IConfiguration CriarConfiguration() =>
+            new ConfigurationBuilder().Build();
+
         private AppDbContext CriarContexto()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -38,7 +42,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         public async Task Adicionar_DeveRetornarPessoa()
         {
             using var db = CriarContexto();
-            var repo = new PessoaImplemetions(db);
+            var repo = new PessoaImplemetions(db, CriarConfiguration());
             var pessoa = CriarPessoa("Lucas", "12345678901");
             var resultado = await repo.Adicionar(pessoa);
             Assert.NotNull(resultado);
@@ -49,7 +53,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         public async Task Adicionar_CPFDuplicado_DeveLancarExcecao()
         {
             using var db = CriarContexto();
-            var repo = new PessoaImplemetions(db);
+            var repo = new PessoaImplemetions(db, CriarConfiguration());
             await repo.Adicionar(CriarPessoa("Lucas", "12345678901"));
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 repo.Adicionar(CriarPessoa("João", "12345678901")));
@@ -59,7 +63,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         public async Task BuscarPorId_DeveRetornarPessoa()
         {
             using var db = CriarContexto();
-            var repo = new PessoaImplemetions(db);
+            var repo = new PessoaImplemetions(db, CriarConfiguration());
             var pessoa = CriarPessoa("Lucas", "11111111111");
             await repo.Adicionar(pessoa);
             var resultado = await repo.BuscarPorId(pessoa.Id);
@@ -71,7 +75,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         public async Task Remover_DeveRemoverPessoa()
         {
             using var db = CriarContexto();
-            var repo = new PessoaImplemetions(db);
+            var repo = new PessoaImplemetions(db, CriarConfiguration());
             var pessoa = CriarPessoa("Lucas", "22222222222");
             await repo.Adicionar(pessoa);
             await repo.Remover(pessoa.Id);
@@ -83,7 +87,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         public async Task AlterarStatus_DeveInativarPessoa()
         {
             using var db = CriarContexto();
-            var repo = new PessoaImplemetions(db);
+            var repo = new PessoaImplemetions(db, CriarConfiguration());
             var pessoa = CriarPessoa("Lucas", "33333333333");
             await repo.Adicionar(pessoa);
             await repo.AlterarStatus(pessoa.Id, false);
