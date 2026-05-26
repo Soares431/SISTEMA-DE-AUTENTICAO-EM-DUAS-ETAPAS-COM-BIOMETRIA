@@ -10,6 +10,7 @@
 @inject IConfiguracaoRepository ConfigRepo
 @inject ITentativaAcessoRepository TentativaRepo
 @inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     <div><h1 class="text-2xl font-bold">Configurações</h1><p class="text-muted">Gerencie as configurações globais do sistema</p></div>
@@ -19,18 +20,25 @@
             <div class="card-header"><div class="card-title"><Icon Name="database" Size="20" /> Retenção de Dados</div><p class="card-description">Configure por quanto tempo os dados serão armazenados no sistema</p></div>
             <div class="card-content space-y-sm">
                 <div class="form-group">
-                    <label class="form-label">Período de Retenção</label>
-                    <select class="form-select" @bind="retencao">
+                    <label class="form-label">Retenção de Tentativas de Acesso</label>
+                    <select class="form-select" @bind="retencaoTentativas">
                         <option value="30">30 dias</option>
                         <option value="60">60 dias</option>
                         <option value="90">90 dias</option>
-                        <option value="180">180 dias</option>
-                        <option value="365">1 ano</option>
-                        <option value="730">2 anos</option>
+                        <option value="180">180 dias (máximo)</option>
                     </select>
-                    <p class="text-sm text-muted">Histórico de acessos e gravações mais antigos serão removidos automaticamente</p>
+                    <p class="text-sm text-muted">Tentativas de acesso e gravações mais antigas serão removidas automaticamente</p>
                 </div>
-                <div class="alert alert-warning"><Icon Name="alert-triangle" Size="16" CssClass="text-warning" /><div><p class="alert-title">Atenção</p><p class="alert-desc">Alterar o período de retenção pode resultar na perda permanente de dados históricos.</p></div></div>
+                <div class="form-group">
+                    <label class="form-label">Retenção de Logs de Auditoria</label>
+                    <select class="form-select" @bind="retencaoLogs">
+                        <option value="90">90 dias</option>
+                        <option value="180">180 dias</option>
+                        <option value="365">1 ano (máximo)</option>
+                    </select>
+                    <p class="text-sm text-muted">Logs administrativos mais antigos serão removidos automaticamente</p>
+                </div>
+                <div class="alert alert-warning"><Icon Name="alert-triangle" Size="16" CssClass="text-warning" /><div><p class="alert-title">Atenção</p><p class="alert-desc">Reduzir o período de retenção pode resultar na perda permanente de dados históricos.</p></div></div>
                 <hr class="separator" />
                 <div>
                     <label class="form-label">Estatísticas de Armazenamento</label>
@@ -38,7 +46,7 @@
                         <div class="info-row"><div><p class="text-muted text-sm">Registros de Acesso</p><p class="text-xl font-bold">@totalTentativas</p></div></div>
                         <div class="info-row"><div><p class="text-muted text-sm">Gravações</p><p class="text-xl font-bold">@totalGravacoes</p></div></div>
                         <div class="info-row"><div><p class="text-muted text-sm">Logs do Sistema</p><p class="text-xl font-bold">@totalLogs</p></div></div>
-                        <div class="info-row"><div><p class="text-muted text-sm">Retenção Atual</p><p class="text-xl font-bold">@retencao dias</p></div></div>
+                        <div class="info-row"><div><p class="text-muted text-sm">Retenção Tentativas</p><p class="text-xl font-bold">@retencaoTentativas dias</p></div></div>
                     </div>
                 </div>
             </div>
@@ -49,10 +57,10 @@
             <div class="card-content space-y-sm">
                 <div class="form-group">
                     <label class="form-label">Tempo de Espera (segundos)</label>
-                    <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="1" max="60" /><span class="text-muted">segundos</span></div>
+                    <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="30" max="120" /><span class="text-muted">segundos</span></div>
                     <p class="text-sm text-muted">Este valor pode ser sobrescrito individualmente para cada ambiente</p>
                 </div>
-                <div class="alert alert-info"><Icon Name="info" Size="16" CssClass="text-primary" /><div><p class="alert-title">Informação</p><p class="alert-desc">Valores muito baixos podem resultar em gravações incompletas. Recomendamos manter entre 5 e 15 segundos.</p></div></div>
+                <div class="alert alert-info"><Icon Name="info" Size="16" CssClass="text-primary" /><div><p class="alert-title">Informação</p><p class="alert-desc">Mínimo: 30 segundos. Máximo: 120 segundos. Valores muito baixos podem resultar em gravações incompletas.</p></div></div>
             </div>
         </div>
     </div>
@@ -67,7 +75,8 @@
 </div>
 
 @code {
-    private string retencao = "180";
+    private string retencaoTentativas = "90";
+    private string retencaoLogs = "180";
     private int tempoEspera = 60;
     private bool isSaving = false;
     private int totalTentativas = 0;
@@ -75,17 +84,19 @@
     private int totalLogs = 0;
     private Configuracao? config = null;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        config = ConfigRepo.BuscarPorChave().Result;
+        config = await ConfigRepo.BuscarPorChave();
         if (config != null)
         {
-            retencao = config.RetencaoLogsDias.ToString();
+            retencaoTentativas = config.RetencaoGravacoesTentativasDias.ToString();
+            retencaoLogs = config.RetencaoLogsDias.ToString();
             tempoEspera = config.TempoEsperaGravacaoSeg;
         }
 
-        totalTentativas = TentativaRepo.ListarTodos().Count;
-        totalGravacoes = TentativaRepo.ListarTodos().Count(t => t.GravacaoPath != null);
+        var tentativas = TentativaRepo.ListarTodos();
+        totalTentativas = tentativas.Count;
+        totalGravacoes = tentativas.Count(t => t.GravacaoPath != null);
         totalLogs = LogRepo.ListarTodos().Count;
     }
 
@@ -96,10 +107,11 @@
 
         if (config != null)
         {
-            config.RetencaoLogsDias = int.Parse(retencao);
-            config.RetencaoGravacoesTentativasDias = int.Parse(retencao);
-            config.TempoEsperaGravacaoSeg = tempoEspera;
+            config.RetencaoGravacoesTentativasDias = int.Parse(retencaoTentativas);
+            config.RetencaoLogsDias = int.Parse(retencaoLogs);
+            config.TempoEsperaGravacaoSeg = Math.Clamp(tempoEspera, 30, 120);
             await ConfigRepo.Atualizar(config);
+            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Configuracao", config.Id);
         }
 
         isSaving = false;

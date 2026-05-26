@@ -9,11 +9,12 @@
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject IJSRuntime JS
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Histórico de Acessos</h1><p class="text-muted">Todas as tentativas de entrada com detalhes</p></div>
-        <button class="btn btn-outline"><Icon Name="download" Size="16" /> Exportar</button>
+        <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> Exportar CSV</button>
     </div>
 
     <div class="grid grid-4">
@@ -46,6 +47,10 @@
 
     <div class="card">
         <div class="card-content pt-6">
+            @if (todasTentativas.Count >= 500)
+            {
+                <p class="text-sm text-muted" style="margin-bottom: 0.75rem;">Exibindo os 500 registros mais recentes. Use filtros ou exporte o CSV para ver todos.</p>
+            }
             <div class="table-wrapper">
                 <table>
                     <thead><tr><th>Data/Hora</th><th>Pessoa</th><th>Ambiente</th><th>Status</th><th>Motivo</th><th>Gravação</th></tr></thead>
@@ -55,7 +60,7 @@
                             <tr>
                                 <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@item.DataHora.ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@item.DataHora.ToString("HH:mm:ss")</p></div></div></td>
                                 <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(item.Pessoa?.Nome ?? $"ID {item.PessoaId}")</span></td>
-                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
                                 <td><span class="badge @(item.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(item.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(item.AcessoLiberado ? "Permitido" : "Negado")</span></td>
                                 <td class="text-muted">@(item.MotivoNegacao ?? "-")</td>
                                 <td>@if (item.GravacaoPath != null) {
@@ -84,14 +89,34 @@
 
     protected override Task OnInitializedAsync()
     {
-        todasTentativas = TentativaRepo.ListarTodos();
+        todasTentativas = TentativaRepo.ListarTodos()
+            .OrderByDescending(t => t.DataHora)
+            .Take(500)
+            .ToList();
         ambientes = AmbienteRepo.ListarTodos();
         return Task.CompletedTask;
     }
 
     private IEnumerable<TentativaAcesso> Filtered => todasTentativas.Where(h =>
         (string.IsNullOrEmpty(search) ||
-         (h.Pessoa?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+         (h.Pessoa?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+         (h.Ambiente?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
         (statusFilter == "todos" || (statusFilter == "permitido" ? h.AcessoLiberado : !h.AcessoLiberado)) &&
         (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter));
+
+    private async Task ExportarCsv()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Data/Hora,Pessoa,Ambiente,Status,Motivo,Gravacao");
+        foreach (var item in Filtered)
+        {
+            var pessoa = item.Pessoa?.Nome ?? $"ID {item.PessoaId}";
+            var amb = item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}";
+            var status = item.AcessoLiberado ? "Permitido" : "Negado";
+            var motivo = item.MotivoNegacao ?? "";
+            var gravacao = item.GravacaoPath ?? "";
+            sb.AppendLine($"{item.DataHora:dd/MM/yyyy HH:mm:ss},\"{pessoa}\",\"{amb}\",{status},{motivo},{gravacao}");
+        }
+        await JS.InvokeVoidAsync("downloadCsv", $"historico_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+    }
 }

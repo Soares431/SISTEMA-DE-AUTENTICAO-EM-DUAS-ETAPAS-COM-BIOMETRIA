@@ -4,6 +4,8 @@
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     @if (pessoa == null)
@@ -36,8 +38,8 @@
                     </div>
                     <div class="mt-6 pt-6 border-t space-y-xs">
                         <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
-                        <button class="btn btn-outline btn-block" @onclick="HandleResetarBiometria"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
-                        <button class="btn btn-outline btn-block text-destructive" @onclick="HandleInativar"><Icon Name="user-x" Size="16" /> @(pessoa.Status == "ativo" ? "Inativar Pessoa" : "Ativar Pessoa")</button>
+                        <button class="btn btn-outline btn-block" @onclick="() => showConfirmReset = true"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
+                        <button class="btn btn-outline btn-block text-destructive" @onclick="() => showConfirmInativar = true"><Icon Name="user-x" Size="16" /> @(pessoa.Status == "ativo" ? "Inativar Pessoa" : "Ativar Pessoa")</button>
                     </div>
                 </div>
             </div>
@@ -61,7 +63,7 @@
                                     {
                                         <tr>
                                             <td class="font-medium"><span class="flex items-center gap-2"><Icon Name="map-pin" Size="16" CssClass="text-muted" /> @amb.Nome</span></td>
-                                            <td class="text-right"><button class="btn btn-ghost btn-sm text-destructive">Remover Acesso</button></td>
+                                            <td class="text-right"><button class="btn btn-ghost btn-sm text-destructive" @onclick="() => HandleRemoverAcesso(amb.Id)">Remover Acesso</button></td>
                                         </tr>
                                     }
                                 </tbody>
@@ -81,7 +83,7 @@
                                     {
                                         <tr>
                                             <td class="font-mono text-sm text-muted">@t.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td>Ambiente @t.AmbienteId</td>
+                                            <td>@(t.Ambiente?.Nome ?? $"Ambiente {t.AmbienteId}")</td>
                                             <td><span class="badge @(t.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(t.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(t.AcessoLiberado ? "Permitido" : "Negado")</span></td>
                                         </tr>
                                     }
@@ -113,10 +115,57 @@
     </div>
 }
 
+@if (showConfirmInativar && pessoa != null)
+{
+    <div class="modal-overlay" @onclick="() => showConfirmInativar = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>@(pessoa.Status == "ativo" ? "Inativar Pessoa" : "Ativar Pessoa")</h3>
+                <p>Confirme a operação antes de prosseguir</p>
+            </div>
+            <div class="modal-body">
+                @if (pessoa.Status == "ativo")
+                {
+                    <p>Ao inativar <strong>@pessoa.Nome</strong>, a pessoa perderá acesso a todos os <strong>@ambientesPessoa.Count ambiente(s)</strong> cadastrado(s). Esta ação pode ser revertida.</p>
+                }
+                else
+                {
+                    <p>Deseja reativar <strong>@pessoa.Nome</strong>? O acesso aos ambientes precisará ser concedido manualmente.</p>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showConfirmInativar = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarInativar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showConfirmReset && pessoa != null)
+{
+    <div class="modal-overlay" @onclick="() => showConfirmReset = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Resetar Biometria</h3>
+                <p>Confirme a operação antes de prosseguir</p>
+            </div>
+            <div class="modal-body">
+                <p>O template biométrico de <strong>@pessoa.Nome</strong> será apagado. A pessoa precisará recadastrar a digital no próximo acesso.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showConfirmReset = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarReset">Confirmar Reset</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public int Id { get; set; }
     private string tab = "ambientes";
     private bool showEdit = false;
+    private bool showConfirmInativar = false;
+    private bool showConfirmReset = false;
     private Pessoa? pessoa = null;
     private List<Ambiente> ambientesPessoa = new();
     private List<TentativaAcesso> historico = new();
@@ -151,22 +200,49 @@
         pessoa.Email = editEmail;
         pessoa.Cargo = editCargo;
         await PessoaRepo.Atualizar(pessoa);
+        LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Pessoa", (int)pessoa.Id);
         showEdit = false;
     }
 
-    private async Task HandleInativar()
+    private void HandleRemoverAcesso(int ambienteId)
     {
         if (pessoa == null) return;
-        await PessoaRepo.AlterarStatus(pessoa.Id, pessoa.Status != "ativo");
-        pessoa = await PessoaRepo.BuscarPorId(Id);
+        AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoa.Id);
+        LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
+        ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
+        // Se ficou sem nenhum ambiente, inativa a pessoa
+        if (ambientesPessoa.Count == 0 && pessoa.Status == "ativo")
+        {
+            _ = PessoaRepo.AlterarStatus(pessoa.Id, false);
+            pessoa.Status = "inativo";
+        }
     }
 
-    private async Task HandleResetarBiometria()
+    private async Task HandleConfirmarInativar()
+    {
+        if (pessoa == null) return;
+        bool ativando = pessoa.Status != "ativo";
+        if (!ativando)
+        {
+            // Inativação: remove de todos os ambientes
+            foreach (var amb in ambientesPessoa)
+                AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
+        }
+        await PessoaRepo.AlterarStatus(pessoa.Id, ativando);
+        LogRepo.Registrar(TokenStore.AdminId, "Inativacao", "Pessoa", (int)pessoa.Id);
+        pessoa = await PessoaRepo.BuscarPorId(Id);
+        ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa!.Id);
+        showConfirmInativar = false;
+    }
+
+    private async Task HandleConfirmarReset()
     {
         if (pessoa == null) return;
         pessoa.biometriaCadastrada = null;
         pessoa.templateBackup = null;
         await PessoaRepo.Atualizar(pessoa);
+        LogRepo.Registrar(TokenStore.AdminId, "ResetBiometria", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
+        showConfirmReset = false;
     }
 }

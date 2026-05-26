@@ -80,7 +80,22 @@
             <div class="modal-header"><h3>Criar Novo Ambiente</h3><p>Adicione um novo ambiente ao sistema de controle de acesso</p></div>
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome do Ambiente</label><input class="form-input" placeholder="Ex: Sala de Reuniões" @bind="novoNome" /></div>
-                <div class="form-group"><label class="form-label">ID do Dispositivo T50</label><input type="number" class="form-input" placeholder="ID do T50" @bind="novoT50Id" /></div>
+                <div class="form-group">
+                    <label class="form-label">Dispositivo T50</label>
+                    @if (dispositivos.Any())
+                    {
+                        <select class="form-select" @bind="novoT50Id">
+                            @foreach (var d in dispositivos)
+                            {
+                                <option value="@d.Id">@d.Nome (@d.EnderecoIP)</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-muted">Nenhum dispositivo T50 cadastrado.</p>
+                    }
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showDialog = false">Cancelar</button>
@@ -103,6 +118,7 @@
     {
         todosAmbientes = AmbienteRepo.ListarTodos();
         dispositivos = DispositivoRepo.ListarTodos();
+        if (dispositivos.Any()) novoT50Id = dispositivos.First().Id;
     }
 
     private IEnumerable<Ambiente> FilteredAmbientes => todosAmbientes.Where(a =>
@@ -125,6 +141,6 @@
         todosAmbientes = AmbienteRepo.ListarTodos();
         showDialog = false;
         novoNome = "";
-        novoT50Id = 0;
+        novoT50Id = dispositivos.FirstOrDefault()?.Id ?? 0;
     }
 }

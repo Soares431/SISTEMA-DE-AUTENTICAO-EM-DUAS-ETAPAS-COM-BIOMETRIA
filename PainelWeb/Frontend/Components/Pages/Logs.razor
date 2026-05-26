@@ -8,11 +8,12 @@
 @page "/logs"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ILogAdminRepository LogRepo
+@inject IJSRuntime JS
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Logs do Sistema</h1><p class="text-muted">Auditoria de ações administrativas</p></div>
-        <button class="btn btn-outline"><Icon Name="download" Size="16" /> Exportar</button>
+        <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> Exportar CSV</button>
     </div>
 
     <div class="card">
@@ -101,4 +102,15 @@
         "Atualizar" => "edit",
         _ => "activity"
     };
+
+    private async Task ExportarCsv()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Data/Hora,AdminId,Acao,Entidade,ID Entidade");
+        foreach (var log in Filtered)
+        {
+            sb.AppendLine($"{log.DataHora:dd/MM/yyyy HH:mm:ss},{log.AdminId},{log.Acao},{log.EntidadeAfetada},{log.EntidadeId?.ToString() ?? ""}");
+        }
+        await JS.InvokeVoidAsync("downloadCsv", $"logs_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+    }
 }

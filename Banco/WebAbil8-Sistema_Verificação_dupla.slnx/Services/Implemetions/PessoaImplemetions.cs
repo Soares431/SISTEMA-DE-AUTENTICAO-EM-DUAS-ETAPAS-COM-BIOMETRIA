@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
+using System.Text;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -6,12 +9,14 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 {
     public class PessoaImplemetions : IPessoaRepository
     {
-      
-            private readonly AppDbContext _context;
 
-            public PessoaImplemetions(AppDbContext context)
+            private readonly AppDbContext _context;
+            private readonly string _aesKey;
+
+            public PessoaImplemetions(AppDbContext context, IConfiguration configuration)
             {
                 _context = context;
+                _aesKey = configuration["AesKey"] ?? "5cta-aes-key-senha-segura-32char";
             }
 
             public async Task<Pessoa> Adicionar(Pessoa pessoa)
@@ -20,13 +25,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 if (cpfExistente)
                     throw new InvalidOperationException("CPF já cadastrado.");
 
-                if (pessoa.senhaClear != null)
-                {
-                    if (pessoa.senhaClear[0] == '0')
-                        throw new InvalidOperationException("Senha não pode começar com zero.");
-                    if (pessoa.senhaClear == pessoa.Id.ToString())
-                        throw new InvalidOperationException("Senha não pode ser igual ao ID.");
-                }
+                // Criptografa senhaClear com AES antes de persistir (bug #4)
+                if (!string.IsNullOrEmpty(pessoa.senhaClear))
+                    pessoa.senhaClear = EncryptAes(pessoa.senhaClear, _aesKey);
 
                 await _context.Pessoas.AddAsync(pessoa);
                 await _context.SaveChangesAsync();
@@ -101,6 +102,26 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 pessoa.templateBackup = template;
                 await _context.SaveChangesAsync();
                 return pessoa;
+            }
+
+            // Mesmo algoritmo do AesService no Int4 (sem referência circular: Int4 já referencia Int1)
+            private static string EncryptAes(string plainText, string key)
+            {
+                using var aes = Aes.Create();
+                aes.Key = Encoding.UTF8.GetBytes(key.PadRight(32).Substring(0, 32));
+                aes.GenerateIV();
+
+                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+                using var ms = new MemoryStream();
+                ms.Write(aes.IV, 0, aes.IV.Length);
+
+                using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                using (var sw = new StreamWriter(cs))
+                {
+                    sw.Write(plainText);
+                }
+
+                return Convert.ToBase64String(ms.ToArray());
             }
         }
 

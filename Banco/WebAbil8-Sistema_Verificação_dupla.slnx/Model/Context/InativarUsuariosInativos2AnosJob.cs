@@ -30,7 +30,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
             foreach (var usuario in usuarios)
             {
                 usuario.Status = "inativo";
-                _logger.LogInformation("Usuário {id} inativado por inatividade.", usuario.Id);
+                // Remove de todos os ambientes (bug #27)
+                var vinculos = _context.AmbientesPessoas
+                    .Where(ap => ap.PessoaId == usuario.Id)
+                    .ToList();
+                _context.AmbientesPessoas.RemoveRange(vinculos);
+                _logger.LogInformation("Usuário {id} inativado por inatividade ({count} ambientes removidos).", usuario.Id, vinculos.Count);
             }
 
             _context.SaveChanges();

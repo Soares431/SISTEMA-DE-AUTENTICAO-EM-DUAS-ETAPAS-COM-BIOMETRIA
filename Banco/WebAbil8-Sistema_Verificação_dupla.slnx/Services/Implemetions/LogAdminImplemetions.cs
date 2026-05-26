@@ -58,13 +58,15 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public LogAdmin Registrar(int adminId, string acao, string entidadeAfetada, int? entidadeId)
         {
+            var retencaoDias = _context.Configuracoes.FirstOrDefault()?.RetencaoLogsDias ?? 180;
             var log = new LogAdmin
             {
                 AdminId = adminId,
                 Acao = acao,
                 EntidadeAfetada = entidadeAfetada,
                 EntidadeId = entidadeId,
-                DataHora = DateTime.UtcNow
+                DataHora = DateTime.UtcNow,
+                DataExpiracao = DateTime.UtcNow.AddDays(retencaoDias)
             };
             _context.LogsAdmin.Add(log);
             _context.SaveChanges();

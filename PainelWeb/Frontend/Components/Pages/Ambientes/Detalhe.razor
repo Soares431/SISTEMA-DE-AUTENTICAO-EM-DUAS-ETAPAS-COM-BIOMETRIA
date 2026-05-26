@@ -5,6 +5,8 @@
 @inject IDispositivoT50Repository DispositivoRepo
 @inject ICameraRepository CameraRepo
 @inject IPessoaRepository PessoaRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
 <div class="space-y">
     @if (ambiente == null)
     {
@@ -71,7 +73,7 @@
             <div class="card">
                 <div class="card-header card-header-row">
                     <div><div class="card-title"><Icon Name="users" Size="20" /> Pessoas com Acesso</div><p class="card-description">@pessoas.Count pessoas autorizadas</p></div>
-                    <button class="btn btn-primary" @onclick="() => showAddPessoa = true"><Icon Name="plus" Size="16" /> Adicionar Pessoa</button>
+                    <button class="btn btn-primary" @onclick="AbrirModalAdicionarPessoa"><Icon Name="plus" Size="16" /> Adicionar Pessoa</button>
                 </div>
                 <div class="card-content">
                     <table>
@@ -121,7 +123,7 @@
             <div class="card">
                 <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravação</div><p class="card-description">Tempo em segundos que o sistema aguarda após uma tentativa de acesso para salvar a gravação</p></div>
                 <div class="card-content space-y-sm">
-                    <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="1" max="120" /><span class="text-muted">segundos</span></div>
+                    <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="30" max="120" /><span class="text-muted">segundos</span></div>
                     <button class="btn btn-primary" @onclick="HandleSalvarConfig">Salvar Configurações</button>
                 </div>
             </div>
@@ -135,17 +137,34 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Adicionar Pessoa</h3><p>Selecione uma pessoa para conceder acesso a este ambiente</p></div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Pessoa</label>
-                    <select class="form-select" @bind="pessoaSelecionadaId">
-                        @foreach (var p in todasPessoas)
-                        {
-                            <option value="@p.Id">@p.Nome - @p.Cargo</option>
-                        }
-                    </select>
-                </div>
+                @if (pessoasDisponiveis.Count == 0)
+                {
+                    <p class="text-muted">Todas as pessoas cadastradas já têm acesso a este ambiente.</p>
+                }
+                else if (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000)
+                {
+                    <p class="text-destructive">Capacidade máxima do T50 atingida (1000 digitais). Remova templates antes de adicionar novas pessoas.</p>
+                }
+                else
+                {
+                    <div class="form-group">
+                        <label class="form-label">Pessoa</label>
+                        <select class="form-select" @bind="pessoaSelecionadaId">
+                            @foreach (var p in pessoasDisponiveis)
+                            {
+                                <option value="@p.Id">@p.Nome - @p.Cargo</option>
+                            }
+                        </select>
+                    </div>
+                }
             </div>
-            <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button><button class="btn btn-primary" @onclick="HandleAdicionarPessoa">Adicionar</button></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleAdicionarPessoa"
+                    disabled="@(pessoasDisponiveis.Count == 0 || (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000))">
+                    Adicionar
+                </button>
+            </div>
         </div>
     </div>
 }
@@ -158,6 +177,7 @@
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome</label><input class="form-input" placeholder="Ex: Câmera Principal" @bind="novaCameraNome" /></div>
                 <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://..." @bind="novaCameraRtsp" /></div>
+                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" placeholder="http://ip:porta/onvif/device_service" @bind="novaCameraOnvif" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
                     <select class="form-select" @bind="novaCameraTipo">
@@ -179,12 +199,13 @@
     private Ambiente? ambiente = null;
     private DispositivoT50? dispositivo = null;
     private List<Pessoa> pessoas = new();
-    private List<Pessoa> todasPessoas = new();
+    private List<Pessoa> pessoasDisponiveis = new();
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera> cameras = new();
     private int tempoEspera = 60;
     private long pessoaSelecionadaId = 0;
     private string novaCameraNome = "";
     private string novaCameraRtsp = "";
+    private string novaCameraOnvif = "";
     private string novaCameraTipo = "interna";
 
     protected override async Task OnInitializedAsync()
@@ -196,44 +217,70 @@
             dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente.DispositivoT50Id);
         }
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
-        todasPessoas = await PessoaRepo.ListarTodos();
         cameras = await CameraRepo.ListarPorAmbiente(Id);
+        AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
     }
 
-    private void HandleRemoverPessoa(long pessoaId)
+    private void AtualizarPessoasDisponiveis(List<Pessoa> todas)
+    {
+        var idsComAcesso = pessoas.Select(p => p.Id).ToHashSet();
+        pessoasDisponiveis = todas.Where(p => !idsComAcesso.Contains(p.Id)).ToList();
+        pessoaSelecionadaId = pessoasDisponiveis.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private async Task AbrirModalAdicionarPessoa()
+    {
+        AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
+        showAddPessoa = true;
+    }
+
+    private async Task HandleRemoverPessoa(long pessoaId)
     {
         AmbientePessoaRepo.RemoverPessoa(Id, pessoaId);
+        LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoaId);
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
+        // Inativa a pessoa se ficou sem nenhum ambiente (bug #8)
+        var ambientesDaPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId);
+        if (ambientesDaPessoa.Count == 0)
+            await PessoaRepo.AlterarStatus(pessoaId, false);
     }
 
-    private void HandleAdicionarPessoa()
+    private async Task HandleAdicionarPessoa()
     {
         if (pessoaSelecionadaId == 0) return;
+        if (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000) return;
         AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
+        await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
+        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
+        AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
         showAddPessoa = false;
     }
 
     private async Task HandleAdicionarCamera()
     {
         if (string.IsNullOrWhiteSpace(novaCameraNome)) return;
-        await CameraRepo.Adicionar(new WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera
+        var novaCamera = new WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera
         {
             Nome = novaCameraNome,
             AmbienteId = Id,
             UrlRTSP = novaCameraRtsp,
+            EnderecoONVIF = string.IsNullOrWhiteSpace(novaCameraOnvif) ? null : novaCameraOnvif,
             Tipo = novaCameraTipo,
             Ativa = true
-        });
+        };
+        await CameraRepo.Adicionar(novaCamera);
+        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Camera", novaCamera.Id);
         cameras = await CameraRepo.ListarPorAmbiente(Id);
         showAddCamera = false;
-        novaCameraNome = novaCameraRtsp = "";
+        novaCameraNome = novaCameraRtsp = novaCameraOnvif = "";
     }
 
     private void HandleSalvarConfig()
     {
         if (ambiente == null) return;
-        ambiente.TempoEsperaGravacaoSeg = tempoEspera;
+        ambiente.TempoEsperaGravacaoSeg = Math.Clamp(tempoEspera, 30, 120);
         AmbienteRepo.Atualizar(ambiente);
+        LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", Id);
     }
 }

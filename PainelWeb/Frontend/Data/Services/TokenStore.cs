@@ -1,13 +1,23 @@
-﻿namespace FrontendControleAcesso.Services;
+namespace FrontendControleAcesso.Services;
 
 /// <summary>
 /// Armazena o token JWT em memória para a sessão Blazor Server.
 /// </summary>
-public static class TokenStore
+public interface ITokenStore
 {
-    public static string? Token { get; set; }
-    public static int AdminId { get; set; }
-    public static string NomeCompleto { get; set; } = "";
+    string? Token { get; set; }
+    int AdminId { get; set; }
+    string NomeCompleto { get; set; }
+    bool EstaAutenticado { get; }
+}
 
-    public static bool EstaAutenticado => !string.IsNullOrEmpty(Token);
+// Registrada como Scoped — uma instância por circuito Blazor (por usuário conectado).
+// Era static antes (bug #1): estado compartilhado entre todos os admins logados simultaneamente.
+public class TokenStore : ITokenStore
+{
+    public string? Token { get; set; }
+    public int AdminId { get; set; }
+    public string NomeCompleto { get; set; } = "";
+
+    public bool EstaAutenticado => !string.IsNullOrEmpty(Token);
 }

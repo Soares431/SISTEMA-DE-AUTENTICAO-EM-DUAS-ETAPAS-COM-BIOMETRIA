@@ -1,4 +1,5 @@
 ﻿// TentativaAcessoImplemetions.cs
+using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -36,7 +37,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<TentativaAcesso> ListarComFiltros(long? pessoaId, int? ambienteId, bool? acessoLiberado, DateTime? dataInicio, DateTime? dataFim)
         {
-            var query = _context.TentativasAcesso.AsQueryable();
+            var query = _context.TentativasAcesso
+                .Include(t => t.Pessoa)
+                .Include(t => t.Ambiente)
+                .AsQueryable();
 
             if (pessoaId.HasValue)
                 query = query.Where(t => t.PessoaId == pessoaId);
@@ -55,6 +59,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         public List<TentativaAcesso> ListarPorAmbiente(int ambienteId)
         {
             return _context.TentativasAcesso
+                .Include(t => t.Pessoa)
+                .Include(t => t.Ambiente)
                 .Where(t => t.AmbienteId == ambienteId)
                 .ToList();
         }
@@ -62,13 +68,18 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         public List<TentativaAcesso> ListarPorPessoa(long pessoaId)
         {
             return _context.TentativasAcesso
+                .Include(t => t.Pessoa)
+                .Include(t => t.Ambiente)
                 .Where(t => t.PessoaId == pessoaId)
                 .ToList();
         }
 
         public List<TentativaAcesso> ListarTodos()
         {
-            return _context.TentativasAcesso.ToList();
+            return _context.TentativasAcesso
+                .Include(t => t.Pessoa)
+                .Include(t => t.Ambiente)
+                .ToList();
         }
 
         public TentativaAcesso Registrar(TentativaAcesso tentativa)

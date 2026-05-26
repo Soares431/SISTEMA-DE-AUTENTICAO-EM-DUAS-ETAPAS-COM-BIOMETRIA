@@ -3,6 +3,7 @@
 @inject IPessoaRepository PessoaRepo
 @inject ISenhaRepository SenhaRepo
 @inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -62,9 +63,16 @@
                 @if (senhaMostrada != null)
                 {
                     <div class="alert alert-success">
-                        <strong>Pessoa cadastrada!</strong> Anote a senha gerada:<br />
-                        <span style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@senhaMostrada</span><br />
-                        <small>Essa senha é usada no leitor biométrico junto com a digital.</small>
+                        <strong>Pessoa cadastrada!</strong> Anote as informações abaixo:<br />
+                        <div style="margin-top: 0.5rem;">
+                            <span class="text-muted text-sm">ID do usuário (T50):</span><br />
+                            <span style="font-size: 1.2rem; font-weight: bold; letter-spacing: 0.1rem;">@pessoaCadastradaId</span>
+                        </div>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="text-muted text-sm">Senha provisória:</span><br />
+                            <span style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@senhaMostrada</span>
+                        </div>
+                        <small>O usuário deverá cadastrar a digital no primeiro acesso.</small>
                     </div>
                 }
                 else if (erroDialog != null)
@@ -110,6 +118,7 @@
     private string novoCargo = "";
     private List<Pessoa> todasPessoas = new();
     private string? senhaMostrada = null;
+    private long pessoaCadastradaId = 0;
     private string? erroDialog = null;
     private bool isCadastrando = false;
 
@@ -131,6 +140,7 @@
     {
         showDialog = false;
         senhaMostrada = null;
+        pessoaCadastradaId = 0;
         erroDialog = null;
         novoNome = novoEmail = novoCpf = novoCargo = "";
     }
@@ -174,6 +184,7 @@
             LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSalva.Id);
 
             todasPessoas = await PessoaRepo.ListarTodos();
+            pessoaCadastradaId = pessoaSalva.Id;
             senhaMostrada = senhaDisp.Senha;
         }
         catch (Exception ex)

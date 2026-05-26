@@ -125,7 +125,7 @@
                         {
                             <tr>
                                 <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(item.Pessoa?.Nome ?? "Desconhecido")</span></td>
-                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> Ambiente @item.AmbienteId</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(item.Ambiente?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
                                 <td><span class="badge badge-destructive">@(item.MotivoNegacao ?? "-")</span></td>
                                 <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @item.DataHora.ToString("HH:mm")</span></td>
                                 <td>
@@ -152,6 +152,8 @@
     private int totalNegados = 0;
     private int totalAlertas = 0;
     private int totalPessoas = 0;
+    private int[] permitidosPorHora = new int[24];
+    private int[] negadosPorHora = new int[24];
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.TentativaAcesso> ultimosNegados = new();
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.DispositivoT50> alertasT50 = new();
 
@@ -163,6 +165,14 @@
         var tentativasHoje = TentativaRepo.ListarComFiltros(null, null, null, hoje, amanha);
         totalPermitidos = tentativasHoje.Count(t => t.AcessoLiberado);
         totalNegados = tentativasHoje.Count(t => !t.AcessoLiberado);
+
+        // Agrupa por hora (hora local) para o gráfico
+        foreach (var t in tentativasHoje)
+        {
+            var hora = t.DataHora.ToLocalTime().Hour;
+            if (t.AcessoLiberado) permitidosPorHora[hora]++;
+            else negadosPorHora[hora]++;
+        }
 
         ultimosNegados = TentativaRepo.ListarComFiltros(null, null, false, hoje, amanha)
             .OrderByDescending(t => t.DataHora)
@@ -188,7 +198,7 @@
     {
         if (firstRender)
         {
-            await JS.InvokeVoidAsync("renderDashboardChart", "dashboardChart");
+            await JS.InvokeVoidAsync("renderDashboardChart", "dashboardChart", permitidosPorHora, negadosPorHora);
         }
     }
 }

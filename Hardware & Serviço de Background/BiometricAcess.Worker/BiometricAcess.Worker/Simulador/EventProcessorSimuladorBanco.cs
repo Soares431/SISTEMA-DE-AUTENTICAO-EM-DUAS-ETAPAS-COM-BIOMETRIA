@@ -19,11 +19,12 @@ namespace BiometricAcess.Worker.Simulador
         public async Task Processar(EventoAcesso evento)
         {
             using var scope = _scopeFactory.CreateScope();
-            var pessoaRepo      = scope.ServiceProvider.GetRequiredService<IPessoaRepository>();
-            var tentativaRepo   = scope.ServiceProvider.GetRequiredService<ITentativaAcessoRepository>();
-            var ambienteRepo    = scope.ServiceProvider.GetRequiredService<IAmbienteRepository>();
-            var dispositivoRepo = scope.ServiceProvider.GetRequiredService<IDispositivoT50Repository>();
-            var configRepo      = scope.ServiceProvider.GetRequiredService<IConfiguracaoRepository>();
+            var pessoaRepo          = scope.ServiceProvider.GetRequiredService<IPessoaRepository>();
+            var tentativaRepo       = scope.ServiceProvider.GetRequiredService<ITentativaAcessoRepository>();
+            var ambienteRepo        = scope.ServiceProvider.GetRequiredService<IAmbienteRepository>();
+            var dispositivoRepo     = scope.ServiceProvider.GetRequiredService<IDispositivoT50Repository>();
+            var configRepo          = scope.ServiceProvider.GetRequiredService<IConfiguracaoRepository>();
+            var ambientePessoaRepo  = scope.ServiceProvider.GetRequiredService<IAmbientePessoaRepository>();
 
             // Resolve o ambiente pelo IP do dispositivo; cai no primeiro disponível como fallback
             var dispositivos = dispositivoRepo.ListarTodos();
@@ -56,6 +57,11 @@ namespace BiometricAcess.Worker.Simulador
             {
                 acessoLiberado = false;
                 motivoNegacao  = "inativo";
+            }
+            else if (!ambientePessoaRepo.PessoaTemAcesso(ambiente.Id, pessoa.Id))
+            {
+                acessoLiberado = false;
+                motivoNegacao  = "sem_permissao";
             }
             else
             {

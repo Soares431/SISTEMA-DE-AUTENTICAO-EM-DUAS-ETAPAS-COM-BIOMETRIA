@@ -50,7 +50,21 @@ window.themeManager.initTheme();
  * Renderiza o gráfico de acessos no dashboard.
  * @param {string} canvasId - ID do elemento <canvas> no DOM
  */
-window.renderDashboardChart = function(canvasId) {
+// Dispara download de um arquivo CSV no navegador do usuário
+window.downloadCsv = function(filename, csvContent) {
+    var blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+// permitidosData e negadosData: arrays de 24 inteiros (índice = hora do dia)
+window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !window.Chart) return;
 
@@ -63,15 +77,19 @@ window.renderDashboardChart = function(canvasId) {
     const border = style.getPropertyValue('--border').trim() || '#2d3a52';         // Cor das linhas do grid
     const muted = style.getPropertyValue('--muted-foreground').trim() || '#8b95a8'; // Cor dos rótulos
 
+    // Horários do expediente (06h às 16h) — índices 6 a 16
+    const labels = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+    const permitidos = (permitidosData || new Array(24).fill(0)).slice(6, 17);
+    const negados    = (negadosData    || new Array(24).fill(0)).slice(6, 17);
+
     new Chart(ctx, {
         type: 'line',
         data: {
-            // Horários do expediente (06h às 16h)
-            labels: ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'],
+            labels: labels,
             datasets: [
                 {
                     label: 'Permitidos',
-                    data: [12, 45, 186, 234, 156, 89, 67, 98, 145, 189, 26],
+                    data: permitidos,
                     borderColor: primary,
                     backgroundColor: primary + '4D', // 30% de opacidade para o preenchimento
                     fill: true,
@@ -80,7 +98,7 @@ window.renderDashboardChart = function(canvasId) {
                 },
                 {
                     label: 'Negados',
-                    data: [1, 2, 5, 3, 2, 1, 2, 1, 3, 2, 1],
+                    data: negados,
                     borderColor: destructive,
                     backgroundColor: destructive + '4D',
                     fill: true,

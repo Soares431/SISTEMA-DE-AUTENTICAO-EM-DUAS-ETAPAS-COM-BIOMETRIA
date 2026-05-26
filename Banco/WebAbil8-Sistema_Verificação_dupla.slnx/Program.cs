@@ -134,16 +134,16 @@ using (var scope = app.Services.CreateScope())
 
 using (var scope = app.Services.CreateScope())
 {
-    // Roda uma vez por dia às meia-noite
+    // Roda uma vez por dia às 03:00 UTC conforme especificado na doc técnica
     RecurringJob.AddOrUpdate<InativarUsuariosInativos2AnosJob>(
         "inativar-usuarios-inativos",
         job => job.Executar(),
-        Cron.Daily);
+        "0 3 * * *");
 
     RecurringJob.AddOrUpdate<LimparDadosExpiradosJob>(
         "limpar-dados-expirados",
         job => job.Executar(),
-        Cron.Daily);
+        "0 3 * * *");
 }
 
 app.UseHttpsRedirection();

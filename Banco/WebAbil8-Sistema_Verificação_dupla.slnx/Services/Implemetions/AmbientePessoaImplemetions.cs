@@ -1,4 +1,5 @@
 ﻿// AmbientePessoaImplemetions.cs
+using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -42,6 +43,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         public List<Ambiente> ListarAmbientesDaPessoa(long pessoaId)
         {
             return _context.AmbientesPessoas
+                .Include(ap => ap.Ambiente)
                 .Where(ap => ap.PessoaId == pessoaId)
                 .Select(ap => ap.Ambiente)
                 .ToList();
@@ -50,6 +52,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         public List<Pessoa> ListarPessoasDoAmbiente(int ambienteId)
         {
             return _context.AmbientesPessoas
+                .Include(ap => ap.Pessoa)
                 .Where(ap => ap.AmbienteId == ambienteId)
                 .Select(ap => ap.Pessoa)
                 .ToList();
@@ -57,7 +60,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<AmbientePessoa> ListarTodos()
         {
-            return _context.AmbientesPessoas.ToList();
+            return _context.AmbientesPessoas
+                .Include(ap => ap.Pessoa)
+                .Include(ap => ap.Ambiente)
+                .ToList();
         }
 
         public bool PessoaTemAcesso(int ambienteId, long pessoaId)

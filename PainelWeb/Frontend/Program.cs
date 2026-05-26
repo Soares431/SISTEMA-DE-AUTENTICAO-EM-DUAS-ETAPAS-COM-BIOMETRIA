@@ -43,6 +43,7 @@ builder.Services.AddHttpClient("BancoAPI", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["BancoApiUrl"] ?? "https://localhost:7117/");
 });
+builder.Services.AddScoped<ITokenStore, TokenStore>();
 builder.Services.AddScoped<CircuitHandler, AuthCircuitHandler>();
 var app = builder.Build();
 
