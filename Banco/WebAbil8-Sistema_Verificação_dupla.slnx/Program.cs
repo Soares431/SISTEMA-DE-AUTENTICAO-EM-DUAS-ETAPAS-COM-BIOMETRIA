@@ -114,6 +114,21 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    // Migração inline — adiciona periodoInativacaoMeses à configuracao
+    var configColsExistentes = new HashSet<string>();
+    using (var pragmaCmd2 = conn.CreateCommand())
+    {
+        pragmaCmd2.CommandText = "SELECT name FROM pragma_table_info('configuracao')";
+        using var rdr2 = pragmaCmd2.ExecuteReader();
+        while (rdr2.Read()) configColsExistentes.Add(rdr2.GetString(0));
+    }
+    if (!configColsExistentes.Contains("periodoInativacaoMeses"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE configuracao ADD COLUMN periodoInativacaoMeses INTEGER NOT NULL DEFAULT 24";
+        alterCmd.ExecuteNonQuery();
+    }
+
     if (!db.SenhasDisponiveis.Any())
     {
         var triviais = new HashSet<string> {

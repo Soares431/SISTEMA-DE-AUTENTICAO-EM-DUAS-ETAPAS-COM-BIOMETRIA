@@ -6,6 +6,7 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject NavigationManager Nav
 
 <div class="space-y">
     @if (pessoa == null)
@@ -39,7 +40,11 @@
                     <div class="mt-6 pt-6 border-t space-y-xs">
                         <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
                         <button class="btn btn-outline btn-block" @onclick="() => showConfirmReset = true"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
-                        <button class="btn btn-outline btn-block text-destructive" @onclick="() => showConfirmInativar = true"><Icon Name="user-x" Size="16" /> @(pessoa.Status == "ativo" ? "Inativar Pessoa" : "Ativar Pessoa")</button>
+                        @if (pessoa.Status == "ativo")
+                        {
+                            <button class="btn btn-outline btn-block text-destructive" @onclick="() => showConfirmInativar = true"><Icon Name="user-x" Size="16" /> Inativar Pessoa</button>
+                        }
+                        <button class="btn btn-ghost btn-block text-destructive" style="margin-top:0.5rem;" @onclick="() => showConfirmExcluir = true"><Icon Name="trash" Size="16" /> Excluir Permanentemente</button>
                     </div>
                 </div>
             </div>
@@ -63,7 +68,7 @@
                                     {
                                         <tr>
                                             <td class="font-medium"><span class="flex items-center gap-2"><Icon Name="map-pin" Size="16" CssClass="text-muted" /> @amb.Nome</span></td>
-                                            <td class="text-right"><button class="btn btn-ghost btn-sm text-destructive" @onclick="() => HandleRemoverAcesso(amb.Id)">Remover Acesso</button></td>
+                                            <td class="text-right"><button class="btn btn-ghost btn-sm text-destructive" @onclick="() => ConfirmarRemoverAcesso(amb.Id)">Remover Acesso</button></td>
                                         </tr>
                                     }
                                 </tbody>
@@ -120,22 +125,58 @@
     <div class="modal-overlay" @onclick="() => showConfirmInativar = false">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h3>@(pessoa.Status == "ativo" ? "Inativar Pessoa" : "Ativar Pessoa")</h3>
+                <h3>Inativar Pessoa</h3>
                 <p>Confirme a operação antes de prosseguir</p>
             </div>
             <div class="modal-body">
-                @if (pessoa.Status == "ativo")
-                {
-                    <p>Ao inativar <strong>@pessoa.Nome</strong>, a pessoa perderá acesso a todos os <strong>@ambientesPessoa.Count ambiente(s)</strong> cadastrado(s). Esta ação pode ser revertida.</p>
-                }
-                else
-                {
-                    <p>Deseja reativar <strong>@pessoa.Nome</strong>? O acesso aos ambientes precisará ser concedido manualmente.</p>
-                }
+                <p>Ao inativar <strong>@pessoa.Nome</strong>, a pessoa perderá acesso a todos os <strong>@ambientesPessoa.Count ambiente(s)</strong> cadastrado(s). Para reativar, adicione-a novamente a um ambiente.</p>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showConfirmInativar = false">Cancelar</button>
                 <button class="btn btn-primary" @onclick="HandleConfirmarInativar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showConfirmRemoverAcesso && pessoa != null)
+{
+    <div class="modal-overlay" @onclick="() => showConfirmRemoverAcesso = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Remover Acesso ao Ambiente</h3>
+                <p>Confirme antes de prosseguir</p>
+            </div>
+            <div class="modal-body">
+                <p>Deseja remover o acesso de <strong>@pessoa.Nome</strong> a este ambiente? Se for o último ambiente vinculado, a pessoa será inativada automaticamente.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showConfirmRemoverAcesso = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarRemoverAcesso">Remover</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showConfirmExcluir && pessoa != null)
+{
+    <div class="modal-overlay" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Excluir Pessoa Permanentemente</h3>
+                <p>Esta ação não pode ser desfeita</p>
+            </div>
+            <div class="modal-body space-y-sm">
+                <div class="alert alert-danger">Todos os dados de <strong>@pessoa.Nome</strong> serão removidos permanentemente, incluindo histórico de acessos e biometria.</div>
+                <div class="form-group">
+                    <label class="form-label">Digite o nome exato para confirmar: <strong>@pessoa.Nome</strong></label>
+                    <input class="form-input" @bind="nomeConfirmacaoExcluir" placeholder="@pessoa.Nome" />
+                </div>
+                @if (erroExcluir != null) { <div class="alert alert-danger">@erroExcluir</div> }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">Cancelar</button>
+                <button class="btn btn-primary text-destructive" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != pessoa.Nome)">Excluir Permanentemente</button>
             </div>
         </div>
     </div>
@@ -166,6 +207,11 @@
     private bool showEdit = false;
     private bool showConfirmInativar = false;
     private bool showConfirmReset = false;
+    private bool showConfirmRemoverAcesso = false;
+    private bool showConfirmExcluir = false;
+    private int ambienteIdParaRemover = 0;
+    private string nomeConfirmacaoExcluir = "";
+    private string? erroExcluir = null;
     private Pessoa? pessoa = null;
     private List<Ambiente> ambientesPessoa = new();
     private List<TentativaAcesso> historico = new();
@@ -218,21 +264,47 @@
         }
     }
 
+    private void ConfirmarRemoverAcesso(int ambienteId)
+    {
+        ambienteIdParaRemover = ambienteId;
+        showConfirmRemoverAcesso = true;
+    }
+
+    private async Task HandleConfirmarRemoverAcesso()
+    {
+        await HandleRemoverAcesso(ambienteIdParaRemover);
+        showConfirmRemoverAcesso = false;
+        ambienteIdParaRemover = 0;
+    }
+
     private async Task HandleConfirmarInativar()
     {
         if (pessoa == null) return;
-        bool ativando = pessoa.Status != "ativo";
-        if (!ativando)
-        {
-            // Inativação: remove de todos os ambientes
-            foreach (var amb in ambientesPessoa)
-                AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
-        }
-        await PessoaRepo.AlterarStatus(pessoa.Id, ativando);
+        foreach (var amb in ambientesPessoa)
+            AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
+        await PessoaRepo.AlterarStatus(pessoa.Id, false);
         LogRepo.Registrar(TokenStore.AdminId, "Inativacao", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa!.Id);
         showConfirmInativar = false;
+    }
+
+    private async Task HandleConfirmarExcluir()
+    {
+        if (pessoa == null) return;
+        erroExcluir = null;
+        try
+        {
+            foreach (var amb in AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id))
+                AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
+            LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
+            await PessoaRepo.Remover(pessoa.Id);
+            Nav.NavigateTo("/pessoas");
+        }
+        catch (Exception ex)
+        {
+            erroExcluir = ex.Message;
+        }
     }
 
     private async Task HandleConfirmarReset()

@@ -19,5 +19,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 
         [Column("tempoEsperaGravacaoSeg")]
         public int TempoEsperaGravacaoSeg { get; set; } = 60; // padrão 60, min 30, max 120
+
+        [Column("periodoInativacaoMeses")]
+        public int PeriodoInativacaoMeses { get; set; } = 24; // padrão 24, min 3, max 24
     }
 }

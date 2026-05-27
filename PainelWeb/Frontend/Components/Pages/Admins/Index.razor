@@ -7,7 +7,7 @@
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Administradores</h1><p class="text-muted">Gestão de usuários administrativos do sistema</p></div>
-        <button class="btn btn-primary" @onclick="() => showDialog = true"><Icon Name="plus" Size="16" /> Novo Administrador</button>
+        <p class="text-muted text-sm"><Icon Name="info" Size="14" /> Criação de administradores apenas via acesso direto ao banco de dados</p>
     </div>
 
     <div class="flex gap-4" style="flex-wrap: wrap;">
@@ -58,60 +58,11 @@
     </div>
 </div>
 
-@if (showDialog)
-{
-    <div class="modal-overlay" @onclick="FecharDialog">
-        <div class="modal" @onclick:stopPropagation="true">
-            <div class="modal-header"><h3>Cadastrar Administrador</h3><p>Adicione um novo usuário administrativo</p></div>
-            <div class="modal-body space-y-sm">
-                @if (erroCadastro != null)
-                {
-                    <div class="alert alert-danger">@erroCadastro</div>
-                }
-                <div class="grid grid-2">
-                    <div class="form-group"><label class="form-label">Nome Completo *</label><input class="form-input" @bind="novoNome" /></div>
-                    <div class="form-group"><label class="form-label">Login *</label><input class="form-input" @bind="novoLogin" /></div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group"><label class="form-label">Senha *</label><input class="form-input" type="password" @bind="novaSenha" /></div>
-                    <div class="form-group"><label class="form-label">Confirmar Senha *</label><input class="form-input" type="password" @bind="confirmarSenha" /></div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group"><label class="form-label">CPF</label><input class="form-input" placeholder="000.000.000-00" @bind="novoCpf" /></div>
-                    <div class="form-group"><label class="form-label">Cargo / Patente</label><input class="form-input" placeholder="Ex: Capitão" @bind="novoCargo" /></div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" @bind="novoEmail" /></div>
-                    <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" placeholder="(00) 00000-0000" @bind="novoTelefone" /></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" @onclick="FecharDialog">Cancelar</button>
-                <button class="btn btn-primary" @onclick="HandleCadastrar" disabled="@isCadastrando">
-                    @(isCadastrando ? "Cadastrando..." : "Cadastrar")
-                </button>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     private string search = "";
     private string sortColumn = "nome";
     private bool sortAsc = true;
-    private bool showDialog = false;
-    private bool isCadastrando = false;
-    private string? erroCadastro = null;
     private List<Administrador> todosAdmins = new();
-
-    private string novoNome = "";
-    private string novoLogin = "";
-    private string novaSenha = "";
-    private string confirmarSenha = "";
-    private string novoCpf = "";
-    private string novoCargo = "";
-    private string novoEmail = "";
-    private string novoTelefone = "";
 
     protected override void OnInitialized()
     {
@@ -143,64 +94,4 @@
 
     private string SortIcon(string coluna) =>
         sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
-
-    private void FecharDialog()
-    {
-        showDialog = false;
-        erroCadastro = null;
-        novoNome = novoLogin = novaSenha = confirmarSenha = novoCpf = novoCargo = novoEmail = novoTelefone = "";
-    }
-
-    private void HandleCadastrar()
-    {
-        if (string.IsNullOrWhiteSpace(novoNome) || string.IsNullOrWhiteSpace(novoLogin) || string.IsNullOrWhiteSpace(novaSenha))
-        {
-            erroCadastro = "Nome completo, login e senha são obrigatórios.";
-            return;
-        }
-        if (novaSenha != confirmarSenha)
-        {
-            erroCadastro = "As senhas não coincidem.";
-            return;
-        }
-        if (novaSenha.Length < 6)
-        {
-            erroCadastro = "A senha deve ter pelo menos 6 caracteres.";
-            return;
-        }
-        if (AdminRepo.LoginExiste(novoLogin))
-        {
-            erroCadastro = $"O login '{novoLogin}' já está em uso.";
-            return;
-        }
-
-        isCadastrando = true;
-        erroCadastro = null;
-        try
-        {
-            var admin = new Administrador
-            {
-                NomeCompleto = novoNome.Trim(),
-                Login = novoLogin.Trim(),
-                SenhaHash = BCrypt.Net.BCrypt.HashPassword(novaSenha, workFactor: 10),
-                Cpf = string.IsNullOrWhiteSpace(novoCpf) ? null : novoCpf.Trim(),
-                Cargo = string.IsNullOrWhiteSpace(novoCargo) ? null : novoCargo.Trim(),
-                Email = string.IsNullOrWhiteSpace(novoEmail) ? null : novoEmail.Trim(),
-                Telefone = string.IsNullOrWhiteSpace(novoTelefone) ? null : novoTelefone.Trim(),
-                DataCriacao = DateTime.UtcNow
-            };
-            var salvo = AdminRepo.Adicionar(admin);
-            LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Administrador", salvo.Id);
-            todosAdmins = AdminRepo.ListarTodos();
-            FecharDialog();
-        }
-        catch (Exception ex)
-        {
-            erroCadastro = ex.Message;
-        }
-        finally
-        {
-            isCadastrando = false;
-        }
-    }
 }

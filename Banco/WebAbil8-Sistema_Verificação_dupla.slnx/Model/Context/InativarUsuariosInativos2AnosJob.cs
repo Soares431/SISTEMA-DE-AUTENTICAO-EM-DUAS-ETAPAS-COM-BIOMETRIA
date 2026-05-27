@@ -20,7 +20,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
         {
             _logger.LogInformation("Executando job: InativarUsuariosInativos2Anos");
 
-            var doisAnosAtras = DateTime.UtcNow.AddYears(-2);
+            var config = _context.Configuracoes.FirstOrDefault();
+            int meses = Math.Clamp(config?.PeriodoInativacaoMeses ?? 24, 3, 24);
+            var doisAnosAtras = DateTime.UtcNow.AddMonths(-meses);
+            _logger.LogInformation("Período de inativação configurado: {meses} meses.", meses);
 
             var usuarios = _context.Pessoas
                 .Where(p => p.Status == "ativo"

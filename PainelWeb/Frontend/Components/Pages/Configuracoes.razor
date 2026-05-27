@@ -53,14 +53,26 @@
         </div>
 
         <div class="card">
-            <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravação</div><p class="card-description">Configure o tempo padrão que o sistema aguarda após uma tentativa de acesso para salvar a gravação</p></div>
+            <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Comportamento do Sistema</div><p class="card-description">Configure o tempo de gravação e o período de inativação automática</p></div>
             <div class="card-content space-y-sm">
                 <div class="form-group">
-                    <label class="form-label">Tempo de Espera (segundos)</label>
+                    <label class="form-label">Tempo de Espera de Gravação (segundos)</label>
                     <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="30" max="120" /><span class="text-muted">segundos</span></div>
-                    <p class="text-sm text-muted">Este valor pode ser sobrescrito individualmente para cada ambiente</p>
+                    <p class="text-sm text-muted">Mínimo: 30s · Máximo: 120s · Pode ser sobrescrito por ambiente</p>
                 </div>
-                <div class="alert alert-info"><Icon Name="info" Size="16" CssClass="text-primary" /><div><p class="alert-title">Informação</p><p class="alert-desc">Mínimo: 30 segundos. Máximo: 120 segundos. Valores muito baixos podem resultar em gravações incompletas.</p></div></div>
+                <hr class="separator" />
+                <div class="form-group">
+                    <label class="form-label">Período de Inativação Automática</label>
+                    <select class="form-select" @bind="periodoInativacaoMeses">
+                        <option value="3">3 meses</option>
+                        <option value="6">6 meses</option>
+                        <option value="12">12 meses (1 ano)</option>
+                        <option value="18">18 meses</option>
+                        <option value="24">24 meses (2 anos — padrão)</option>
+                    </select>
+                    <p class="text-sm text-muted">Pessoas sem acesso por este período serão inativadas automaticamente e removidas de todos os ambientes</p>
+                </div>
+                <div class="alert alert-info"><Icon Name="info" Size="16" CssClass="text-primary" /><div><p class="alert-title">Informação</p><p class="alert-desc">A inativação automática executa diariamente às 03:00. Pessoas inativadas precisam ser adicionadas a um ambiente novamente para reativar o acesso.</p></div></div>
             </div>
         </div>
     </div>
@@ -78,6 +90,7 @@
     private string retencaoTentativas = "90";
     private string retencaoLogs = "180";
     private int tempoEspera = 60;
+    private string periodoInativacaoMeses = "24";
     private bool isSaving = false;
     private int totalTentativas = 0;
     private int totalGravacoes = 0;
@@ -92,6 +105,7 @@
             retencaoTentativas = config.RetencaoGravacoesTentativasDias.ToString();
             retencaoLogs = config.RetencaoLogsDias.ToString();
             tempoEspera = config.TempoEsperaGravacaoSeg;
+            periodoInativacaoMeses = config.PeriodoInativacaoMeses.ToString();
         }
 
         var tentativas = TentativaRepo.ListarTodos();
@@ -110,6 +124,7 @@
             config.RetencaoGravacoesTentativasDias = int.Parse(retencaoTentativas);
             config.RetencaoLogsDias = int.Parse(retencaoLogs);
             config.TempoEsperaGravacaoSeg = Math.Clamp(tempoEspera, 30, 120);
+            config.PeriodoInativacaoMeses = Math.Clamp(int.Parse(periodoInativacaoMeses), 3, 24);
             await ConfigRepo.Atualizar(config);
             LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Configuracao", config.Id);
         }

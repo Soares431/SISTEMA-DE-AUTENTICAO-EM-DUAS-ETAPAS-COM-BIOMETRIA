@@ -81,7 +81,7 @@
                             <span class="text-muted text-sm">Senha provisória:</span><br />
                             <span style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@senhaMostrada</span>
                         </div>
-                        <small>O usuário deverá cadastrar a digital no primeiro acesso.</small>
+                        <small>@(pessoaCadastradaModo == "digital_e_senha" ? "O usuário deverá cadastrar a digital no primeiro acesso." : "O usuário poderá acessar utilizando ID e senha.")</small>
                     </div>
                 }
                 else if (erroDialog != null)
@@ -97,6 +97,14 @@
                     <div class="grid grid-2">
                         <div class="form-group"><label class="form-label">CPF</label><input class="form-input" placeholder="000.000.000-00" @bind="novoCpf" /></div>
                         <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" placeholder="Cargo" @bind="novoCargo" /></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Modo de Acesso</label>
+                        <select class="form-select" @bind="novoModoAcesso">
+                            <option value="digital_e_senha">Digital e Senha (ID + Biometria)</option>
+                            <option value="somente_senha">Somente Senha (ID + Senha)</option>
+                        </select>
+                        <p class="text-sm text-muted">Define como esta pessoa poderá se autenticar no dispositivo T50</p>
                     </div>
                 }
             </div>
@@ -126,9 +134,11 @@
     private string novoEmail = "";
     private string novoCpf = "";
     private string novoCargo = "";
+    private string novoModoAcesso = "digital_e_senha";
     private List<Pessoa> todasPessoas = new();
     private string? senhaMostrada = null;
     private long pessoaCadastradaId = 0;
+    private string pessoaCadastradaModo = "";
     private string? erroDialog = null;
     private bool isCadastrando = false;
 
@@ -162,8 +172,10 @@
         showDialog = false;
         senhaMostrada = null;
         pessoaCadastradaId = 0;
+        pessoaCadastradaModo = "";
         erroDialog = null;
         novoNome = novoEmail = novoCpf = novoCargo = "";
+        novoModoAcesso = "digital_e_senha";
     }
 
     private async Task HandleCadastrar()
@@ -191,7 +203,7 @@
                 Cargo = novoCargo,
                 senhaClear = senhaDisp.Senha,
                 senhaHash = BCrypt.Net.BCrypt.HashPassword(senhaDisp.Senha, workFactor: 10),
-                modoAcesso = "digital_e_senha",
+                modoAcesso = novoModoAcesso,
                 Status = "inativo",
                 dataCadastro = DateTime.UtcNow
             };
@@ -207,6 +219,7 @@
 
             todasPessoas = await PessoaRepo.ListarTodos();
             pessoaCadastradaId = pessoaSalva.Id;
+            pessoaCadastradaModo = novoModoAcesso;
             senhaMostrada = senhaDisp.Senha;
         }
         catch (Exception ex)
