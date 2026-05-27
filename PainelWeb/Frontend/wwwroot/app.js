@@ -86,75 +86,92 @@ window.downloadCsv = function(filename, csvContent) {
 // -----------------------------------------------------------------------------
 // Gráfico do Dashboard — Acessos por Hora (Chart.js)
 //
-// Exibe as 24 horas completas do dia (00h–23h).
-// Chamado por Home.razor via OnAfterRenderAsync (criação) e pelo auto-refresh
-// (atualização via updateDashboardChart, sem recriar o canvas).
+// Estado em variáveis de módulo (não em closure) para que updateDashboardChart
+// possa recalcular _horaAtual sem precisar recriar o gráfico inteiro.
 //
-// permitidosData / negadosData: arrays de 24 inteiros (índice = hora 0–23),
-// com valores em horário LOCAL do servidor (UTC-3 para Brasília).
+// BUG ANTERIOR: _horaAtual era capturada como variável local no momento de
+// renderDashboardChart — se o usuário ficasse na página das 16h às 19h, o
+// marcador "agora" continuaria apontando para as 16h mesmo após updates.
+// CORREÇÃO: _horaAtual é variável de módulo, atualizada em todo update.
 // -----------------------------------------------------------------------------
 
-// Referência à instância ativa — permite atualização sem recriar o canvas
-let _dashboardChart = null;
+// --- Estado do gráfico (módulo-level para sobreviver entre updates) ----------
+let _dashboardChart = null;          // Instância Chart.js ativa
+let _horaAtual      = -1;            // Hora atual do navegador; -1 = não inicializado
+let _permitidos     = new Array(24).fill(0);   // Cacheado para os callbacks do tooltip
+let _negados        = new Array(24).fill(0);   // Cacheado para os callbacks do tooltip
+let _clockInterval  = null;          // ID do setInterval do relógio em tempo real
+// -----------------------------------------------------------------------------
+
+/**
+ * Retorna array de raios dos pontos: 7 na hora atual, 4 se há dados, 2 se vazio.
+ * Recebe os dados e a hora atual como parâmetros (sem depender de closure).
+ */
+function _makeRadius(data, hora) {
+    return data.map(function(v, i) {
+        return i === hora ? 7 : (v > 0 ? 4 : 2);
+    });
+}
 
 /**
  * Cria (ou recria) o gráfico de acessos no dashboard.
  * @param {string}   canvasId       - ID do elemento <canvas> no DOM
- * @param {number[]} permitidosData - Array 24 inteiros (índice = hora local)
- * @param {number[]} negadosData    - Array 24 inteiros (índice = hora local)
+ * @param {number[]} permitidosData - Array 24 inteiros (índice = hora local 0-23)
+ * @param {number[]} negadosData    - Array 24 inteiros (índice = hora local 0-23)
  */
 window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
-    const canvas = document.getElementById(canvasId);
+    var canvas = document.getElementById(canvasId);
     if (!canvas || !window.Chart) return;
 
     // Destroi instância anterior para evitar erro "Canvas is already in use"
     // ao navegar para fora e voltar ao Dashboard
     if (_dashboardChart) { _dashboardChart.destroy(); _dashboardChart = null; }
-    const existing = Chart.getChart(canvas);
+    var existing = Chart.getChart(canvas);
     if (existing) existing.destroy();
 
-    const ctx   = canvas.getContext('2d');
-    const style = getComputedStyle(document.documentElement);
+    var ctx   = canvas.getContext('2d');
+    var style = getComputedStyle(document.documentElement);
 
     // Paleta do design system (variáveis CSS) — fallback caso variável não exista
-    const green     = style.getPropertyValue('--chart-1').trim() || '#34d399';
-    const red       = style.getPropertyValue('--chart-3').trim() || '#ef4444';
-    const gridLine  = style.getPropertyValue('--border').trim()  || '#2d3a52';
-    const textMuted = style.getPropertyValue('--muted-foreground').trim() || '#8b95a8';
+    var green     = style.getPropertyValue('--chart-1').trim() || '#34d399';
+    var red       = style.getPropertyValue('--chart-3').trim() || '#ef4444';
+    var gridLine  = style.getPropertyValue('--border').trim()  || '#2d3a52';
+    var textMuted = style.getPropertyValue('--muted-foreground').trim() || '#8b95a8';
 
-    // Gradientes verticais: cor sólida no topo → totalmente transparente na base
-    const h = canvas.offsetHeight || 320;
-    const gradGreen = ctx.createLinearGradient(0, 0, 0, h);
+    // Gradientes verticais: cor sólida no topo, transparente na base
+    var h = canvas.offsetHeight || 320;
+    var gradGreen = ctx.createLinearGradient(0, 0, 0, h);
     gradGreen.addColorStop(0, green + 'BB');
     gradGreen.addColorStop(1, green + '00');
-    const gradRed = ctx.createLinearGradient(0, 0, 0, h);
+    var gradRed = ctx.createLinearGradient(0, 0, 0, h);
     gradRed.addColorStop(0, red + 'BB');
     gradRed.addColorStop(1, red + '00');
 
-    // 24 rótulos completos — 00:00 até 23:00
-    const labels     = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0') + ':00');
-    const permitidos = Array.isArray(permitidosData) ? permitidosData.slice() : new Array(24).fill(0);
-    const negados    = Array.isArray(negadosData)    ? negadosData.slice()    : new Array(24).fill(0);
+    // Atualiza estado do módulo — tooltip callbacks referenciam essas vars
+    _horaAtual  = new Date().getHours();
+    _permitidos = Array.isArray(permitidosData) ? permitidosData.slice() : new Array(24).fill(0);
+    _negados    = Array.isArray(negadosData)    ? negadosData.slice()    : new Array(24).fill(0);
 
-    // Hora atual no navegador — ponto maior destaca a hora em curso
-    const horaAtual = new Date().getHours();
-    const makeRadius = (data) =>
-        data.map((v, i) => i === horaAtual ? 7 : (v > 0 ? 4 : 2));
+    // 24 rótulos — 00:00 até 23:00
+    var labels = [];
+    for (var i = 0; i < 24; i++) {
+        labels.push(i.toString().padStart(2, '0') + ':00');
+    }
 
     _dashboardChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels,
+            labels: labels,
             datasets: [
                 {
                     label: 'Permitidos',
-                    data: permitidos,
+                    data: _permitidos,
                     borderColor: green,
                     backgroundColor: gradGreen,
                     fill: true,
                     tension: 0.4,
                     borderWidth: 2.5,
-                    pointRadius: makeRadius(permitidos),
+                    pointRadius: _makeRadius(_permitidos, _horaAtual),
                     pointHoverRadius: 8,
                     pointBackgroundColor: green,
                     pointBorderColor: '#0f1729',
@@ -165,13 +182,13 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
                 },
                 {
                     label: 'Negados',
-                    data: negados,
+                    data: _negados,
                     borderColor: red,
                     backgroundColor: gradRed,
                     fill: true,
                     tension: 0.4,
                     borderWidth: 2.5,
-                    pointRadius: makeRadius(negados),
+                    pointRadius: _makeRadius(_negados, _horaAtual),
                     pointHoverRadius: 8,
                     pointBackgroundColor: red,
                     pointBorderColor: '#0f1729',
@@ -186,7 +203,7 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 700, easing: 'easeInOutQuart' },
-            // Tooltip simultâneo para ambos os datasets ao passar o mouse
+            // Tooltip simultâneo para ambos os datasets
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
@@ -210,26 +227,26 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
                     boxWidth: 10,
                     boxHeight: 10,
                     callbacks: {
-                        // Cabeçalho: "18:00 → 18:59   ◀ agora" quando é a hora atual
-                        title: (items) => {
-                            const h   = parseInt(items[0].label, 10);
-                            const fim = (h + 1).toString().padStart(2, '0') + ':59';
-                            return `${items[0].label} → ${fim}${h === horaAtual ? '   ◀ agora' : ''}`;
+                        // Usa _horaAtual (módulo-level) — sempre atualizada pelo updateDashboardChart
+                        title: function(items) {
+                            var h   = parseInt(items[0].label, 10);
+                            var fim = (h + 1 < 24 ? (h + 1) : 0).toString().padStart(2, '0') + ':59';
+                            var agora = h === _horaAtual ? '   ◄ agora' : '';
+                            return items[0].label + ' → ' + fim + agora;
                         },
-                        // Corpo: "  Permitidos: 3 (75%)"
-                        label: (item) => {
-                            const idx   = item.dataIndex;
-                            const total = permitidos[idx] + negados[idx];
-                            const pct   = total > 0 ? Math.round(item.raw / total * 100) : 0;
-                            return `  ${item.dataset.label}: ${item.raw}${total > 0 ? ' (' + pct + '%)' : ''}`;
+                        label: function(item) {
+                            var idx   = item.dataIndex;
+                            var total = _permitidos[idx] + _negados[idx];
+                            var pct   = total > 0 ? Math.round(item.raw / total * 100) : 0;
+                            var pctStr = total > 0 ? ' (' + pct + '%)' : '';
+                            return '  ' + item.dataset.label + ': ' + item.raw + pctStr;
                         },
-                        // Rodapé: total de acessos e taxa de liberação
-                        afterBody: (items) => {
-                            const idx   = items[0].dataIndex;
-                            const total = permitidos[idx] + negados[idx];
+                        afterBody: function(items) {
+                            var idx   = items[0].dataIndex;
+                            var total = _permitidos[idx] + _negados[idx];
                             if (total === 0) return [];
-                            const taxa = Math.round(permitidos[idx] / total * 100);
-                            return ['', `  Total: ${total}   ·   Liberação: ${taxa}%`];
+                            var taxa = Math.round(_permitidos[idx] / total * 100);
+                            return ['', '  Total: ' + total + '   ·   Liberação: ' + taxa + '%'];
                         }
                     }
                 }
@@ -243,8 +260,8 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
                         maxRotation: 0,
                         autoSkip: false,
                         font: { size: 11 },
-                        // Exibe rótulo a cada 3 horas: 00:00, 03:00, 06:00 … 21:00
-                        callback: (val, idx) => idx % 3 === 0 ? labels[idx] : ''
+                        // Rótulo a cada 3 horas: 00:00, 03:00, 06:00 ... 21:00
+                        callback: function(val, idx) { return idx % 3 === 0 ? labels[idx] : ''; }
                     }
                 },
                 y: {
@@ -253,7 +270,7 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
                     beginAtZero: true,
                     ticks: {
                         color: textMuted,
-                        precision: 0,       // Apenas inteiros no eixo Y
+                        precision: 0,      // Apenas inteiros no eixo Y
                         font: { size: 11 }
                     }
                 }
@@ -263,17 +280,55 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
 };
 
 /**
- * Atualiza os dados do gráfico sem recriar o canvas.
- * Usado pelo auto-refresh e pelo botão de atualização manual do Dashboard.
- * A animação 'active' é mais suave para atualizações incrementais.
+ * Atualiza dados do gráfico sem recriar o canvas.
+ * IMPORTANTE: recalcula _horaAtual para que o marcador "agora" e o tooltip
+ * reflitam a hora correta mesmo horas após a criação do gráfico.
  * @param {number[]} permitidosData - Array 24 inteiros
  * @param {number[]} negadosData    - Array 24 inteiros
  */
 window.updateDashboardChart = function(permitidosData, negadosData) {
     if (!_dashboardChart) return;
-    const permitidos = Array.isArray(permitidosData) ? permitidosData.slice() : new Array(24).fill(0);
-    const negados    = Array.isArray(negadosData)    ? negadosData.slice()    : new Array(24).fill(0);
-    _dashboardChart.data.datasets[0].data = permitidos;
-    _dashboardChart.data.datasets[1].data = negados;
+
+    // Recalcula hora atual — corrige o marcador caso a hora tenha mudado
+    _horaAtual  = new Date().getHours();
+    _permitidos = Array.isArray(permitidosData) ? permitidosData.slice() : new Array(24).fill(0);
+    _negados    = Array.isArray(negadosData)    ? negadosData.slice()    : new Array(24).fill(0);
+
+    _dashboardChart.data.datasets[0].data        = _permitidos;
+    _dashboardChart.data.datasets[1].data        = _negados;
+    // Atualiza raio dos pontos para refletir a hora atual correta
+    _dashboardChart.data.datasets[0].pointRadius = _makeRadius(_permitidos, _horaAtual);
+    _dashboardChart.data.datasets[1].pointRadius = _makeRadius(_negados,    _horaAtual);
+
+    // 'active' = animação suave para atualizações incrementais (sem flash)
     _dashboardChart.update('active');
+};
+
+/**
+ * Inicia um relógio em tempo real (HH:MM:SS) dentro de um elemento DOM.
+ * Atualiza a cada segundo via setInterval — zero re-renders do Blazor.
+ * Auto-limpa quando o elemento some do DOM (ex: navegação para outra página).
+ * @param {string} elementId - ID do elemento <span> que receberá o horário
+ */
+window.startDashboardClock = function(elementId) {
+    // Para qualquer relógio anterior antes de iniciar um novo
+    if (_clockInterval) { clearInterval(_clockInterval); _clockInterval = null; }
+
+    function tick() {
+        var el = document.getElementById(elementId);
+        if (!el) {
+            // Elemento sumiu do DOM (navegação) — limpa o intervalo automaticamente
+            clearInterval(_clockInterval);
+            _clockInterval = null;
+            return;
+        }
+        var now = new Date();
+        var hh  = now.getHours()  .toString().padStart(2, '0');
+        var mm  = now.getMinutes().toString().padStart(2, '0');
+        var ss  = now.getSeconds().toString().padStart(2, '0');
+        el.textContent = hh + ':' + mm + ':' + ss;
+    }
+
+    tick(); // Atualização imediata (sem esperar 1s)
+    _clockInterval = setInterval(tick, 1000);
 };
