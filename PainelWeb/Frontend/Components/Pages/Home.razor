@@ -1,10 +1,12 @@
 @* =============================================================================
    Home.razor - Página Dashboard (Página Inicial)
-   Features: 4 cards de estatísticas, gráfico de acessos por hora (Chart.js),
-             painel de alertas T50, tabela de últimos acessos negados
+   Features: 4 cards de estatísticas, gráfico de acessos por hora (Chart.js,
+             24h completas, auto-refresh 30s + botão manual), painel de
+             alertas T50, tabela de últimos acessos negados
    Rota: / (raiz da aplicação)
    ============================================================================= *@
 @page "/"
+@implements IDisposable
 @inject IJSRuntime JS
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IPessoaRepository PessoaRepo
@@ -63,12 +65,23 @@
     <!-- Chart + Alerts -->
     <div class="grid grid-2">
         <div class="card">
-            <div class="card-header">
-                <div class="card-title">Acessos por Hora</div>
-                <p class="card-description">Distribuição de entradas ao longo do dia</p>
+            <div class="card-header card-header-row">
+                <div>
+                    <div class="card-title">Acessos por Hora</div>
+                    <p class="card-description">Todos os horários — 00h a 23h · atualiza a cada 30s</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    @if (_ultimaAtualizacao != default)
+                    {
+                        <span class="text-xs text-muted" title="Última atualização dos dados">@_ultimaAtualizacao.ToString("HH:mm:ss")</span>
+                    }
+                    <button class="btn btn-ghost btn-sm" @onclick="HandleRefresh" disabled="@_carregando" title="Atualizar agora">
+                        <Icon Name="refresh-cw" Size="14" />
+                    </button>
+                </div>
             </div>
             <div class="card-content">
-                <canvas id="dashboardChart" style="width:100%; height:300px;"></canvas>
+                <canvas id="dashboardChart" style="width:100%; height:320px;"></canvas>
             </div>
         </div>
 
@@ -157,18 +170,34 @@
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.TentativaAcesso> ultimosNegados = new();
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.DispositivoT50> alertasT50 = new();
 
+    // Auto-refresh a cada 30 segundos
+    private System.Threading.Timer? _refreshTimer;
+    private DateTime _ultimaAtualizacao;
+    private bool _carregando = false;
+    private bool _chartInicializado = false;
+
     protected override async Task OnInitializedAsync()
     {
+        await CarregarDados();
+    }
+
+    // Carrega todos os dados do dashboard — reutilizado no auto-refresh e no refresh manual
+    private async Task CarregarDados()
+    {
+        // Reseta os arrays antes de recarregar para não acumular contagens antigas
+        permitidosPorHora = new int[24];
+        negadosPorHora    = new int[24];
+
         // "Hoje" no horário local do servidor (não UTC).
         // DateTime.UtcNow.Date em Brasília às 22:30 já seria "amanhã" UTC — incorreto.
         var hojeLocal = DateHelper.Local(DateTime.UtcNow).Date;
         // Converte meia-noite local → UTC para filtrar no banco (armazena em UTC)
         var hojeUtcInicio = DateTime.SpecifyKind(hojeLocal, DateTimeKind.Local).ToUniversalTime();
-        var hojeUtcFim = hojeUtcInicio.AddDays(1);
+        var hojeUtcFim    = hojeUtcInicio.AddDays(1);
 
         var tentativasHoje = TentativaRepo.ListarComFiltros(null, null, null, hojeUtcInicio, hojeUtcFim);
         totalPermitidos = tentativasHoje.Count(t => t.AcessoLiberado);
-        totalNegados = tentativasHoje.Count(t => !t.AcessoLiberado);
+        totalNegados    = tentativasHoje.Count(t => !t.AcessoLiberado);
 
         // Agrupa por hora LOCAL para o gráfico.
         // Atenção: SQLite retorna Kind=Unspecified — usar DateHelper.Local() para garantir
@@ -190,8 +219,10 @@
         totalPessoas = pessoas.Count(p => p.Status == "ativo");
 
         var dispositivos = DispositivoRepo.ListarTodos();
-        alertasT50 = dispositivos.Where(d => d.DigitaisCadastradas >= 950).ToList();
+        alertasT50   = dispositivos.Where(d => d.DigitaisCadastradas >= 950).ToList();
         totalAlertas = alertasT50.Count;
+
+        _ultimaAtualizacao = DateHelper.Local(DateTime.UtcNow);
     }
 
     private string GetGravidadeBadge(string gravidade) => gravidade switch
@@ -201,11 +232,44 @@
         _ => "badge-muted"
     };
 
+    // Refresh manual acionado pelo botão na barra do gráfico
+    private async Task HandleRefresh()
+    {
+        _carregando = true;
+        StateHasChanged();
+        await CarregarDados();
+        if (_chartInicializado)
+            await JS.InvokeVoidAsync("updateDashboardChart", permitidosPorHora, negadosPorHora);
+        _carregando = false;
+        StateHasChanged();
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            _chartInicializado = true;
             await JS.InvokeVoidAsync("renderDashboardChart", "dashboardChart", permitidosPorHora, negadosPorHora);
+
+            // Dispara auto-refresh a cada 30 segundos:
+            // recarrega dados do banco e atualiza o gráfico sem recriar o canvas (sem flash)
+            _refreshTimer = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await CarregarDados();
+                    StateHasChanged();
+                    if (_chartInicializado)
+                        await JS.InvokeVoidAsync("updateDashboardChart", permitidosPorHora, negadosPorHora);
+                });
+            }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         }
+    }
+
+    // IDisposable: cancela o timer quando o componente é desmontado (navegação para outra página)
+    public void Dispose()
+    {
+        _chartInicializado = false;
+        _refreshTimer?.Dispose();
     }
 }
