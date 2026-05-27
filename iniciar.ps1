@@ -8,6 +8,22 @@ Write-Host "================================================" -ForegroundColor C
 
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+# Encerra processos antigos nas portas 7117 e 8080 (evita conflito de porta)
+Write-Host "Verificando portas em uso..." -ForegroundColor Yellow
+foreach ($porta in @(7117, 8080)) {
+    $conns = netstat -ano 2>$null | Select-String ":$porta\s" | Select-String "LISTENING"
+    if ($conns) {
+        $conns | ForEach-Object {
+            $pid = ($_ -split '\s+')[-1]
+            if ($pid -match '^\d+$' -and $pid -ne '0') {
+                Write-Host "  Encerrando processo PID $pid na porta $porta..." -ForegroundColor Yellow
+                try { Stop-Process -Id ([int]$pid) -Force -ErrorAction SilentlyContinue } catch {}
+            }
+        }
+        Start-Sleep -Seconds 1
+    }
+}
+
 $int1 = Get-ChildItem -Path (Join-Path $raiz "Banco") -Directory | Where-Object { $_.Name -like "WebAbil8*" } | Select-Object -First 1 -ExpandProperty FullName
 $int2Parent = Get-ChildItem -Path (Join-Path $raiz "Hardware*") -Directory -Recurse | Where-Object { $_.Name -eq "BiometricAcess.Worker" } | Select-Object -First 1 -ExpandProperty FullName
 $int2 = Join-Path $int2Parent "BiometricAcess.Worker"
@@ -17,17 +33,23 @@ $int3 = Join-Path $raiz "PainelWeb\Frontend"
 Write-Host "[1/3] Iniciando Int1 - Banco API (em segundo plano)..." -ForegroundColor Green
 $p1 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int1'; dotnet run --launch-profile https" -WindowStyle Hidden -PassThru
 
-# Aguarda Int1 responder na porta 7117
+# Aguarda Int1 responder na porta 7117 (ate 90 segundos)
 Write-Host "      Aguardando Int1 na porta 7117 " -ForegroundColor Yellow -NoNewline
 $tentativas = 0
-while ($tentativas -lt 60) {
+$ok = $false
+while ($tentativas -lt 90) {
     $tcp = Test-NetConnection -ComputerName localhost -Port 7117 -InformationLevel Quiet -WarningAction SilentlyContinue
-    if ($tcp) { break }
+    if ($tcp) { $ok = $true; break }
     Start-Sleep -Seconds 1
     Write-Host "." -NoNewline -ForegroundColor Yellow
     $tentativas++
 }
-Write-Host " OK" -ForegroundColor Green
+if ($ok) {
+    Write-Host " OK" -ForegroundColor Green
+} else {
+    Write-Host " TIMEOUT (Int1 nao respondeu em 90s)" -ForegroundColor Red
+    Write-Host "Verifique se o Int1 compilou corretamente." -ForegroundColor Red
+}
 
 Write-Host "[2/3] Iniciando Int2 - Worker (em segundo plano)..." -ForegroundColor Green
 $p2 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int2'; dotnet run" -WindowStyle Hidden -PassThru
@@ -35,17 +57,29 @@ $p2 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Locatio
 Write-Host "[3/3] Iniciando Int3 - Painel Web (em segundo plano)..." -ForegroundColor Green
 $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int3'; dotnet run" -WindowStyle Hidden -PassThru
 
-# Aguarda Int3 responder na porta 8080
+# Aguarda Int3 responder na porta 8080 (ate 150 segundos — mais tempo para compilacao pos-alteracoes)
 Write-Host "      Aguardando Int3 na porta 8080 " -ForegroundColor Yellow -NoNewline
 $tentativas = 0
-while ($tentativas -lt 60) {
+$ok = $false
+while ($tentativas -lt 150) {
     $tcp = Test-NetConnection -ComputerName localhost -Port 8080 -InformationLevel Quiet -WarningAction SilentlyContinue
-    if ($tcp) { break }
+    if ($tcp) { $ok = $true; break }
     Start-Sleep -Seconds 1
     Write-Host "." -NoNewline -ForegroundColor Yellow
     $tentativas++
 }
-Write-Host " OK" -ForegroundColor Green
+if ($ok) {
+    Write-Host " OK" -ForegroundColor Green
+} else {
+    Write-Host " TIMEOUT" -ForegroundColor Red
+    Write-Host "Int3 nao respondeu em 150s. Abrindo janela de diagnostico..." -ForegroundColor Yellow
+    # Relancar Int3 com janela visivel para ver o erro
+    if ($null -ne $p3 -and -not $p3.HasExited) {
+        try { Stop-Process -Id $p3.Id -Force -ErrorAction SilentlyContinue } catch {}
+    }
+    $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int3'; dotnet run; Read-Host 'Pressione Enter'" -WindowStyle Normal -PassThru
+    Write-Host "Janela do Int3 aberta — verifique o erro exibido." -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
