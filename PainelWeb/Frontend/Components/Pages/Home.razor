@@ -159,22 +159,29 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var hoje = DateTime.UtcNow.Date;
-        var amanha = hoje.AddDays(1);
+        // "Hoje" no horário local do servidor (não UTC).
+        // DateTime.UtcNow.Date em Brasília às 22:30 já seria "amanhã" UTC — incorreto.
+        var hojeLocal = DateHelper.Local(DateTime.UtcNow).Date;
+        // Converte meia-noite local → UTC para filtrar no banco (armazena em UTC)
+        var hojeUtcInicio = DateTime.SpecifyKind(hojeLocal, DateTimeKind.Local).ToUniversalTime();
+        var hojeUtcFim = hojeUtcInicio.AddDays(1);
 
-        var tentativasHoje = TentativaRepo.ListarComFiltros(null, null, null, hoje, amanha);
+        var tentativasHoje = TentativaRepo.ListarComFiltros(null, null, null, hojeUtcInicio, hojeUtcFim);
         totalPermitidos = tentativasHoje.Count(t => t.AcessoLiberado);
         totalNegados = tentativasHoje.Count(t => !t.AcessoLiberado);
 
-        // Agrupa por hora (hora local) para o gráfico
+        // Agrupa por hora LOCAL para o gráfico.
+        // Atenção: SQLite retorna Kind=Unspecified — usar DateHelper.Local() para garantir
+        // conversão correta de UTC → local (t.DataHora.ToLocalTime() não converte no Windows
+        // quando Kind=Unspecified, pois o runtime assume que já é horário local).
         foreach (var t in tentativasHoje)
         {
-            var hora = t.DataHora.ToLocalTime().Hour;
+            var hora = DateHelper.Local(t.DataHora).Hour;
             if (t.AcessoLiberado) permitidosPorHora[hora]++;
             else negadosPorHora[hora]++;
         }
 
-        ultimosNegados = TentativaRepo.ListarComFiltros(null, null, false, hoje, amanha)
+        ultimosNegados = TentativaRepo.ListarComFiltros(null, null, false, hojeUtcInicio, hojeUtcFim)
             .OrderByDescending(t => t.DataHora)
             .Take(5)
             .ToList();
