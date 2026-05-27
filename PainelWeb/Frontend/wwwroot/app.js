@@ -109,10 +109,13 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
     const border = style.getPropertyValue('--border').trim() || '#2d3a52';         // Cor das linhas do grid
     const muted = style.getPropertyValue('--muted-foreground').trim() || '#8b95a8'; // Cor dos rótulos
 
-    // Horários do expediente (06h às 16h) — índices 6 a 16
-    const labels = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
-    const permitidos = (permitidosData || new Array(24).fill(0)).slice(6, 17);
-    const negados    = (negadosData    || new Array(24).fill(0)).slice(6, 17);
+    // Intervalo visível: 06h às 22h — índices 6 a 22 (inclusive)
+    // Cobre expediente militar e períodos noturnos, sem ocultar eventos à tarde/noite
+    const labels = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00',
+                    '13:00','14:00','15:00','16:00','17:00','18:00','19:00',
+                    '20:00','21:00','22:00'];
+    const permitidos = (permitidosData || new Array(24).fill(0)).slice(6, 23);
+    const negados    = (negadosData    || new Array(24).fill(0)).slice(6, 23);
 
     new Chart(ctx, {
         type: 'line',
