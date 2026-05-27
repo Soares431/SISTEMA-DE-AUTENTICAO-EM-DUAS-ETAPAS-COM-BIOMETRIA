@@ -62,11 +62,30 @@ else
     {
         if (firstRender)
         {
-            // Redireciona para login se não autenticado
             if (!TokenStore.EstaAutenticado)
             {
-                Nav.NavigateTo("/login", forceLoad: false);
-                return;
+                // Circuito reconectou e perdeu o estado em memória —
+                // tenta restaurar a sessão do sessionStorage antes de redirecionar
+                try
+                {
+                    var stored = await JS.InvokeAsync<StoredAuth?>("authStorage.load");
+                    if (stored != null && !string.IsNullOrEmpty(stored.Token))
+                    {
+                        TokenStore.Token = stored.Token;
+                        TokenStore.AdminId = stored.AdminId;
+                        TokenStore.NomeCompleto = stored.Nome;
+                    }
+                    else
+                    {
+                        Nav.NavigateTo("/login", forceLoad: false);
+                        return;
+                    }
+                }
+                catch
+                {
+                    Nav.NavigateTo("/login", forceLoad: false);
+                    return;
+                }
             }
 
             verificado = true;
@@ -76,6 +95,14 @@ else
             // Remove o overlay após confirmar autenticação e renderizar o dashboard
             await JS.InvokeVoidAsync("removeAppLoading");
         }
+    }
+
+    // Classe auxiliar para desserializar o objeto retornado por authStorage.load()
+    private class StoredAuth
+    {
+        public string Token { get; set; } = "";
+        public int AdminId { get; set; }
+        public string Nome { get; set; } = "";
     }
 
     private void ToggleSidebar()

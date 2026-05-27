@@ -10,6 +10,7 @@
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
 @inject ITokenStore TokenStore
+@inject IJSRuntime JS
 
 <div class="login-page">
     <div class="login-blob" style="top: 25%; left: 25%;"></div>
@@ -91,6 +92,11 @@
                 TokenStore.Token = result?.Token;
                 TokenStore.AdminId = result?.AdminId ?? 0;
                 TokenStore.NomeCompleto = result?.NomeCompleto ?? "";
+                // Persiste no sessionStorage para restaurar em caso de reconexão do circuito
+                await JS.InvokeVoidAsync("authStorage.save",
+                    result?.Token ?? "",
+                    result?.AdminId ?? 0,
+                    result?.NomeCompleto ?? "");
                 Nav.NavigateTo("/");
             }
             else

@@ -40,6 +40,33 @@ window.themeManager = {
 window.themeManager.initTheme();
 
 // -----------------------------------------------------------------------------
+// Persistência de autenticação no sessionStorage
+// Usado para restaurar o token JWT se o circuito Blazor reconectar durante a sessão.
+// sessionStorage é limpo automaticamente ao fechar a aba/navegador.
+// -----------------------------------------------------------------------------
+window.authStorage = {
+    save: function(token, adminId, nome) {
+        sessionStorage.setItem('cta_token', token);
+        sessionStorage.setItem('cta_adminId', String(adminId));
+        sessionStorage.setItem('cta_nome', nome);
+    },
+    load: function() {
+        var token = sessionStorage.getItem('cta_token');
+        if (!token) return null;
+        return {
+            token: token,
+            adminId: parseInt(sessionStorage.getItem('cta_adminId') || '0', 10),
+            nome: sessionStorage.getItem('cta_nome') || ''
+        };
+    },
+    clear: function() {
+        sessionStorage.removeItem('cta_token');
+        sessionStorage.removeItem('cta_adminId');
+        sessionStorage.removeItem('cta_nome');
+    }
+};
+
+// -----------------------------------------------------------------------------
 // Gráfico do Dashboard - Acessos por Hora (Chart.js)
 // Renderiza um gráfico de linhas com dados de acessos permitidos e negados.
 // Chamado pelo componente Home.razor via OnAfterRenderAsync.
