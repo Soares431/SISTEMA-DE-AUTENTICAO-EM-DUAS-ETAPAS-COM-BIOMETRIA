@@ -77,6 +77,13 @@
         </div>
     </div>
 
+    @if (mensagemSucesso != null)
+    {
+        <div class="alert alert-success" style="display:flex; align-items:center; gap:0.5rem;">
+            <Icon Name="check-circle" Size="16" /> @mensagemSucesso
+        </div>
+    }
+
     <div class="card">
         <div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Salvar Configurações</div></div>
         <div class="card-content flex items-center justify-between">
@@ -92,6 +99,7 @@
     private int tempoEspera = 60;
     private string periodoInativacaoMeses = "24";
     private bool isSaving = false;
+    private string? mensagemSucesso = null;
     private int totalTentativas = 0;
     private int totalGravacoes = 0;
     private int totalLogs = 0;
@@ -117,6 +125,7 @@
     private async Task HandleSave()
     {
         isSaving = true;
+        mensagemSucesso = null;
         StateHasChanged();
 
         if (config != null)
@@ -127,6 +136,7 @@
             config.PeriodoInativacaoMeses = Math.Clamp(int.Parse(periodoInativacaoMeses), 3, 24);
             await ConfigRepo.Atualizar(config);
             LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Configuracao", config.Id);
+            mensagemSucesso = "Configurações salvas com sucesso.";
         }
 
         isSaving = false;

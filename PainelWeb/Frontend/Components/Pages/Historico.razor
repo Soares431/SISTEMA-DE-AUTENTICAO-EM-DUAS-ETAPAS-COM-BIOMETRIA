@@ -78,7 +78,7 @@
                         @foreach (var item in Sorted)
                         {
                             <tr>
-                                <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@item.DataHora.ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@item.DataHora.ToString("HH:mm:ss")</p></div></div></td>
+                                <td><div class="flex items-center gap-2"><Icon Name="clock" Size="16" CssClass="text-muted" /><div><p class="font-mono text-sm">@DateHelper.Local(item.DataHora).ToString("dd/MM/yyyy")</p><p class="font-mono text-xs text-muted">@DateHelper.Local(item.DataHora).ToString("HH:mm:ss")</p></div></div></td>
                                 <td>
                                     @if (item.PessoaId.HasValue)
                                     {
@@ -174,7 +174,7 @@
             var status = item.AcessoLiberado ? "Permitido" : "Negado";
             var motivo = item.MotivoNegacao ?? "";
             var gravacao = item.GravacaoPath ?? "";
-            sb.AppendLine($"{item.DataHora:dd/MM/yyyy HH:mm:ss},\"{pessoa}\",\"{amb}\",{status},{motivo},{gravacao}");
+            sb.AppendLine($"{DateHelper.Local(item.DataHora):dd/MM/yyyy HH:mm:ss},\"{pessoa}\",\"{amb}\",{status},{motivo},{gravacao}");
         }
         await JS.InvokeVoidAsync("downloadCsv", $"historico_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
     }

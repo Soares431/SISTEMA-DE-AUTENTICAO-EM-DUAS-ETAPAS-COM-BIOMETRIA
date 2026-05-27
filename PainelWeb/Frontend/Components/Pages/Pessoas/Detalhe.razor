@@ -35,7 +35,7 @@
                                 Biometria @(pessoa.biometriaCadastrada != null ? "cadastrada" : "pendente")
                             </span>
                         </div>
-                        <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Ultimo acesso: @(pessoa.dataUltimoAcesso?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
+                        <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Ultimo acesso: @(DateHelper.Local(pessoa.dataUltimoAcesso)?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
                     </div>
                     <div class="mt-6 pt-6 border-t space-y-xs">
                         <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
@@ -87,7 +87,7 @@
                                     @foreach (var t in historico)
                                     {
                                         <tr>
-                                            <td class="font-mono text-sm text-muted">@t.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td class="font-mono text-sm text-muted">@DateHelper.Local(t.DataHora).ToString("dd/MM/yyyy HH:mm")</td>
                                             <td>@(t.Ambiente?.Nome ?? $"Ambiente {t.AmbienteId}")</td>
                                             <td><span class="badge @(t.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(t.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(t.AcessoLiberado ? "Permitido" : "Negado")</span></td>
                                         </tr>

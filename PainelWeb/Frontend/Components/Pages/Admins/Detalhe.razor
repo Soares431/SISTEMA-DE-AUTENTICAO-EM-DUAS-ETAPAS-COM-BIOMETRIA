@@ -47,7 +47,7 @@ else
                             <div><dt class="text-muted text-sm">Cargo / Patente</dt><dd>@(admin.Cargo ?? "-")</dd></div>
                             <div><dt class="text-muted text-sm">Email</dt><dd>@(admin.Email ?? "-")</dd></div>
                             <div><dt class="text-muted text-sm">Telefone</dt><dd>@(admin.Telefone ?? "-")</dd></div>
-                            <div><dt class="text-muted text-sm">Membro desde</dt><dd>@admin.DataCriacao.ToString("dd/MM/yyyy 'às' HH:mm")</dd></div>
+                            <div><dt class="text-muted text-sm">Membro desde</dt><dd>@DateHelper.Local(admin.DataCriacao).ToString("dd/MM/yyyy 'às' HH:mm")</dd></div>
                         </dl>
                     }
                     else
@@ -83,7 +83,7 @@ else
                                 <div class="flex items-center gap-3 py-2" style="border-bottom:1px solid var(--border);">
                                     <span class="badge @GetAcaoBadge(log.Acao) badge-sm">@log.Acao</span>
                                     <span class="text-sm text-muted flex-1">@log.EntidadeAfetada @(log.EntidadeId.HasValue ? $"#{log.EntidadeId}" : "")</span>
-                                    <span class="font-mono text-xs text-muted">@log.DataHora.ToString("dd/MM HH:mm")</span>
+                                    <span class="font-mono text-xs text-muted">@DateHelper.Local(log.DataHora).ToString("dd/MM HH:mm")</span>
                                 </div>
                             }
                         </div>

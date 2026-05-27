@@ -3,6 +3,8 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IDispositivoT50Repository DispositivoRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -153,6 +155,7 @@
             DataCriacao = DateTime.UtcNow
         };
         AmbienteRepo.Adicionar(ambiente);
+        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Ambiente", ambiente.Id);
         todosAmbientes = AmbienteRepo.ListarTodos();
         showDialog = false;
         novoNome = "";

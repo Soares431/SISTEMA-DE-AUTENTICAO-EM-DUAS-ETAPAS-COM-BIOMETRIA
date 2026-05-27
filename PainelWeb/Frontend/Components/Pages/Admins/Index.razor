@@ -40,7 +40,7 @@
                                 <td class="font-mono text-sm">@a.Login</td>
                                 <td class="text-muted">@(a.Cargo ?? "-")</td>
                                 <td class="text-muted text-sm">@(a.Email ?? "-")</td>
-                                <td class="text-muted text-sm">@a.DataCriacao.ToString("dd/MM/yyyy")</td>
+                                <td class="text-muted text-sm">@DateHelper.Local(a.DataCriacao).ToString("dd/MM/yyyy")</td>
                                 <td><a href="/admins/@a.Id" class="btn btn-ghost btn-sm">Ver <Icon Name="chevron-right" Size="16" /></a></td>
                             </tr>
                         }

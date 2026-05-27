@@ -9,6 +9,8 @@
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ICameraRepository CameraRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -190,13 +192,14 @@
     private async Task HandleRemover(int id)
     {
         await CameraRepo.Remover(id);
+        LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Camera", id);
         todasCameras = await CameraRepo.ListarComFiltros(null, null);
     }
 
     private async Task HandleCadastrar()
     {
         if (string.IsNullOrWhiteSpace(novoNome)) return;
-        await CameraRepo.Adicionar(new Camera
+        var novaCamera = new Camera
         {
             Nome = novoNome,
             UrlRTSP = novoRtsp,
@@ -204,7 +207,9 @@
             Tipo = novoTipo,
             AmbienteId = novoAmbienteId,
             Ativa = true
-        });
+        };
+        await CameraRepo.Adicionar(novaCamera);
+        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Camera", novaCamera.Id);
         todasCameras = await CameraRepo.ListarComFiltros(null, null);
         showCreate = false;
         novoNome = novoRtsp = novoOnvif = "";

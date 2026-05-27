@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Net.WebSockets;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers

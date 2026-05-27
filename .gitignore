@@ -6,6 +6,9 @@
 # Arquivo de contexto local para ClaudeCode — não versionar
 CLAUDE.md
 
+# Pastas de build temporário geradas pelo ClaudeCode para verificação
+**/Tempbuild_int*_check/
+
 # dotenv files
 .env
 

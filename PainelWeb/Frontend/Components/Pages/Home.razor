@@ -127,7 +127,7 @@
                                 <td><span class="flex items-center gap-2"><Icon Name="user" Size="16" CssClass="text-muted" /> @(item.Pessoa?.Nome ?? "Desconhecido")</span></td>
                                 <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(item.Ambiente?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
                                 <td><span class="badge badge-destructive">@(item.MotivoNegacao ?? "-")</span></td>
-                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @item.DataHora.ToString("HH:mm")</span></td>
+                                <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @DateHelper.Local(item.DataHora).ToString("HH:mm")</span></td>
                                 <td>
                                     @if (item.GravacaoPath != null)
                                     {
