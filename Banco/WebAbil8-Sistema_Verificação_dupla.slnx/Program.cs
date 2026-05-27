@@ -188,7 +188,8 @@ using (var scope = app.Services.CreateScope())
         "0 3 * * *");
 }
 
-app.UseHttpsRedirection();
+// UseHttpsRedirection removido — Int1 é API interna (localhost apenas).
+// O redirect HTTP→HTTPS fazia o HttpClient do Int3 falhar no certificado dev.
 
 app.UseAuthentication(); // ← adicionado
 app.UseAuthorization();

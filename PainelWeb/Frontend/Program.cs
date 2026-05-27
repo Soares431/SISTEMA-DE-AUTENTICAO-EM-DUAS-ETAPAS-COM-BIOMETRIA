@@ -41,9 +41,14 @@ builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
 builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
 
 // HttpClient para chamar API do Int1 (autenticação JWT)
+// Em desenvolvimento: bypassa validação de certificado SSL (certificado dev auto-assinado)
 builder.Services.AddHttpClient("BancoAPI", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BancoApiUrl"] ?? "https://localhost:7117/");
+    client.BaseAddress = new Uri(builder.Configuration["BancoApiUrl"] ?? "http://localhost:5018/");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    // Aceita certificado dev auto-assinado (localhost apenas)
+    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
 });
 builder.Services.AddScoped<ITokenStore, TokenStore>();
 builder.Services.AddScoped<CircuitHandler, AuthCircuitHandler>();
