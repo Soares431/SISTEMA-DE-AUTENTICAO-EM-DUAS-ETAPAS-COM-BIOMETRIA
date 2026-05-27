@@ -104,9 +104,9 @@
                 errorMessage = "Login ou senha inválidos.";
             }
         }
-        catch
+        catch (Exception ex)
         {
-            errorMessage = "Erro ao conectar com o servidor.";
+            errorMessage = $"[{ex.GetType().Name}] {ex.Message}";
         }
         finally
         {
