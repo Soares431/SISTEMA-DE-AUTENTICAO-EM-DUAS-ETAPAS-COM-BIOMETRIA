@@ -36,7 +36,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<LogAdmin> ListarComFiltros(int? adminId, string acao, string entidadeAfetada, DateTime? dataInicio, DateTime? dataFim)
         {
-            var query = _context.LogsAdmin.AsQueryable();
+            var query = _context.LogsAdmin
+                .Include(l => l.Administrador)
+                .AsQueryable();
 
             if (adminId.HasValue)
                 query = query.Where(l => l.AdminId == adminId);

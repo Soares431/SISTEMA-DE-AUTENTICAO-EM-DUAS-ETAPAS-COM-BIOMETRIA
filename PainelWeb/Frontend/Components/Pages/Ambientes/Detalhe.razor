@@ -85,7 +85,7 @@
                                     <td class="font-medium"><a href="/pessoas/@p.Id" class="text-primary">@p.Nome</a></td>
                                     <td class="text-muted">@p.Cargo</td>
                                     <td class="text-right">
-                                        <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => HandleRemoverPessoa(p.Id)"><Icon Name="trash" Size="16" /></button>
+                                        <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => ConfirmarRemoverPessoa(p.Id)"><Icon Name="trash" Size="16" /></button>
                                     </td>
                                 </tr>
                             }
@@ -169,6 +169,25 @@
     </div>
 }
 
+@if (showConfirmRemoverPessoa)
+{
+    <div class="modal-overlay" @onclick="() => showConfirmRemoverPessoa = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Remover Pessoa do Ambiente</h3>
+                <p>Confirme antes de prosseguir</p>
+            </div>
+            <div class="modal-body">
+                <p>Deseja remover o acesso desta pessoa a <strong>@ambiente?.Nome</strong>? Se for o único ambiente vinculado, a pessoa será inativada automaticamente.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showConfirmRemoverPessoa = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarRemoverPessoa">Remover</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (showAddCamera)
 {
     <div class="modal-overlay" @onclick="() => showAddCamera = false">
@@ -196,6 +215,8 @@
     private string activeTab = "t50";
     private bool showAddPessoa = false;
     private bool showAddCamera = false;
+    private bool showConfirmRemoverPessoa = false;
+    private long pessoaIdParaRemover = 0;
     private Ambiente? ambiente = null;
     private DispositivoT50? dispositivo = null;
     private List<Pessoa> pessoas = new();
@@ -232,6 +253,19 @@
     {
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
         showAddPessoa = true;
+    }
+
+    private void ConfirmarRemoverPessoa(long pessoaId)
+    {
+        pessoaIdParaRemover = pessoaId;
+        showConfirmRemoverPessoa = true;
+    }
+
+    private async Task HandleConfirmarRemoverPessoa()
+    {
+        await HandleRemoverPessoa(pessoaIdParaRemover);
+        showConfirmRemoverPessoa = false;
+        pessoaIdParaRemover = 0;
     }
 
     private async Task HandleRemoverPessoa(long pessoaId)

@@ -44,7 +44,7 @@ builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>(
 // Em desenvolvimento: bypassa validação de certificado SSL (certificado dev auto-assinado)
 builder.Services.AddHttpClient("BancoAPI", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BancoApiUrl"] ?? "https://localhost:7117/");
+    client.BaseAddress = new Uri(builder.Configuration["BancoApiUrl"] ?? "http://localhost:5018/");
 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
 {
     // Aceita certificado dev auto-assinado (localhost apenas)

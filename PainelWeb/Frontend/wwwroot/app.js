@@ -95,6 +95,11 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !window.Chart) return;
 
+    // Destroi instância anterior para evitar erro "Canvas is already in use" ao
+    // navegar para fora e voltar ao Dashboard
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+
     const ctx = canvas.getContext('2d');
 
     // Lê as cores do design system (variáveis CSS) para manter consistência com o tema

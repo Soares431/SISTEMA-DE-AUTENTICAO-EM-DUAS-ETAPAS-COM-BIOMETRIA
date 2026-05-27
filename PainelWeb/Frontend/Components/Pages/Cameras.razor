@@ -52,14 +52,14 @@
                     <div class="flex items-start justify-between">
                         <div class="flex-1 min-w-0">
                             <h3 class="font-semibold truncate">@cam.Nome</h3>
-                            <div class="flex items-center gap-2 mt-1"><Icon Name="map-pin" Size="12" CssClass="text-muted" /><span class="text-sm text-muted">Ambiente @cam.AmbienteId</span></div>
+                            <div class="flex items-center gap-2 mt-1"><Icon Name="map-pin" Size="12" CssClass="text-muted" /><span class="text-sm text-muted">@(ambientes.FirstOrDefault(a => a.Id == cam.AmbienteId)?.Nome ?? $"Ambiente {cam.AmbienteId}")</span></div>
                             <p class="text-xs font-mono text-muted" style="margin-top: 0.25rem;">@(cam.UrlRTSP ?? "-")</p>
                         </div>
                         <span class="badge @(cam.Ativa ? "badge-success" : "badge-muted")"><Icon Name="@(cam.Ativa ? "wifi" : "wifi-off")" Size="12" /> @(cam.Ativa ? "Ativa" : "Inativa")</span>
                     </div>
                     <div class="flex items-center gap-2 mt-4 pt-4 border-t">
                         <button class="btn btn-outline btn-sm flex-1" disabled="@(!cam.Ativa)" @onclick="() => OpenLiveView(cam)"><Icon Name="play" Size="16" /> Ao Vivo</button>
-                        <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => HandleRemover(cam.Id)"><Icon Name="trash" Size="16" /></button>
+                        <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => ConfirmarRemover(cam.Id)"><Icon Name="trash" Size="16" /></button>
                     </div>
                 </div>
             </div>
@@ -71,6 +71,25 @@
         <div class="card"><div class="card-content pt-6" style="text-align: center; padding: 3rem;"><Icon Name="camera" Size="48" CssClass="text-muted" /><p class="font-medium mt-4">Nenhuma câmera encontrada</p></div></div>
     }
 </div>
+
+@if (showConfirmRemover)
+{
+    <div class="modal-overlay" @onclick="() => showConfirmRemover = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Remover Câmera</h3>
+                <p>Esta ação não pode ser desfeita</p>
+            </div>
+            <div class="modal-body">
+                <p>Deseja remover a câmera <strong>@(todasCameras.FirstOrDefault(c => c.Id == cameraIdParaRemover)?.Nome)</strong>? O acesso ao feed ao vivo e histórico de gravações será perdido.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showConfirmRemover = false">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarRemover">Remover</button>
+            </div>
+        </div>
+    </div>
+}
 
 @if (liveCamera != null)
 {
@@ -87,7 +106,7 @@
                 </div>
             </div>
             <div class="modal-footer justify-between" style="justify-content: space-between;">
-                <div class="flex items-center gap-4 text-sm text-muted"><span>Ambiente: @liveCamera.AmbienteId</span><span>Tipo: @liveCamera.Tipo</span></div>
+                <div class="flex items-center gap-4 text-sm text-muted"><span>Ambiente: @(ambientes.FirstOrDefault(a => a.Id == liveCamera.AmbienteId)?.Nome ?? $"Ambiente {liveCamera.AmbienteId}")</span><span>Tipo: @liveCamera.Tipo</span></div>
                 <div class="flex gap-2"><button class="btn btn-outline btn-sm" @onclick="() => liveCamera = null">Fechar</button></div>
             </div>
         </div>
@@ -130,6 +149,8 @@
     private string ativaFilter = "todos";
     private string ambienteFilter = "0";
     private bool showCreate = false;
+    private bool showConfirmRemover = false;
+    private int cameraIdParaRemover = 0;
     private Camera? liveCamera = null;
     private List<Camera> todasCameras = new();
     private List<Ambiente> ambientes = new();
@@ -147,6 +168,19 @@
     }
 
     private void OpenLiveView(Camera cam) => liveCamera = cam;
+
+    private void ConfirmarRemover(int id)
+    {
+        cameraIdParaRemover = id;
+        showConfirmRemover = true;
+    }
+
+    private async Task HandleConfirmarRemover()
+    {
+        await HandleRemover(cameraIdParaRemover);
+        showConfirmRemover = false;
+        cameraIdParaRemover = 0;
+    }
 
     private IEnumerable<Camera> Filtered => todasCameras.Where(c =>
         (string.IsNullOrEmpty(search) || c.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) || (c.UrlRTSP != null && c.UrlRTSP.Contains(search, StringComparison.OrdinalIgnoreCase))) &&

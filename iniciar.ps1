@@ -8,9 +8,9 @@ Write-Host "================================================" -ForegroundColor C
 
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Encerra processos antigos nas portas 7117 e 8080 para evitar conflito
+# Encerra processos antigos nas portas 5018, 8080 (e 7117 legado) para evitar conflito
 Write-Host "Verificando portas em uso..." -ForegroundColor Yellow
-foreach ($porta in @(7117, 8080)) {
+foreach ($porta in @(5018, 7117, 8080)) {
     $conns = netstat -ano | Select-String (":$porta\s") | Select-String "LISTENING"
     if ($conns) {
         $conns | ForEach-Object {
@@ -30,26 +30,32 @@ $int2Parent = Get-ChildItem -Path (Join-Path $raiz "Hardware*") -Directory -Recu
 $int2 = Join-Path $int2Parent "BiometricAcess.Worker"
 $int3 = Join-Path $raiz "PainelWeb\Frontend"
 
-# -PassThru retorna o objeto de processo para poder encerrar depois
+# Int1 usa --launch-profile http (porta 5018 apenas, sem HTTPS)
+# Evita problema de certificado dev nao configurado que impedia o Int1 de subir
 Write-Host "[1/3] Iniciando Int1 - Banco API (em segundo plano)..." -ForegroundColor Green
-$p1 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int1'; dotnet run --launch-profile https" -WindowStyle Hidden -PassThru
+$p1 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int1'; dotnet run --launch-profile http" -WindowStyle Hidden -PassThru
 
-# Aguarda Int1 responder na porta 7117 (ate 90 segundos)
-Write-Host "      Aguardando Int1 na porta 7117 " -ForegroundColor Yellow -NoNewline
+# Aguarda Int1 responder na porta 5018 (ate 90 segundos)
+Write-Host "      Aguardando Int1 na porta 5018 " -ForegroundColor Yellow -NoNewline
 $tentativas = 0
-$ok = $false
+$int1Ok = $false
 while ($tentativas -lt 90) {
-    $tcp = Test-NetConnection -ComputerName localhost -Port 7117 -InformationLevel Quiet -WarningAction SilentlyContinue
-    if ($tcp) { $ok = $true; break }
+    $tcp = Test-NetConnection -ComputerName localhost -Port 5018 -InformationLevel Quiet -WarningAction SilentlyContinue
+    if ($tcp) { $int1Ok = $true; break }
     Start-Sleep -Seconds 1
     Write-Host "." -NoNewline -ForegroundColor Yellow
     $tentativas++
 }
-if ($ok) {
+if ($int1Ok) {
     Write-Host " OK" -ForegroundColor Green
 } else {
     Write-Host " TIMEOUT (Int1 nao respondeu em 90s)" -ForegroundColor Red
-    Write-Host "Verifique se o Int1 compilou corretamente." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "ERRO CRITICO: O Int1 (Banco API) nao iniciou." -ForegroundColor Red
+    Write-Host "Verifique erros de compilacao ou conflitos de porta." -ForegroundColor Red
+    Write-Host "Encerrando. Pressione Enter para sair." -ForegroundColor Red
+    Read-Host
+    exit 1
 }
 
 Write-Host "[2/3] Iniciando Int2 - Worker (em segundo plano)..." -ForegroundColor Green
@@ -61,15 +67,15 @@ $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Locatio
 # Aguarda Int3 responder na porta 8080 (ate 150 segundos, tempo extra para compilacao apos alteracoes)
 Write-Host "      Aguardando Int3 na porta 8080 " -ForegroundColor Yellow -NoNewline
 $tentativas = 0
-$ok = $false
+$int3Ok = $false
 while ($tentativas -lt 150) {
     $tcp = Test-NetConnection -ComputerName localhost -Port 8080 -InformationLevel Quiet -WarningAction SilentlyContinue
-    if ($tcp) { $ok = $true; break }
+    if ($tcp) { $int3Ok = $true; break }
     Start-Sleep -Seconds 1
     Write-Host "." -NoNewline -ForegroundColor Yellow
     $tentativas++
 }
-if ($ok) {
+if ($int3Ok) {
     Write-Host " OK" -ForegroundColor Green
 } else {
     Write-Host " TIMEOUT - Int3 nao respondeu em 150s." -ForegroundColor Red
@@ -84,7 +90,7 @@ if ($ok) {
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host " Todos os servicos iniciados!" -ForegroundColor Cyan
-Write-Host " Int1 - Banco API : https://localhost:7117" -ForegroundColor Cyan
+Write-Host " Int1 - Banco API : http://localhost:5018" -ForegroundColor Cyan
 Write-Host " Int3 - Painel Web: http://localhost:8080" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
