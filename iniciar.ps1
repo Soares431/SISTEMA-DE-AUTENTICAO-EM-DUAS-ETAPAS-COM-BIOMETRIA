@@ -8,16 +8,17 @@ Write-Host "================================================" -ForegroundColor C
 
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Encerra processos antigos nas portas 7117 e 8080 (evita conflito de porta)
+# Encerra processos antigos nas portas 7117 e 8080 para evitar conflito
 Write-Host "Verificando portas em uso..." -ForegroundColor Yellow
 foreach ($porta in @(7117, 8080)) {
-    $conns = netstat -ano 2>$null | Select-String ":$porta\s" | Select-String "LISTENING"
+    $conns = netstat -ano | Select-String (":$porta\s") | Select-String "LISTENING"
     if ($conns) {
         $conns | ForEach-Object {
-            $pid = ($_ -split '\s+')[-1]
-            if ($pid -match '^\d+$' -and $pid -ne '0') {
-                Write-Host "  Encerrando processo PID $pid na porta $porta..." -ForegroundColor Yellow
-                try { Stop-Process -Id ([int]$pid) -Force -ErrorAction SilentlyContinue } catch {}
+            $parts = ($_.ToString() -split '\s+')
+            $pidVal = $parts[-1]
+            if ($pidVal -match '^\d+$' -and $pidVal -ne '0') {
+                Write-Host "  Encerrando processo PID $pidVal na porta $porta..." -ForegroundColor Yellow
+                try { Stop-Process -Id ([int]$pidVal) -Force -ErrorAction SilentlyContinue } catch {}
             }
         }
         Start-Sleep -Seconds 1
@@ -57,7 +58,7 @@ $p2 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Locatio
 Write-Host "[3/3] Iniciando Int3 - Painel Web (em segundo plano)..." -ForegroundColor Green
 $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int3'; dotnet run" -WindowStyle Hidden -PassThru
 
-# Aguarda Int3 responder na porta 8080 (ate 150 segundos — mais tempo para compilacao pos-alteracoes)
+# Aguarda Int3 responder na porta 8080 (ate 150 segundos, tempo extra para compilacao apos alteracoes)
 Write-Host "      Aguardando Int3 na porta 8080 " -ForegroundColor Yellow -NoNewline
 $tentativas = 0
 $ok = $false
@@ -71,14 +72,13 @@ while ($tentativas -lt 150) {
 if ($ok) {
     Write-Host " OK" -ForegroundColor Green
 } else {
-    Write-Host " TIMEOUT" -ForegroundColor Red
-    Write-Host "Int3 nao respondeu em 150s. Abrindo janela de diagnostico..." -ForegroundColor Yellow
-    # Relancar Int3 com janela visivel para ver o erro
+    Write-Host " TIMEOUT - Int3 nao respondeu em 150s." -ForegroundColor Red
+    Write-Host "Abrindo janela visivel do Int3 para diagnostico de erros..." -ForegroundColor Yellow
     if ($null -ne $p3 -and -not $p3.HasExited) {
         try { Stop-Process -Id $p3.Id -Force -ErrorAction SilentlyContinue } catch {}
     }
-    $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int3'; dotnet run; Read-Host 'Pressione Enter'" -WindowStyle Normal -PassThru
-    Write-Host "Janela do Int3 aberta — verifique o erro exibido." -ForegroundColor Yellow
+    $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int3'; dotnet run; Read-Host Pressione Enter" -WindowStyle Normal -PassThru
+    Write-Host "Janela do Int3 aberta - verifique o erro exibido." -ForegroundColor Yellow
 }
 
 Write-Host ""
