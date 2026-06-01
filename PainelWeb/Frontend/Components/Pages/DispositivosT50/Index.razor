@@ -1,0 +1,172 @@
+@* =============================================================================
+   DispositivosT50/Index.razor - Gerenciamento de Dispositivos T50
+   Features: Listagem dos T50 cadastrados, criar novo (nome/IP/porta),
+             indicador de capacidade biométrica (0-1000),
+             alerta visual quando capacidade ≥ 950
+   Rota: /dispositivos
+   ============================================================================= *@
+@page "/dispositivos"
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject IDispositivoT50Repository DispositivoRepo
+@inject IAmbienteRepository AmbienteRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
+
+<div class="space-y">
+    <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 class="text-2xl font-bold">Dispositivos T50</h1>
+            <p class="text-muted">Cadastre os terminais Anviz T50 antes de criar ambientes</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => showDialog = true">
+            <Icon Name="plus" Size="16" /> Novo T50
+        </button>
+    </div>
+
+    <div class="flex gap-4" style="flex-wrap: wrap;">
+        <div class="input-icon-wrapper flex-1" style="min-width: 200px;">
+            <Icon Name="search" />
+            <input class="form-input" placeholder="Buscar por nome ou IP..." @bind="search" @bind:event="oninput" />
+        </div>
+    </div>
+
+    @if (!Filtered.Any())
+    {
+        <div class="card">
+            <div class="card-content pt-6" style="text-align: center; padding: 3rem;">
+                <Icon Name="settings" Size="48" CssClass="text-muted" />
+                <p class="font-medium mt-4">Nenhum dispositivo T50 cadastrado</p>
+                <p class="text-muted">Cadastre um T50 para poder criar ambientes</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-3">
+            @foreach (var d in Filtered)
+            {
+                var ambientesVinculados = ambientes.Count(a => a.DispositivoT50Id == d.Id);
+                var pct = d.DigitaisCadastradas * 100 / 1000;
+                var emAlerta = d.DigitaisCadastradas >= 950;
+                <div class="card">
+                    <div class="card-header">
+                        <div class="flex items-center gap-3">
+                            <div class="icon-bg @(emAlerta ? "icon-bg-warning" : "icon-bg-primary")"><Icon Name="settings" Size="20" /></div>
+                            <div>
+                                <div class="card-title">@d.Nome</div>
+                                <p class="card-description font-mono">@d.EnderecoIP : @d.Porta</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-content space-y-sm">
+                        @if (emAlerta)
+                        {
+                            <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> Capacidade crítica</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Disponível</span>
+                        }
+                        <div class="flex justify-between text-sm"><span class="text-muted">Digitais</span><span class="font-medium">@d.DigitaisCadastradas / 1000</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>
+                        <div class="flex justify-between text-sm"><span class="text-muted">Ambientes vinculados</span><span class="font-medium">@ambientesVinculados</span></div>
+                        <a href="/dispositivos/@d.Id" class="btn btn-outline btn-block">Ver Detalhes <Icon Name="chevron-right" Size="16" /></a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (showDialog)
+{
+    <div class="modal-overlay" @onclick="FecharDialog">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header"><h3>Cadastrar Novo T50</h3><p>Adicione um terminal Anviz T50 ao sistema</p></div>
+            <div class="modal-body space-y-sm">
+                @if (erroDialog != null) { <div class="alert alert-danger">@erroDialog</div> }
+                <div class="form-group">
+                    <label class="form-label">Nome do Dispositivo</label>
+                    <input class="form-input" placeholder="Ex: T50-Entrada-Principal" @bind="novoNome" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Endereço IP</label>
+                    <input class="form-input" placeholder="192.168.0.218" @bind="novoIP" />
+                    <p class="text-sm text-muted">IP do T50 na rede local</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Porta TCP</label>
+                    <input type="number" class="form-input" min="1" max="65535" @bind="novaPorta" />
+                    <p class="text-sm text-muted">Padrão Anviz OAE: 5010</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="FecharDialog">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleCriar">Cadastrar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string search = "";
+    private bool showDialog = false;
+    private string novoNome = "";
+    private string novoIP = "";
+    private int novaPorta = 5010;
+    private string? erroDialog = null;
+    private List<DispositivoT50> dispositivos = new();
+    private List<Ambiente> ambientes = new();
+
+    protected override void OnInitialized()
+    {
+        Carregar();
+    }
+
+    private void Carregar()
+    {
+        dispositivos = DispositivoRepo.ListarTodos();
+        ambientes = AmbienteRepo.ListarTodos();
+    }
+
+    private IEnumerable<DispositivoT50> Filtered => dispositivos.Where(d =>
+        string.IsNullOrEmpty(search) ||
+        d.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+        d.EnderecoIP.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    private void FecharDialog()
+    {
+        showDialog = false;
+        novoNome = "";
+        novoIP = "";
+        novaPorta = 5010;
+        erroDialog = null;
+    }
+
+    private void HandleCriar()
+    {
+        erroDialog = null;
+        if (string.IsNullOrWhiteSpace(novoNome)) { erroDialog = "Informe o nome do dispositivo."; return; }
+        if (string.IsNullOrWhiteSpace(novoIP)) { erroDialog = "Informe o endereço IP."; return; }
+        if (novaPorta < 1 || novaPorta > 65535) { erroDialog = "Porta inválida (1 a 65535)."; return; }
+
+        // Bloqueia IP duplicado para evitar polling em dispositivo errado
+        if (dispositivos.Any(d => d.EnderecoIP == novoIP.Trim()))
+        {
+            erroDialog = "Já existe um T50 cadastrado com este IP.";
+            return;
+        }
+
+        var dispositivo = new DispositivoT50
+        {
+            Nome = novoNome.Trim(),
+            EnderecoIP = novoIP.Trim(),
+            Porta = novaPorta,
+            DigitaisCadastradas = 0
+        };
+        DispositivoRepo.Adicionar(dispositivo);
+        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "DispositivoT50", dispositivo.Id);
+        Carregar();
+        FecharDialog();
+    }
+}

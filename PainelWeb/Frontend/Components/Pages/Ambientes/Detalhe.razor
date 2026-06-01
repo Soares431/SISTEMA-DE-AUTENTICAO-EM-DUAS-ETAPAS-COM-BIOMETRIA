@@ -5,8 +5,10 @@
 @inject IDispositivoT50Repository DispositivoRepo
 @inject ICameraRepository CameraRepo
 @inject IPessoaRepository PessoaRepo
+@inject ITentativaAcessoRepository TentativaRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject NavigationManager Nav
 <div class="space-y">
     @if (ambiente == null)
     {
@@ -127,6 +129,17 @@
                     <button class="btn btn-primary" @onclick="HandleSalvarConfig">Salvar Configurações</button>
                 </div>
             </div>
+
+            <div class="card">
+                <div class="card-header"><div class="card-title text-destructive"><Icon Name="trash" Size="20" /> Zona de Risco</div><p class="card-description">Excluir este ambiente permanentemente</p></div>
+                <div class="card-content flex items-center justify-between">
+                    <div>
+                        <p class="text-muted">Remove o ambiente, todas as @cameras.Count câmera(s), @pessoas.Count vínculo(s) de pessoa e o histórico de tentativas vinculado.</p>
+                        <p class="text-sm text-muted">Pessoas que ficarem sem nenhum ambiente serão inativadas automaticamente.</p>
+                    </div>
+                    <button class="btn btn-outline text-destructive" @onclick="() => showConfirmExcluir = true">Excluir Ambiente</button>
+                </div>
+            </div>
         }
     }
 </div>
@@ -210,12 +223,47 @@
     </div>
 }
 
+@if (showConfirmExcluir && ambiente != null)
+{
+    <div class="modal-overlay" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Excluir Ambiente Permanentemente</h3>
+                <p>Esta ação não pode ser desfeita</p>
+            </div>
+            <div class="modal-body space-y-sm">
+                <div class="alert alert-danger">
+                    O ambiente <strong>@ambiente.Nome</strong> e todos os seus dados serão removidos permanentemente:
+                    <ul style="margin-top:0.5rem; padding-left:1.25rem;">
+                        <li>@cameras.Count câmera(s) cadastrada(s)</li>
+                        <li>@pessoas.Count vínculo(s) de acesso de pessoa</li>
+                        <li>Histórico de tentativas de acesso ao ambiente</li>
+                    </ul>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Digite o nome exato para confirmar: <strong>@ambiente.Nome</strong></label>
+                    <input class="form-input" @bind="nomeConfirmacaoExcluir" placeholder="@ambiente.Nome" />
+                </div>
+                @if (erroExcluir != null) { <div class="alert alert-danger">@erroExcluir</div> }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">Cancelar</button>
+                <button class="btn btn-primary text-destructive" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != ambiente.Nome || isExcluindo)">@(isExcluindo ? "Excluindo..." : "Excluir Permanentemente")</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public int Id { get; set; }
     private string activeTab = "t50";
     private bool showAddPessoa = false;
     private bool showAddCamera = false;
     private bool showConfirmRemoverPessoa = false;
+    private bool showConfirmExcluir = false;
+    private bool isExcluindo = false;
+    private string nomeConfirmacaoExcluir = "";
+    private string? erroExcluir = null;
     private long pessoaIdParaRemover = 0;
     private Ambiente? ambiente = null;
     private DispositivoT50? dispositivo = null;
@@ -328,5 +376,54 @@
         ambiente.TempoEsperaGravacaoSeg = Math.Clamp(tempoEspera, 30, 120);
         AmbienteRepo.Atualizar(ambiente);
         LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", Id);
+    }
+
+    private async Task HandleConfirmarExcluir()
+    {
+        if (ambiente == null) return;
+        erroExcluir = null;
+        isExcluindo = true;
+        try
+        {
+            var ambienteId = ambiente.Id;
+            var ambienteNome = ambiente.Nome;
+
+            // Snapshot das pessoas vinculadas antes de remover — para inativar órfãs depois
+            var pessoasVinculadas = AmbientePessoaRepo.ListarPessoasDoAmbiente(ambienteId)
+                .Select(p => p.Id).ToList();
+
+            // 1. Remove todas as câmeras do ambiente
+            foreach (var cam in cameras)
+                await CameraRepo.Remover(cam.Id);
+
+            // 2. Remove todos os vínculos AmbientePessoa
+            foreach (var pessoaId in pessoasVinculadas)
+                AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoaId);
+
+            // 3. Remove todas as tentativas de acesso do ambiente
+            // (FK obrigatória — sem remover, o delete do ambiente falha)
+            var tentativas = TentativaRepo.ListarPorAmbiente(ambienteId);
+            foreach (var t in tentativas)
+                TentativaRepo.Remover(t.Id);
+
+            // 4. Inativa pessoas que ficaram sem nenhum ambiente
+            foreach (var pessoaId in pessoasVinculadas)
+            {
+                var aindaTemAmbiente = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId).Any();
+                if (!aindaTemAmbiente)
+                    await PessoaRepo.AlterarStatus(pessoaId, false);
+            }
+
+            // 5. Remove o próprio ambiente
+            AmbienteRepo.Remover(ambienteId);
+            LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Ambiente", ambienteId);
+
+            Nav.NavigateTo("/ambientes");
+        }
+        catch (Exception ex)
+        {
+            erroExcluir = ex.Message;
+            isExcluindo = false;
+        }
     }
 }

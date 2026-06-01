@@ -1,0 +1,238 @@
+@* =============================================================================
+   DispositivosT50/Detalhe.razor - Detalhes e edição de um T50
+   Features: Editar nome/IP/porta, visualizar capacidade biométrica,
+             listar ambientes vinculados, excluir T50 (bloqueado se há ambientes)
+   Rota: /dispositivos/{id}
+   ============================================================================= *@
+@page "/dispositivos/{Id:int}"
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject IDispositivoT50Repository DispositivoRepo
+@inject IAmbienteRepository AmbienteRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
+@inject NavigationManager Nav
+
+<div class="space-y">
+    @if (dispositivo == null)
+    {
+        <div class="card"><div class="card-content pt-6"><p class="text-muted">Dispositivo não encontrado.</p></div></div>
+    }
+    else
+    {
+        <div class="flex items-center gap-4">
+            <a href="/dispositivos" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
+            <div class="flex-1"><h1 class="text-2xl font-bold">@dispositivo.Nome</h1><p class="text-muted font-mono">@dispositivo.EnderecoIP : @dispositivo.Porta</p></div>
+            @if (dispositivo.DigitaisCadastradas >= 950)
+            {
+                <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> Capacidade crítica</span>
+            }
+            else
+            {
+                <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Disponível</span>
+            }
+        </div>
+
+        @if (sucesso != null) { <div class="alert alert-success">@sucesso</div> }
+        @if (erro != null) { <div class="alert alert-danger">@erro</div> }
+
+        <div class="grid grid-2" style="gap:1rem; align-items:start;">
+            <div class="card">
+                <div class="card-header card-header-row">
+                    <div class="card-title"><Icon Name="settings" Size="20" /> Informações</div>
+                    @if (!modoEditar)
+                    {
+                        <button class="btn btn-outline btn-sm" @onclick="IniciarEditar"><Icon Name="edit" Size="16" /> Editar</button>
+                    }
+                </div>
+                <div class="card-content">
+                    @if (!modoEditar)
+                    {
+                        <dl class="space-y-sm">
+                            <div><dt class="text-muted text-sm">Nome</dt><dd class="font-semibold">@dispositivo.Nome</dd></div>
+                            <div><dt class="text-muted text-sm">Endereço IP</dt><dd class="font-mono">@dispositivo.EnderecoIP</dd></div>
+                            <div><dt class="text-muted text-sm">Porta TCP</dt><dd class="font-mono">@dispositivo.Porta</dd></div>
+                            <div><dt class="text-muted text-sm">Digitais cadastradas</dt><dd>@dispositivo.DigitaisCadastradas / 1000</dd></div>
+                        </dl>
+                    }
+                    else
+                    {
+                        <div class="space-y-sm">
+                            <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" @bind="editNome" /></div>
+                            <div class="form-group"><label class="form-label">Endereço IP *</label><input class="form-input" @bind="editIP" /></div>
+                            <div class="form-group"><label class="form-label">Porta TCP *</label><input type="number" class="form-input" min="1" max="65535" @bind="editPorta" /></div>
+                            <div class="flex gap-2 mt-4">
+                                <button class="btn btn-primary" @onclick="HandleSalvarEdicao" disabled="@isSalvando">@(isSalvando ? "Salvando..." : "Salvar")</button>
+                                <button class="btn btn-outline" @onclick="CancelarEditar">Cancelar</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biométrica</div><p class="card-description">Armazenamento de templates biométricos</p></div>
+                <div class="card-content space-y-sm">
+                    @{
+                        var pct = dispositivo.DigitaisCadastradas * 100 / 1000;
+                    }
+                    <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium @(pct >= 95 ? "text-destructive" : pct >= 85 ? "text-warning" : "")">@dispositivo.DigitaisCadastradas / 1000</span></div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>
+                    @if (pct >= 95)
+                    {
+                        <p class="text-sm text-destructive">Capacidade crítica! Novos cadastros bloqueados.</p>
+                    }
+                    else if (pct >= 85)
+                    {
+                        <p class="text-sm text-muted">Atenção: acima de 85%. Considere limpar templates inativos.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title"><Icon Name="building" Size="20" /> Ambientes vinculados</div><p class="card-description">@ambientesVinculados.Count ambientes usam este T50</p></div>
+            <div class="card-content">
+                @if (!ambientesVinculados.Any())
+                {
+                    <p class="text-muted text-sm">Nenhum ambiente vinculado.</p>
+                }
+                else
+                {
+                    <table>
+                        <thead><tr><th>Nome</th><th class="text-right">Ações</th></tr></thead>
+                        <tbody>
+                            @foreach (var a in ambientesVinculados)
+                            {
+                                <tr>
+                                    <td class="font-medium"><a href="/ambientes/@a.Id" class="text-primary">@a.Nome</a></td>
+                                    <td class="text-right"><a href="/ambientes/@a.Id" class="btn btn-ghost btn-sm">Abrir <Icon Name="chevron-right" Size="16" /></a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title text-destructive"><Icon Name="trash" Size="20" /> Zona de Risco</div></div>
+            <div class="card-content flex items-center justify-between">
+                @if (ambientesVinculados.Any())
+                {
+                    <p class="text-muted">Remova este T50 de todos os ambientes vinculados antes de excluir.</p>
+                    <button class="btn btn-outline text-destructive" disabled>Excluir T50</button>
+                }
+                else
+                {
+                    <p class="text-muted">Exclui permanentemente o T50. Ação irreversível.</p>
+                    <button class="btn btn-outline text-destructive" @onclick="() => showConfirmExcluir = true">Excluir T50</button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (showConfirmExcluir && dispositivo != null)
+{
+    <div class="modal-overlay" @onclick="() => { showConfirmExcluir = false; nomeConfirmacao = string.Empty; }">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Excluir Dispositivo T50</h3>
+                <p>Esta ação não pode ser desfeita</p>
+            </div>
+            <div class="modal-body space-y-sm">
+                <div class="alert alert-danger">O dispositivo <strong>@dispositivo.Nome</strong> será removido permanentemente do sistema.</div>
+                <div class="form-group">
+                    <label class="form-label">Digite o nome exato para confirmar: <strong>@dispositivo.Nome</strong></label>
+                    <input class="form-input" @bind="nomeConfirmacao" placeholder="@dispositivo.Nome" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacao = string.Empty; }">Cancelar</button>
+                <button class="btn btn-primary text-destructive" @onclick="HandleExcluir" disabled="@(nomeConfirmacao != dispositivo.Nome)">Excluir Permanentemente</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private DispositivoT50? dispositivo;
+    private List<Ambiente> ambientesVinculados = new();
+    private bool modoEditar = false;
+    private bool isSalvando = false;
+    private bool showConfirmExcluir = false;
+    private string nomeConfirmacao = "";
+    private string? sucesso = null;
+    private string? erro = null;
+
+    private string editNome = "";
+    private string editIP = "";
+    private int editPorta = 5010;
+
+    protected override void OnInitialized() => Carregar();
+
+    private void Carregar()
+    {
+        dispositivo = DispositivoRepo.BuscarPorId(Id);
+        if (dispositivo != null)
+        {
+            ambientesVinculados = AmbienteRepo.ListarTodos()
+                .Where(a => a.DispositivoT50Id == dispositivo.Id)
+                .ToList();
+        }
+    }
+
+    private void IniciarEditar()
+    {
+        editNome = dispositivo!.Nome;
+        editIP = dispositivo.EnderecoIP;
+        editPorta = dispositivo.Porta;
+        modoEditar = true;
+        sucesso = null;
+        erro = null;
+    }
+
+    private void CancelarEditar() { modoEditar = false; erro = null; }
+
+    private void HandleSalvarEdicao()
+    {
+        erro = null;
+        if (string.IsNullOrWhiteSpace(editNome)) { erro = "Nome é obrigatório."; return; }
+        if (string.IsNullOrWhiteSpace(editIP)) { erro = "Endereço IP é obrigatório."; return; }
+        if (editPorta < 1 || editPorta > 65535) { erro = "Porta inválida (1 a 65535)."; return; }
+
+        // Bloqueia IP duplicado (exceto o próprio dispositivo)
+        var ipDuplicado = DispositivoRepo.ListarTodos()
+            .Any(d => d.Id != dispositivo!.Id && d.EnderecoIP == editIP.Trim());
+        if (ipDuplicado) { erro = "Já existe outro T50 com este IP."; return; }
+
+        isSalvando = true;
+        try
+        {
+            dispositivo!.Nome = editNome.Trim();
+            dispositivo.EnderecoIP = editIP.Trim();
+            dispositivo.Porta = editPorta;
+            DispositivoRepo.Atualizar(dispositivo);
+            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "DispositivoT50", dispositivo.Id);
+            sucesso = "Dispositivo atualizado com sucesso.";
+            modoEditar = false;
+            Carregar();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { isSalvando = false; }
+    }
+
+    private void HandleExcluir()
+    {
+        if (dispositivo == null) return;
+        try
+        {
+            DispositivoRepo.Remover(dispositivo.Id);
+            LogRepo.Registrar(TokenStore.AdminId, "Remocao", "DispositivoT50", dispositivo.Id);
+            Nav.NavigateTo("/dispositivos");
+        }
+        catch (Exception ex) { erro = ex.Message; showConfirmExcluir = false; }
+    }
+}

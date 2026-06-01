@@ -487,7 +487,12 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 Arduino/build/
+# Banco SQLite — arquivo principal e auxiliares (WAL/SHM/journal)
 Banco/WebAbil8-Sistema_Verificação_dupla.slnx/banco.db
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
 InfraestruturaBloco1/obj/InfraestruturaBloco1.csproj.nuget.dgspec.json
 InfraestruturaBloco1/obj/InfraestruturaBloco1.csproj.nuget.dgspec.json
 InfraestruturaBloco1/obj/project.assets.json

@@ -254,21 +254,32 @@ void lerComandoSerial() {
 // VERIFICAR DIGITAL
 // ═══════════════════════════════════════
 void verificarDigital() {
+  // Espera o dedo (timeout 10s)
   unsigned long t = millis();
+  uint8_t r = 0xFF;
   while (millis() - t < 10000) {
-    if (as608GetImage() == 0x00) break;
-    delay(100);
+    r = as608GetImage();
+    Serial.println("DBG|GETIMAGE|" + String(r, HEX));
+    if (r == 0x00) break;
+    delay(300);
   }
-  if (as608GetImage() != 0x00 && millis() - t >= 10000) {
-    Serial.println("EVT|FINGER|FAIL"); resetar(); return;
+  if (r != 0x00) {
+    Serial.println("EVT|FINGER|FAIL|TIMEOUT_IMAGEM");
+    exibirLinha(0, "Tempo esgotado");
+    delay(1500); resetar(); return;
   }
-  if (as608Image2Tz(1) != 0x00) { Serial.println("EVT|FINGER|FAIL"); resetar(); return; }
+
+  uint8_t tz = as608Image2Tz(1);
+  Serial.println("DBG|IMAGE2TZ|" + String(tz, HEX));
+  if (tz != 0x00) { Serial.println("EVT|FINGER|FAIL|TZ"); resetar(); return; }
 
   uint16_t fid = 0;
-  if (as608Search(fid) == 0x00) {
+  uint8_t s = as608Search(fid);
+  Serial.println("DBG|SEARCH|" + String(s, HEX) + "|fid=" + String(fid));
+  if (s == 0x00) {
     Serial.println("EVT|FINGER|OK|" + idDigitado);
   } else {
-    Serial.println("EVT|FINGER|FAIL");
+    Serial.println("EVT|FINGER|FAIL|NAO_RECONHECIDO");
     exibirLinha(0, "Nao reconhecido");
     delay(1500);
     resetar();
@@ -279,22 +290,48 @@ void verificarDigital() {
 // CADASTRAR DIGITAL
 // ═══════════════════════════════════════
 void cadastrarDigital() {
-  // Leitura 1
+  // ── Leitura 1 ──
   exibirMensagem("Coloque o dedo", "1a leitura");
-  while (as608GetImage() != 0x00) delay(100);
-  if (as608Image2Tz(1) != 0x00) { exibirLinha(0, "Erro leitura 1"); delay(1500); resetar(); return; }
+  unsigned long t = millis();
+  uint8_t r = 0xFF;
+  while (millis() - t < 10000) {
+    r = as608GetImage();
+    Serial.println("DBG|GETIMAGE1|" + String(r, HEX));
+    if (r == 0x00) break;
+    delay(300);
+  }
+  if (r != 0x00) { Serial.println("EVT|FINGER|FAIL|TIMEOUT1"); exibirLinha(0,"Tempo esgotado"); delay(1500); resetar(); return; }
+
+  uint8_t tz1 = as608Image2Tz(1);
+  Serial.println("DBG|IMAGE2TZ1|" + String(tz1, HEX));
+  if (tz1 != 0x00) { exibirLinha(0, "Erro leitura 1"); delay(1500); resetar(); return; }
 
   exibirMensagem("Retire o dedo", "");
-  delay(1500);
+  delay(2000);
 
-  // Leitura 2
+  // ── Leitura 2 ──
   exibirMensagem("Coloque o dedo", "2a leitura");
-  while (as608GetImage() != 0x00) delay(100);
-  if (as608Image2Tz(2) != 0x00) { exibirLinha(0, "Erro leitura 2"); delay(1500); resetar(); return; }
+  t = millis();
+  r = 0xFF;
+  while (millis() - t < 10000) {
+    r = as608GetImage();
+    Serial.println("DBG|GETIMAGE2|" + String(r, HEX));
+    if (r == 0x00) break;
+    delay(300);
+  }
+  if (r != 0x00) { Serial.println("EVT|FINGER|FAIL|TIMEOUT2"); exibirLinha(0,"Tempo esgotado"); delay(1500); resetar(); return; }
 
-  if (as608CreateModel() != 0x00) { exibirLinha(0, "Digitais diff."); delay(1500); resetar(); return; }
+  uint8_t tz2 = as608Image2Tz(2);
+  Serial.println("DBG|IMAGE2TZ2|" + String(tz2, HEX));
+  if (tz2 != 0x00) { exibirLinha(0, "Erro leitura 2"); delay(1500); resetar(); return; }
 
-  if (as608StoreModel(enrollId) == 0x00) {
+  uint8_t cm = as608CreateModel();
+  Serial.println("DBG|CREATEMODEL|" + String(cm, HEX));
+  if (cm != 0x00) { exibirLinha(0, "Digitais diff."); delay(1500); resetar(); return; }
+
+  uint8_t sm = as608StoreModel(enrollId);
+  Serial.println("DBG|STOREMODEL|" + String(sm, HEX));
+  if (sm == 0x00) {
     exibirMensagem("Digital", "Cadastrada!");
     Serial.println("EVT|FINGER|ENROLLED|" + idDigitado);
     delay(1500);
@@ -305,7 +342,6 @@ void cadastrarDigital() {
     resetar();
   }
 }
-
 // ═══════════════════════════════════════
 // RESETAR
 // ═══════════════════════════════════════
