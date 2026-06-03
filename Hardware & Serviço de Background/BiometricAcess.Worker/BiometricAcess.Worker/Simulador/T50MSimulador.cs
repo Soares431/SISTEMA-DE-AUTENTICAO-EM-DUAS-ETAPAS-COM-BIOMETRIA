@@ -1,43 +1,66 @@
 ﻿using BiometricAcess.Worker.Models;
-namespace BiometricAcess.Worker.Simulador{
-    internal class T50MSimulador{
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
+
+namespace BiometricAcess.Worker.Simulador
+{
+    internal class T50MSimulador
+    {
         private static readonly Random _random = new Random();
 
-        public static EventoAcesso gerarEvento()
+        // Gera evento usando uma Pessoa real do banco (pega CodigoUsuario).
+        // Fallback: ID aleatório no range 100000-999999 (vai cair em "nao_cadastrado").
+        public static EventoAcesso GerarEventoComBanco(IServiceScopeFactory scopeFactory)
         {
+            int pessoaID;
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var pessoaRepo = scope.ServiceProvider.GetRequiredService<IPessoaRepository>();
+                var pessoas = pessoaRepo.ListarTodos().GetAwaiter().GetResult()
+                    .Where(p => !string.IsNullOrEmpty(p.CodigoUsuario))
+                    .ToList();
 
+                if (pessoas.Count > 0 && _random.Next(10) > 1)
+                {
+                    // 80% das vezes: pessoa real → testa fluxos liberado/inativo/sem_permissao
+                    var pessoa = pessoas[_random.Next(pessoas.Count)];
+                    pessoaID = int.Parse(pessoa.CodigoUsuario!);
+                }
+                else
+                {
+                    // 20% das vezes (ou banco vazio): ID inexistente → testa "nao_cadastrado"
+                    pessoaID = _random.Next(100000, 1000000);
+                }
+            }
+            catch
+            {
+                pessoaID = _random.Next(100000, 1000000);
+            }
 
-            int pessoaID = _random.Next(1, 6);
-            string tipoVerificacao;
-            if (_random.Next(2) == 0)
-            {
-                tipoVerificacao = "digital_id";
-            }
-            else
-            {
-                tipoVerificacao = "senha_id";
-            }
-            bool acessoLiberado;
-
-            if (_random.Next(2) == 0)
-            {
-                acessoLiberado = true;
-            }
-            else
-            {
-                acessoLiberado = false;
-            }
+            var tipoVerificacao = _random.Next(2) == 0 ? "digital_id" : "senha_id";
 
             return new EventoAcesso
             {
                 PessoaID = pessoaID,
                 TipoVerificacao = tipoVerificacao,
-                AcessoLiberado = acessoLiberado,
-                DataHora = DateTime.UtcNow, // ← sempre UTC, igual ao restante do sistema
+                AcessoLiberado = false, // decidido pelo EventProcessor com base no banco
+                DataHora = DateTime.UtcNow,
                 IpDispositivo = "192.168.0.218"
             };
+        }
 
-
+        // Mantido para compatibilidade — gera evento sem consultar banco.
+        // ID no range correto (100000-999999) mas provavelmente cairá em "nao_cadastrado".
+        public static EventoAcesso gerarEvento()
+        {
+            return new EventoAcesso
+            {
+                PessoaID = _random.Next(100000, 1000000),
+                TipoVerificacao = _random.Next(2) == 0 ? "digital_id" : "senha_id",
+                AcessoLiberado = false,
+                DataHora = DateTime.UtcNow,
+                IpDispositivo = "192.168.0.218"
+            };
         }
     }
 }

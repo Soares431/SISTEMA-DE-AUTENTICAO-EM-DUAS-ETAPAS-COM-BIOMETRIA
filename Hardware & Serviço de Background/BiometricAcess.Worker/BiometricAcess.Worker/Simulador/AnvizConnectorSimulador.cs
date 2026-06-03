@@ -6,6 +6,12 @@ namespace BiometricAcess.Worker.Simulador
     internal class AnvizConnectorSimulador : IAnvizConnector
     {
         private bool _conectado = false;
+        private readonly IServiceScopeFactory _scopeFactory;
+
+        public AnvizConnectorSimulador(IServiceScopeFactory scopeFactory)
+        {
+            _scopeFactory = scopeFactory;
+        }
 
         // Igual ao IP que T50MSimulador.gerarEvento() preenche em IpDispositivo
         public string EnderecoIdentificador => "192.168.0.218";
@@ -19,21 +25,13 @@ namespace BiometricAcess.Worker.Simulador
 
         public EventoAcesso? BuscarNovoEvento()
         {
-            if (!_conectado)
-            {
-                return null;
-            }
-            else
-            {
-                return T50MSimulador.gerarEvento();
-            }
+            if (!_conectado) return null;
+            return T50MSimulador.GerarEventoComBanco(_scopeFactory);
         }
+
         public List<EventoAcesso> BuscarEventosArmazenados()
         {
-            if (!_conectado)
-            {
-                return new List<EventoAcesso>();
-            }
+            if (!_conectado) return new List<EventoAcesso>();
 
             Console.WriteLine("Simulador: Buscando eventos armazenados no T50M...");
 
@@ -41,13 +39,12 @@ namespace BiometricAcess.Worker.Simulador
             int quantidade = new Random().Next(0, 5);
 
             for (int i = 0; i < quantidade; i++)
-            {
-                eventos.Add(T50MSimulador.gerarEvento());
-            }
+                eventos.Add(T50MSimulador.GerarEventoComBanco(_scopeFactory));
 
             Console.WriteLine($"Simulador: {quantidade} eventos armazenados encontrados");
             return eventos;
         }
+
         public void Desconectar()
         {
             _conectado = false;
