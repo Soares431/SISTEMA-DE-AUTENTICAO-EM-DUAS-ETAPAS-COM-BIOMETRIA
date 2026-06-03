@@ -11,6 +11,8 @@
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IPessoaRepository PessoaRepo
 @inject IDispositivoT50Repository DispositivoRepo
+@inject IConfiguration Config
+@inject ITokenStore TokenStore
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 <div class="space-y">
     <div>
@@ -146,7 +148,7 @@
                                 <td>
                                     @if (item.GravacaoPath != null)
                                     {
-                                        <button class="btn btn-ghost btn-sm text-primary">Ver vídeo</button>
+                                        <button class="btn btn-ghost btn-sm text-primary" @onclick="() => AbrirGravacao(item.Id)">Ver vídeo</button>
                                     }
                                     else
                                     {
@@ -233,6 +235,12 @@
         "media" => "badge-warning",
         _ => "badge-muted"
     };
+
+    private async Task AbrirGravacao(int tentativaId)
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("abrirGravacao", apiUrl, tentativaId, TokenStore.Token);
+    }
 
     // Refresh manual acionado pelo botão na barra do gráfico
     private async Task HandleRefresh()

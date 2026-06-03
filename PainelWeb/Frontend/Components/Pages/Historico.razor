@@ -12,11 +12,16 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IConfiguration Config
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Histórico de Acessos</h1><p class="text-muted">Todas as tentativas de entrada com detalhes</p></div>
-        <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> Exportar CSV</button>
+        <div class="flex gap-2">
+            <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> CSV</button>
+            <button class="btn btn-outline" @onclick="ExportarPdf"><Icon Name="file-text" Size="16" /> PDF</button>
+        </div>
     </div>
 
     <div class="grid grid-4">
@@ -42,6 +47,16 @@
                     {
                         <option value="@a.Id">@a.Nome</option>
                     }
+                </select>
+                <select class="form-select" @bind="tipoFilter">
+                    <option value="todos">Tipo (todos)</option>
+                    <option value="digital_id">Digital + ID</option>
+                    <option value="senha_id">Senha + ID</option>
+                </select>
+                <select class="form-select" @bind="gravacaoFilter">
+                    <option value="todos">Gravação (qualquer)</option>
+                    <option value="com">Com gravação</option>
+                    <option value="sem">Sem gravação</option>
                 </select>
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label">Período</label>
@@ -101,7 +116,7 @@
                                 <td><span class="badge @(item.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(item.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(item.AcessoLiberado ? "Permitido" : "Negado")</span></td>
                                 <td class="text-muted">@(item.MotivoNegacao ?? "-")</td>
                                 <td>@if (item.GravacaoPath != null) {
-                                    <button class="btn btn-ghost btn-sm text-primary"><Icon Name="video" Size="16" /> Ver</button>
+                                    <button class="btn btn-ghost btn-sm text-primary" @onclick="() => AbrirGravacao(item.Id)"><Icon Name="video" Size="16" /> Ver</button>
                                 } else {
                                     <span class="text-sm text-muted">-</span>
                                 }</td>
@@ -118,6 +133,8 @@
     private string search = "";
     private string statusFilter = "todos";
     private string ambFilter = "todos";
+    private string tipoFilter = "todos";
+    private string gravacaoFilter = "todos";
     private string sortColumn = "dataHora";
     private bool sortAsc = false;
     private DateTime? dataInicio = null;
@@ -141,6 +158,8 @@
          (h.Ambiente?.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
         (statusFilter == "todos" || (statusFilter == "permitido" ? h.AcessoLiberado : !h.AcessoLiberado)) &&
         (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter) &&
+        (tipoFilter == "todos" || h.TipoVerificacao == tipoFilter) &&
+        (gravacaoFilter == "todos" || (gravacaoFilter == "com" ? h.GravacaoPath != null : h.GravacaoPath == null)) &&
         (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
         (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
 
@@ -162,6 +181,18 @@
         sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
 
     private void LimparDatas() { dataInicio = null; dataFim = null; }
+
+    private async Task AbrirGravacao(int tentativaId)
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("abrirGravacao", apiUrl, tentativaId, TokenStore.Token);
+    }
+
+    private async Task ExportarPdf()
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/historico.pdf", TokenStore.Token, "historico.pdf");
+    }
 
     private async Task ExportarCsv()
     {

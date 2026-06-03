@@ -7,7 +7,6 @@ using FrontendControleAcesso.Components;
 using FrontendControleAcesso.Services;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
@@ -54,52 +53,8 @@ builder.Services.AddScoped<ITokenStore, TokenStore>();
 builder.Services.AddScoped<CircuitHandler, AuthCircuitHandler>();
 var app = builder.Build();
 
-// Migração inline — garante que colunas novas existam no banco antes de qualquer request
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-    var conn = db.Database.GetDbConnection();
-    if (conn.State == ConnectionState.Closed) conn.Open();
-
-    // administrador: cpf, email, cargo, telefone
-    var adminCols = new HashSet<string>();
-    using (var cmd = conn.CreateCommand())
-    {
-        cmd.CommandText = "SELECT name FROM pragma_table_info('administrador')";
-        using var r = cmd.ExecuteReader();
-        while (r.Read()) adminCols.Add(r.GetString(0));
-    }
-    foreach (var (col, def) in new[] {
-        ("cpf", "cpf VARCHAR(15)"),
-        ("email", "email VARCHAR(150)"),
-        ("cargo", "cargo VARCHAR(100)"),
-        ("telefone", "telefone VARCHAR(20)")
-    })
-    {
-        if (!adminCols.Contains(col))
-        {
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = $"ALTER TABLE administrador ADD COLUMN {def}";
-            cmd.ExecuteNonQuery();
-        }
-    }
-
-    // configuracao: periodoInativacaoMeses
-    var configCols = new HashSet<string>();
-    using (var cmd = conn.CreateCommand())
-    {
-        cmd.CommandText = "SELECT name FROM pragma_table_info('configuracao')";
-        using var r = cmd.ExecuteReader();
-        while (r.Read()) configCols.Add(r.GetString(0));
-    }
-    if (!configCols.Contains("periodoInativacaoMeses"))
-    {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "ALTER TABLE configuracao ADD COLUMN periodoInativacaoMeses INTEGER NOT NULL DEFAULT 24";
-        cmd.ExecuteNonQuery();
-    }
-}
+// Migrações de schema são responsabilidade do Int1 (Banco API) — ele sempre sobe
+// antes do Frontend (iniciar.ps1 espera porta 5018 responder).
 
 // Configura o pipeline de middleware HTTP
 // Na fase de produção, redireciona erros para a página de tratamento de erros

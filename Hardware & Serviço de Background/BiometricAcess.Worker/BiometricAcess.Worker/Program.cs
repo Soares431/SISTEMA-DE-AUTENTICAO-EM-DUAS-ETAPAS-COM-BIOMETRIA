@@ -85,5 +85,8 @@ builder.Services.AddSingleton<IEventProcessor, EventProcessorSimuladorBanco>();
 
 builder.Services.AddHostedService<Worker>();
 
+// Sincroniza hora do T50M com o servidor diariamente (no-op no simulador).
+builder.Services.AddHostedService<TimeSyncWorker>();
+
 var host = builder.Build();
 host.Run();

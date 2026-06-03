@@ -16,6 +16,16 @@
             <Icon Name="search" /><input class="form-input" placeholder="Buscar por nome, email ou cargo..." @bind="search" @bind:event="oninput" />
         </div>
         <select class="form-select" style="width: 150px;" @bind="statusFilter"><option value="todos">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select>
+        <select class="form-select" style="width: 180px;" @bind="modoFilter">
+            <option value="todos">Modo (todos)</option>
+            <option value="digital_e_senha">Digital + Senha</option>
+            <option value="somente_senha">Somente Senha</option>
+        </select>
+        <select class="form-select" style="width: 180px;" @bind="biometriaFilter">
+            <option value="todos">Biometria (todos)</option>
+            <option value="sim">Cadastrada</option>
+            <option value="nao">Pendente</option>
+        </select>
         <select class="form-select" style="width: 200px;" @bind="sortOpcao">
             <option value="nome_az">Nome A→Z</option>
             <option value="nome_za">Nome Z→A</option>
@@ -128,6 +138,8 @@
 @code {
     private string search = "";
     private string statusFilter = "todos";
+    private string modoFilter = "todos";
+    private string biometriaFilter = "todos";
     private string sortOpcao = "nome_az";
     private bool showDialog = false;
     private string novoNome = "";
@@ -154,7 +166,11 @@
          p.Nome.Contains(search, StringComparison.OrdinalIgnoreCase) ||
          p.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
          p.Cargo.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
-        (statusFilter == "todos" || p.Status == statusFilter));
+        (statusFilter == "todos" || p.Status == statusFilter) &&
+        (modoFilter == "todos" || p.modoAcesso == modoFilter) &&
+        (biometriaFilter == "todos"
+            || (biometriaFilter == "sim" && p.biometriaCadastrada != null)
+            || (biometriaFilter == "nao" && p.biometriaCadastrada == null)));
 
     private IEnumerable<Pessoa> Sorted => sortOpcao switch
     {
@@ -209,6 +225,21 @@
             };
 
             var pessoaSalva = await PessoaRepo.Adicionar(pessoa);
+
+            // BD-22 / doc_tecnica §5.1 passo 5: Senha ≠ ID
+            // O ID só é conhecido após o Adicionar (auto-increment). Se a senha sorteada
+            // bater com o ID, sorteia outra (até 3 tentativas pra evitar loop infinito).
+            var idStr = pessoaSalva.Id.ToString();
+            int tentativas = 0;
+            while (senhaDisp.Senha == idStr && tentativas < 3)
+            {
+                var nova = SenhaRepo.BuscarDisponivel();
+                if (nova == null || nova.Senha == idStr) { tentativas++; continue; }
+                senhaDisp = nova;
+                var novoHash = BCrypt.Net.BCrypt.HashPassword(senhaDisp.Senha, workFactor: 10);
+                await PessoaRepo.AtualizarSenha(pessoaSalva.Id, senhaDisp.Senha, novoHash);
+                tentativas++;
+            }
 
             // Marca a senha como em uso e vincula à pessoa
             senhaDisp.EmUso = true;

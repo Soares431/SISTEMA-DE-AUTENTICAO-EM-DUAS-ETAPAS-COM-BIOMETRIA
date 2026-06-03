@@ -1,5 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using MailKit.Net.Smtp;
+using MailKit.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MimeKit;
+using System.Security.Claims;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
@@ -10,12 +14,18 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
     public class PersonController : ControllerBase
     {
         private IPessoaRepository _pessoaRepository;
+        private readonly ILogAdminRepository _logRepository;
+        private readonly IConfiguration _config;
         private readonly ILogger<PersonController> _logger;
 
         public PersonController(IPessoaRepository pessoaRepository,
+            ILogAdminRepository logRepository,
+            IConfiguration config,
             ILogger<PersonController> logger)
         {
             _pessoaRepository = pessoaRepository;
+            _logRepository = logRepository;
+            _config = config;
             _logger = logger;
         }
 
@@ -74,6 +84,74 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             await _pessoaRepository.Remover(id);
             _logger.LogDebug("Person with ID {id} deleted successfully", id);
             return NoContent();
+        }
+
+        // INT-02 — Reenvio de senha por email (descriptografa senhaClear + MailKit/Zimbra)
+        [HttpPost("{id}/reenviar-senha")]
+        public async Task<IActionResult> ReenviarSenha(long id)
+        {
+            var pessoa = await _pessoaRepository.BuscarPorId(id);
+            if (pessoa == null) return NotFound();
+            if (string.IsNullOrWhiteSpace(pessoa.Email)) return BadRequest("Pessoa sem email cadastrado.");
+            if (string.IsNullOrWhiteSpace(pessoa.senhaClear)) return BadRequest("Senha não disponível para reenvio.");
+
+            string senhaPlain;
+            try
+            {
+                var aesKey = _config["AesKey"] ?? "5cta-aes-key-senha-segura-32char";
+                senhaPlain = AesHelper.Decrypt(pessoa.senhaClear, aesKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao descriptografar senha da pessoa {id}", id);
+                return StatusCode(500, "Falha ao recuperar a senha cifrada.");
+            }
+
+            var corpoHtml = $@"<h2>Olá, {pessoa.Nome}!</h2>
+<p>Sua senha de acesso ao sistema é: <strong>{senhaPlain}</strong></p>
+<p>Não compartilhe com terceiros.</p>";
+
+            var fallback = false;
+            try
+            {
+                var host = Environment.GetEnvironmentVariable("SMTP_HOST");
+                var portStr = Environment.GetEnvironmentVariable("SMTP_PORT");
+                var user = Environment.GetEnvironmentVariable("SMTP_USER");
+                var pass = Environment.GetEnvironmentVariable("SMTP_PASS");
+
+                if (string.IsNullOrEmpty(host) || !int.TryParse(portStr, out var port))
+                {
+                    fallback = true;
+                    Console.WriteLine($"[FALLBACK] SMTP não configurado. Senha de {pessoa.Email}: {senhaPlain}");
+                }
+                else
+                {
+                    var msg = new MimeMessage();
+                    msg.From.Add(new MailboxAddress("Sistema 5º CTA", user ?? "noreply@5cta.local"));
+                    msg.To.Add(new MailboxAddress(pessoa.Nome, pessoa.Email));
+                    msg.Subject = "Reenvio de Senha — 5º CTA";
+                    msg.Body = new TextPart("html") { Text = corpoHtml };
+
+                    using var smtp = new SmtpClient();
+                    await smtp.ConnectAsync(host, port, SecureSocketOptions.StartTls);
+                    if (!string.IsNullOrEmpty(user)) await smtp.AuthenticateAsync(user, pass);
+                    await smtp.SendAsync(msg);
+                    await smtp.DisconnectAsync(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                fallback = true;
+                _logger.LogWarning(ex, "Falha SMTP — usando fallback console para pessoa {id}", id);
+                Console.WriteLine($"[FALLBACK] Erro SMTP. Senha de {pessoa.Email}: {senhaPlain}");
+            }
+
+            // Registra auditoria
+            var adminIdClaim = User.FindFirst("adminId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(adminIdClaim, out var adminId))
+                _logRepository.Registrar(adminId, "ReenvioSenha", "Pessoa", (int)id);
+
+            return Ok(new { sucesso = true, fallback, mensagem = fallback ? "SMTP indisponível — senha exibida no console do servidor." : "Email enviado." });
         }
     }
 

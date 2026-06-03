@@ -1,5 +1,6 @@
 using BiometricAcess.Worker.Models;
 using BiometricAcess.Worker.Services;
+using InfraestruturaBloco1.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
@@ -83,6 +84,23 @@ namespace BiometricAcess.Worker.Simulador
             tentativaRepo.Adicionar(tentativa);
 
             Console.WriteLine($"[SimuladorBanco] Pessoa {evento.PessoaID} | {(acessoLiberado ? "LIBERADO" : $"NEGADO — {motivoNegacao}")} | Ambiente: {ambiente.Nome}");
+
+            // HW-16 / doc_tecnica §5.11 — aguarda gravação só em entradas liberadas
+            if (acessoLiberado)
+            {
+                var cameraService = scope.ServiceProvider.GetService<CameraService>();
+                if (cameraService != null)
+                {
+                    var gravacaoPath = await cameraService.MonitorarNovoArquivo(
+                        ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
+                    if (gravacaoPath != null)
+                    {
+                        tentativa.GravacaoPath = gravacaoPath;
+                        tentativaRepo.Atualizar(tentativa);
+                        Console.WriteLine($"[SimuladorBanco] Gravação associada — {gravacaoPath}");
+                    }
+                }
+            }
         }
     }
 }

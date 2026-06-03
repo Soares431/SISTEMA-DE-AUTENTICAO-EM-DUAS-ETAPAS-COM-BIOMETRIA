@@ -11,11 +11,16 @@
 @inject ILogAdminRepository LogRepo
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IConfiguration Config
+@inject ITokenStore TokenStore
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Logs do Sistema</h1><p class="text-muted">Auditoria de ações administrativas</p></div>
-        <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> Exportar CSV</button>
+        <div class="flex gap-2">
+            <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> CSV</button>
+            <button class="btn btn-outline" @onclick="ExportarPdf"><Icon Name="file-text" Size="16" /> PDF</button>
+        </div>
     </div>
 
     <div class="card">
@@ -35,6 +40,13 @@
                     @foreach (var e in Entidades)
                     {
                         <option value="@e">@e</option>
+                    }
+                </select>
+                <select class="form-select" @bind="adminFilter">
+                    <option value="todos">Todos os Admins</option>
+                    @foreach (var a in Admins)
+                    {
+                        <option value="@a.Id">@a.NomeCompleto</option>
                     }
                 </select>
             </div>
@@ -99,6 +111,7 @@
     private string search = "";
     private string acaoFilter = "todos";
     private string entidadeFilter = "todos";
+    private string adminFilter = "todos";
     private string sortColumn = "dataHora";
     private bool sortAsc = false;
     private List<LogAdmin> todosLogs = new();
@@ -110,6 +123,12 @@
 
     private string[] Acoes => todosLogs.Select(l => l.Acao).Distinct().Order().ToArray();
     private string[] Entidades => todosLogs.Select(l => l.EntidadeAfetada).Distinct().Order().ToArray();
+    private IEnumerable<Administrador> Admins => todosLogs
+        .Where(l => l.Administrador != null)
+        .Select(l => l.Administrador!)
+        .GroupBy(a => a.Id)
+        .Select(g => g.First())
+        .OrderBy(a => a.NomeCompleto);
 
     private IEnumerable<LogAdmin> Filtered => todosLogs.Where(l =>
         (string.IsNullOrEmpty(search) ||
@@ -117,7 +136,8 @@
          l.EntidadeAfetada.Contains(search, StringComparison.OrdinalIgnoreCase) ||
          (l.Administrador?.NomeCompleto.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
         (acaoFilter == "todos" || l.Acao == acaoFilter) &&
-        (entidadeFilter == "todos" || l.EntidadeAfetada == entidadeFilter));
+        (entidadeFilter == "todos" || l.EntidadeAfetada == entidadeFilter) &&
+        (adminFilter == "todos" || l.AdminId.ToString() == adminFilter));
 
     private IEnumerable<LogAdmin> Sorted => sortColumn switch
     {
@@ -166,5 +186,11 @@
             sb.AppendLine($"{DateHelper.Local(log.DataHora):dd/MM/yyyy HH:mm:ss},\"{admin}\",{log.Acao},{log.EntidadeAfetada},{log.EntidadeId?.ToString() ?? ""}");
         }
         await JS.InvokeVoidAsync("downloadCsv", $"logs_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+    }
+
+    private async Task ExportarPdf()
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/logs.pdf", TokenStore.Token, "logs.pdf");
     }
 }

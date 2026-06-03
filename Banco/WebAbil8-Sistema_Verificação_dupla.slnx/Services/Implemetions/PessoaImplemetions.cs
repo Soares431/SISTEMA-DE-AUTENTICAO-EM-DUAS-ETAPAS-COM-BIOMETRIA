@@ -1,7 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.Security.Cryptography;
-using System.Text;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -27,7 +25,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
                 // Criptografa senhaClear com AES antes de persistir (bug #4)
                 if (!string.IsNullOrEmpty(pessoa.senhaClear))
-                    pessoa.senhaClear = EncryptAes(pessoa.senhaClear, _aesKey);
+                    pessoa.senhaClear = AesHelper.Encrypt(pessoa.senhaClear, _aesKey);
 
                 await _context.Pessoas.AddAsync(pessoa);
                 await _context.SaveChangesAsync();
@@ -95,6 +93,16 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 return pessoa;
             }
 
+            public async Task<Pessoa> AtualizarSenha(long pessoaId, string novaSenhaClear, string novoSenhaHash)
+            {
+                var pessoa = await _context.Pessoas.FindAsync(pessoaId);
+                if (pessoa == null) throw new ArgumentNullException("Usuário inexistente.");
+                pessoa.senhaClear = AesHelper.Encrypt(novaSenhaClear, _aesKey);
+                pessoa.senhaHash = novoSenhaHash;
+                await _context.SaveChangesAsync();
+                return pessoa;
+            }
+
             public async Task<Pessoa> SalvarTemplate(long pessoaId, byte[] template)
             {
                 var pessoa = await _context.Pessoas.FindAsync(pessoaId);
@@ -104,25 +112,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 return pessoa;
             }
 
-            // Mesmo algoritmo do AesService no Int4 (sem referência circular: Int4 já referencia Int1)
-            private static string EncryptAes(string plainText, string key)
-            {
-                using var aes = Aes.Create();
-                aes.Key = Encoding.UTF8.GetBytes(key.PadRight(32).Substring(0, 32));
-                aes.GenerateIV();
-
-                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-                using var ms = new MemoryStream();
-                ms.Write(aes.IV, 0, aes.IV.Length);
-
-                using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                using (var sw = new StreamWriter(cs))
-                {
-                    sw.Write(plainText);
-                }
-
-                return Convert.ToBase64String(ms.ToArray());
-            }
         }
 
     }

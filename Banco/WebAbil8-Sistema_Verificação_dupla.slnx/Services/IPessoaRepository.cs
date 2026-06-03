@@ -14,6 +14,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         Task<Pessoa> MarcarBiometriaCadastrada(long pessoaId);
         Task<Pessoa> SalvarTemplate(long pessoaId, byte[] template);
         Task<Pessoa> AtualizarUltimoAcesso(long pessoaId);
-
+        Task<Pessoa> AtualizarSenha(long pessoaId, string novaSenhaClear, string novoSenhaHash);
     }
 }

@@ -9,8 +9,6 @@
 
   <ItemGroup>
     <Compile Remove="Migrations\MSSQLContextModelSnapshot.cs" />
-    <Compile Remove="Services\Implemetions\PersonServicesImplemetions.cs" />
-    <Compile Remove="Services\IPersonServices.cs" />
     <Compile Remove="Services\MathService.cs" />
     <Compile Remove="Utils\NumberHelper.cs" />
   </ItemGroup>
@@ -48,6 +46,8 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.0" />
+		<PackageReference Include="MailKit" Version="4.7.1.1" />
+		<PackageReference Include="QuestPDF" Version="2024.3.4" />
 	</ItemGroup>
 
   <ItemGroup>

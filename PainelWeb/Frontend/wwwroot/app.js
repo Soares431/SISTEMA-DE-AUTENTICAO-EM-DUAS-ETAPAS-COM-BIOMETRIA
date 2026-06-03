@@ -71,6 +71,49 @@ window.authStorage = {
 // Dispara download de um arquivo CSV no navegador do usuário.
 // Chamado por Historico.razor e Logs.razor via IJSRuntime.
 // -----------------------------------------------------------------------------
+// Abre a gravação MP4 de uma tentativa em nova aba — usa o JWT do TokenStore
+// porque o endpoint /api/gravacoes/{id} é [Authorize].
+window.abrirGravacao = async function(apiBaseUrl, tentativaId, token) {
+    try {
+        var resp = await fetch(apiBaseUrl + 'api/gravacoes/' + tentativaId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+            alert('Não foi possível abrir a gravação (HTTP ' + resp.status + ').');
+            return;
+        }
+        var blob = await resp.blob();
+        var url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // libera depois de 1min — tempo de o navegador começar a reproduzir
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    } catch (e) {
+        alert('Erro ao abrir gravação: ' + e.message);
+    }
+};
+
+// Baixa um arquivo PDF autenticado e dispara download no navegador.
+window.baixarPdf = async function(url, token, filename) {
+    try {
+        var resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!resp.ok) {
+            alert('Falha ao gerar PDF (HTTP ' + resp.status + ').');
+            return;
+        }
+        var blob = await resp.blob();
+        var blobUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+        alert('Erro ao baixar PDF: ' + e.message);
+    }
+};
+
 window.downloadCsv = function(filename, csvContent) {
     var blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     var url  = URL.createObjectURL(blob);

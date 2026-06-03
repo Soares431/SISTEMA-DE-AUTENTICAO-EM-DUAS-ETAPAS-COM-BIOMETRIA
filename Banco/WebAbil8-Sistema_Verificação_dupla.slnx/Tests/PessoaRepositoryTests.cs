@@ -94,5 +94,46 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var resultado = await repo.BuscarPorId(pessoa.Id);
             Assert.Equal("inativo", resultado.Status);
         }
+
+        [Fact]
+        public async Task AtualizarSenha_DeveCriptografarSenhaClearComAes()
+        {
+            using var db = CriarContexto();
+            var repo = new PessoaImplemetions(db, CriarConfiguration());
+            var pessoa = CriarPessoa("Lucas", "44444444444");
+            await repo.Adicionar(pessoa);
+
+            await repo.AtualizarSenha(pessoa.Id, "999000", "novoHash");
+
+            var resultado = await repo.BuscarPorId(pessoa.Id);
+            // senhaClear não pode ser igual ao plain ("999000") — tem que estar criptografado
+            Assert.NotEqual("999000", resultado.senhaClear);
+            Assert.Equal("novoHash", resultado.senhaHash);
+
+            // E descriptografando com a mesma chave volta ao plain
+            var key = "5cta-aes-key-senha-segura-32char";
+            Assert.Equal("999000", Services.AesHelper.Decrypt(resultado.senhaClear, key));
+        }
+
+        [Fact]
+        public void AesHelper_EncryptDecrypt_Roundtrip()
+        {
+            const string key = "5cta-aes-key-senha-segura-32char";
+            var cipher = Services.AesHelper.Encrypt("123456", key);
+            Assert.NotEqual("123456", cipher);
+            Assert.Equal("123456", Services.AesHelper.Decrypt(cipher, key));
+        }
+
+        [Fact]
+        public void AesHelper_EncryptComKeysIguais_GeraCiphersDiferentes()
+        {
+            // IV é aleatório a cada chamada — mesmo texto gera ciphers diferentes
+            const string key = "5cta-aes-key-senha-segura-32char";
+            var c1 = Services.AesHelper.Encrypt("abc", key);
+            var c2 = Services.AesHelper.Encrypt("abc", key);
+            Assert.NotEqual(c1, c2);
+            Assert.Equal("abc", Services.AesHelper.Decrypt(c1, key));
+            Assert.Equal("abc", Services.AesHelper.Decrypt(c2, key));
+        }
     }
 }

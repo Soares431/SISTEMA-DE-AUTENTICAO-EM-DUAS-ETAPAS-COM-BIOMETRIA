@@ -9,6 +9,8 @@
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject NavigationManager Nav
+@inject IConfiguration Config
+@inject IJSRuntime JS
 <div class="space-y">
     @if (ambiente == null)
     {
@@ -137,6 +139,7 @@
                         <p class="text-muted">Remove o ambiente, todas as @cameras.Count câmera(s), @pessoas.Count vínculo(s) de pessoa e o histórico de tentativas vinculado.</p>
                         <p class="text-sm text-muted">Pessoas que ficarem sem nenhum ambiente serão inativadas automaticamente.</p>
                     </div>
+                    <button class="btn btn-outline" @onclick="ExportarRelatorioPdf"><Icon Name="file-text" Size="16" /> Relatório PDF</button>
                     <button class="btn btn-outline text-destructive" @onclick="() => showConfirmExcluir = true">Excluir Ambiente</button>
                 </div>
             </div>
@@ -154,10 +157,6 @@
                 {
                     <p class="text-muted">Todas as pessoas cadastradas já têm acesso a este ambiente.</p>
                 }
-                else if (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000)
-                {
-                    <p class="text-destructive">Capacidade máxima do T50 atingida (1000 digitais). Remova templates antes de adicionar novas pessoas.</p>
-                }
                 else
                 {
                     <div class="form-group">
@@ -169,12 +168,22 @@
                             }
                         </select>
                     </div>
+                    @if (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000)
+                    {
+                        <div class="alert alert-warning">
+                            <strong>T50 cheio (1000 digitais).</strong> Não há mais slots para nova biometria.
+                            A pessoa será adicionada em <strong>modo Somente Senha</strong> (não usará digital neste ambiente).
+                        </div>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" @bind="aceitouSomenteSenha" /> Confirmo adicionar em modo Somente Senha
+                        </label>
+                    }
                 }
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button>
                 <button class="btn btn-primary" @onclick="HandleAdicionarPessoa"
-                    disabled="@(pessoasDisponiveis.Count == 0 || (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000))">
+                    disabled="@(pessoasDisponiveis.Count == 0 || (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000 && !aceitouSomenteSenha))">
                     Adicionar
                 </button>
             </div>
@@ -272,6 +281,7 @@
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera> cameras = new();
     private int tempoEspera = 60;
     private long pessoaSelecionadaId = 0;
+    private bool aceitouSomenteSenha = false;
     private string novaCameraNome = "";
     private string novaCameraRtsp = "";
     private string novaCameraOnvif = "";
@@ -336,19 +346,47 @@
     private async Task HandleAdicionarPessoa()
     {
         if (pessoaSelecionadaId == 0) return;
-        if (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000) return;
+        var t50Cheio = dispositivo != null && dispositivo.DigitaisCadastradas >= 1000;
+        if (t50Cheio && !aceitouSomenteSenha) return;
+
         AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
         await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
         LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
-        // Incrementa o contador de digitais do dispositivo
-        if (dispositivo != null)
+
+        var pessoaAdd = await PessoaRepo.BuscarPorId(pessoaSelecionadaId);
+
+        // doc_tecnica §5.2 passo 3: T50 cheio → força modo somente_senha na pessoa.
+        // Não incrementa o contador de digitais (não vai cadastrar biometria neste T50).
+        if (t50Cheio)
+        {
+            if (pessoaAdd != null && pessoaAdd.modoAcesso != "somente_senha")
+            {
+                pessoaAdd.modoAcesso = "somente_senha";
+                await PessoaRepo.Atualizar(pessoaAdd);
+            }
+        }
+        else if (dispositivo != null)
         {
             dispositivo.DigitaisCadastradas++;
             DispositivoRepo.Atualizar(dispositivo);
+
+            // doc_tecnica §5.9: Reativação — se há templateBackup, restaura biometria
+            // (em produção o upload pro T50 acontece via Anviz SDK no Worker; aqui marcamos no banco).
+            if (pessoaAdd != null
+                && pessoaAdd.modoAcesso == "digital_e_senha"
+                && pessoaAdd.templateBackup != null
+                && pessoaAdd.templateBackup.Length > 0
+                && pessoaAdd.biometriaCadastrada == null)
+            {
+                await PessoaRepo.MarcarBiometriaCadastrada(pessoaAdd.Id);
+                LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoaAdd.Id);
+            }
         }
+
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
         showAddPessoa = false;
+        aceitouSomenteSenha = false;
     }
 
     private async Task HandleAdicionarCamera()
@@ -425,5 +463,14 @@
             erroExcluir = ex.Message;
             isExcluindo = false;
         }
+    }
+
+    private async Task ExportarRelatorioPdf()
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("baixarPdf",
+            apiUrl + $"api/export/relatorio-ambiente/{Id}.pdf",
+            TokenStore.Token,
+            $"relatorio_ambiente_{Id}.pdf");
     }
 }
