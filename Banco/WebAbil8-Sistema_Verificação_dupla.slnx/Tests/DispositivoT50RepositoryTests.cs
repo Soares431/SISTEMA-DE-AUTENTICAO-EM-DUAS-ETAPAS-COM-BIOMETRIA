@@ -73,5 +73,54 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var resultado = repo.ContarDigitaisCadastradas(dispositivo.Id);
             Assert.Equal(5, resultado);
         }
+
+        [Fact]
+        public void RegistrarHeartbeat_DeveAtualizarUltimaConexao()
+        {
+            using var db = CriarContexto();
+            var repo = new DispositivoT50Implemetions(db);
+            var dispositivo = CriarDispositivo("T50-Heartbeat");
+            dispositivo.EnderecoIP = "10.0.0.99";
+            repo.Adicionar(dispositivo);
+
+            Assert.Null(dispositivo.UltimaConexao);
+            repo.RegistrarHeartbeat("10.0.0.99");
+
+            var atual = repo.BuscarPorId(dispositivo.Id);
+            Assert.NotNull(atual.UltimaConexao);
+            Assert.True(atual.EstaOnline);
+        }
+
+        [Fact]
+        public void RegistrarHeartbeat_IpDesconhecido_NaoLancaExcecao()
+        {
+            using var db = CriarContexto();
+            var repo = new DispositivoT50Implemetions(db);
+            var ex = Record.Exception(() => repo.RegistrarHeartbeat("192.168.99.99"));
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void EstaOnline_SemHeartbeat_DeveSerFalse()
+        {
+            var dispositivo = CriarDispositivo("T50-Novo");
+            Assert.False(dispositivo.EstaOnline);
+        }
+
+        [Fact]
+        public void EstaOnline_ComHeartbeatAntigo_DeveSerFalse()
+        {
+            var dispositivo = CriarDispositivo("T50-Antigo");
+            dispositivo.UltimaConexao = DateTime.UtcNow.AddMinutes(-5); // > 2 min threshold
+            Assert.False(dispositivo.EstaOnline);
+        }
+
+        [Fact]
+        public void EstaOnline_ComHeartbeatRecente_DeveSerTrue()
+        {
+            var dispositivo = CriarDispositivo("T50-Conectado");
+            dispositivo.UltimaConexao = DateTime.UtcNow.AddSeconds(-30);
+            Assert.True(dispositivo.EstaOnline);
+        }
     }
 }

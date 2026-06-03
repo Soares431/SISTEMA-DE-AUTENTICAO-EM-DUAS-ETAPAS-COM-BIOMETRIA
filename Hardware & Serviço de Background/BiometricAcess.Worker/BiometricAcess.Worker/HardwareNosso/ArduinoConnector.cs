@@ -19,6 +19,8 @@ public class ArduinoConnector : IAnvizConnector
         _baudRate = baudRate;
     }
 
+    public string EnderecoIdentificador => _porta;
+
     public bool Conectar()
     {
         try

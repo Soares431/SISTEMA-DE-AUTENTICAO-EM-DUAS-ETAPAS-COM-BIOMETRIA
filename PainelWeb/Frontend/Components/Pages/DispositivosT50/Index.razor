@@ -59,13 +59,17 @@
                         </div>
                     </div>
                     <div class="card-content space-y-sm">
-                        @if (emAlerta)
+                        @if (!d.EstaOnline)
+                        {
+                            <span class="badge badge-destructive"><Icon Name="wifi-off" Size="12" /> Offline</span>
+                        }
+                        else if (emAlerta)
                         {
                             <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> Capacidade crítica</span>
                         }
                         else
                         {
-                            <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Disponível</span>
+                            <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online</span>
                         }
                         <div class="flex justify-between text-sm"><span class="text-muted">Digitais</span><span class="font-medium">@d.DigitaisCadastradas / 1000</span></div>
                         <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>

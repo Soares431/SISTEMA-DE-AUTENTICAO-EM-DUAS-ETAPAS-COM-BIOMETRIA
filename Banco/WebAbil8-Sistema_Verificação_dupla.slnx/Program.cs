@@ -129,6 +129,21 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
+    // Migração inline — adiciona ultimaConexao ao dispositivoT50 (status online/offline)
+    var dispColsExistentes = new HashSet<string>();
+    using (var pragmaCmd3 = conn.CreateCommand())
+    {
+        pragmaCmd3.CommandText = "SELECT name FROM pragma_table_info('dispositivoT50')";
+        using var rdr3 = pragmaCmd3.ExecuteReader();
+        while (rdr3.Read()) dispColsExistentes.Add(rdr3.GetString(0));
+    }
+    if (!dispColsExistentes.Contains("ultimaConexao"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE dispositivoT50 ADD COLUMN ultimaConexao TEXT NULL";
+        alterCmd.ExecuteNonQuery();
+    }
+
     if (!db.SenhasDisponiveis.Any())
     {
         var triviais = new HashSet<string> {

@@ -7,6 +7,9 @@ namespace BiometricAcess.Worker.Simulador
     {
         private bool _conectado = false;
 
+        // Igual ao IP que T50MSimulador.gerarEvento() preenche em IpDispositivo
+        public string EnderecoIdentificador => "192.168.0.218";
+
         public bool Conectar()
         {
             _conectado = true;

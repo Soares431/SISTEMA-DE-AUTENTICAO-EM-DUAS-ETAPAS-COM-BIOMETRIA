@@ -22,13 +22,17 @@
         <div class="flex items-center gap-4">
             <a href="/dispositivos" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
             <div class="flex-1"><h1 class="text-2xl font-bold">@dispositivo.Nome</h1><p class="text-muted font-mono">@dispositivo.EnderecoIP : @dispositivo.Porta</p></div>
-            @if (dispositivo.DigitaisCadastradas >= 950)
+            @if (!dispositivo.EstaOnline)
+            {
+                <span class="badge badge-destructive"><Icon Name="wifi-off" Size="12" /> Offline</span>
+            }
+            else if (dispositivo.DigitaisCadastradas >= 950)
             {
                 <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> Capacidade crítica</span>
             }
             else
             {
-                <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Disponível</span>
+                <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online</span>
             }
         </div>
 
@@ -52,6 +56,19 @@
                             <div><dt class="text-muted text-sm">Endereço IP</dt><dd class="font-mono">@dispositivo.EnderecoIP</dd></div>
                             <div><dt class="text-muted text-sm">Porta TCP</dt><dd class="font-mono">@dispositivo.Porta</dd></div>
                             <div><dt class="text-muted text-sm">Digitais cadastradas</dt><dd>@dispositivo.DigitaisCadastradas / 1000</dd></div>
+                            <div>
+                                <dt class="text-muted text-sm">Última conexão</dt>
+                                <dd>
+                                    @if (dispositivo.UltimaConexao.HasValue)
+                                    {
+                                        @DateHelper.Local(dispositivo.UltimaConexao.Value).ToString("dd/MM/yyyy HH:mm:ss")
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Nunca conectou</span>
+                                    }
+                                </dd>
+                            </div>
                         </dl>
                     }
                     else

@@ -41,6 +41,10 @@ namespace BiometricAcess.Worker.Simulador
                 return;
             }
 
+            // Heartbeat: dispositivo está vivo pois acabou de mandar evento
+            if (dispositivo != null)
+                dispositivoRepo.RegistrarHeartbeat(dispositivo.EnderecoIP);
+
             var config       = await configRepo.BuscarPorChave();
             var retencaoDias = config?.RetencaoGravacoesTentativasDias ?? 90;
 

@@ -60,6 +60,9 @@ public class EventProcessorArduino : IEventProcessor
             return;
         }
 
+        // Heartbeat de status online/offline
+        _dispositivoRepository.RegistrarHeartbeat(dispositivo.EnderecoIP);
+
         var pessoa = await _pessoaRepository.BuscarPorId(evento.PessoaID);
 
         // ── EVT|ID — Arduino mandou só o ID ──────────────────────────

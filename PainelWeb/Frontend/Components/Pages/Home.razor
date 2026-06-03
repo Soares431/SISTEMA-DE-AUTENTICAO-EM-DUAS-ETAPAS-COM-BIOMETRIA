@@ -101,14 +101,18 @@
                 }
                 @foreach (var disp in alertasT50)
                 {
+                    var offline = !disp.EstaOnline;
+                    var iconBg = offline ? "icon-bg-destructive" : "icon-bg-warning";
+                    var badgeClass = offline ? "badge-destructive" : "badge-warning";
+                    var badgeText = offline ? "Offline" : "Capacidade";
                     <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--muted) 30%, transparent);">
-                        <div class="icon-bg icon-bg-warning"><Icon Name="building" Size="16" /></div>
+                        <div class="icon-bg @iconBg"><Icon Name="@(offline ? "wifi-off" : "building")" Size="16" /></div>
                         <div style="flex: 1;">
                             <div class="flex items-center gap-2">
                                 <span class="font-medium">@disp.Nome</span>
-                                <span class="badge badge-warning">Alerta</span>
+                                <span class="badge @badgeClass">@badgeText</span>
                             </div>
-                            <p class="text-sm text-muted">IP: @disp.EnderecoIP</p>
+                            <p class="text-sm text-muted">IP: @disp.EnderecoIP @(offline && disp.UltimaConexao.HasValue ? $"· última conexão {DateHelper.Local(disp.UltimaConexao.Value):dd/MM HH:mm}" : "")</p>
                         </div>
                     </div>
                 }
@@ -223,7 +227,8 @@
         totalPessoas = pessoas.Count(p => p.Status == "ativo");
 
         var dispositivos = DispositivoRepo.ListarTodos();
-        alertasT50   = dispositivos.Where(d => d.DigitaisCadastradas >= 950).ToList();
+        // Alerta = capacidade crítica (>=950 digitais) OU offline
+        alertasT50   = dispositivos.Where(d => d.DigitaisCadastradas >= 950 || !d.EstaOnline).ToList();
         totalAlertas = alertasT50.Count;
 
         _ultimaAtualizacao = DateHelper.Local(DateTime.UtcNow);

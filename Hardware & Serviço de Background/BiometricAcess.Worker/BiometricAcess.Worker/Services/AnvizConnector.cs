@@ -18,6 +18,8 @@ namespace BiometricAcess.Worker.Services
             _porta = porta;
         }
 
+        public string EnderecoIdentificador => _ip;
+
         public bool Conectar()
         {
             try

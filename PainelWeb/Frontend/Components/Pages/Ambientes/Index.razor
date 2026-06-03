@@ -24,6 +24,8 @@
         </div>
         <select class="form-select" style="width: 180px;" @bind="alertaFilter">
             <option value="todos">Todos os status</option>
+            <option value="online">T50 Online</option>
+            <option value="offline">T50 Offline</option>
             <option value="alerta">Com Alerta</option>
             <option value="ok">Sem Alerta</option>
         </select>
@@ -53,13 +55,21 @@
                     </div>
                 </div>
                 <div class="card-content space-y-sm">
-                    @if (emAlerta)
+                    @if (dispositivo == null)
                     {
-                        <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> T50 Alerta (@(dispositivo?.DigitaisCadastradas) digitais)</span>
+                        <span class="badge badge-muted"><Icon Name="wifi-off" Size="12" /> Sem T50</span>
+                    }
+                    else if (!dispositivo.EstaOnline)
+                    {
+                        <span class="badge badge-destructive"><Icon Name="wifi-off" Size="12" /> Offline (@(dispositivo.DigitaisCadastradas) digitais)</span>
+                    }
+                    else if (emAlerta)
+                    {
+                        <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> T50 Alerta (@(dispositivo.DigitaisCadastradas) digitais)</span>
                     }
                     else
                     {
-                        <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online (@(dispositivo?.DigitaisCadastradas ?? 0) digitais)</span>
+                        <span class="badge badge-success"><Icon Name="wifi" Size="12" /> Online (@(dispositivo.DigitaisCadastradas) digitais)</span>
                     }
                     <div class="grid grid-2">
                         <div><p class="text-muted text-sm">Pessoas com Acesso</p><p class="font-medium">@pessoasCount</p></div>
@@ -131,10 +141,19 @@
     }
 
     private IEnumerable<Ambiente> FilteredAmbientes => todosAmbientes.Where(a =>
-    (string.IsNullOrEmpty(search) || a.Nome.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
-    (alertaFilter == "todos" ||
-     (alertaFilter == "alerta" && dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id)?.DigitaisCadastradas >= 950) ||
-     (alertaFilter == "ok" && !(dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id)?.DigitaisCadastradas >= 950))));
+    {
+        if (!string.IsNullOrEmpty(search) && !a.Nome.Contains(search, StringComparison.OrdinalIgnoreCase))
+            return false;
+        var disp = dispositivos.FirstOrDefault(d => d.Id == a.DispositivoT50Id);
+        return alertaFilter switch
+        {
+            "online" => disp != null && disp.EstaOnline,
+            "offline" => disp == null || !disp.EstaOnline,
+            "alerta" => disp != null && disp.DigitaisCadastradas >= 950,
+            "ok" => disp != null && disp.DigitaisCadastradas < 950 && disp.EstaOnline,
+            _ => true,
+        };
+    });
 
     private IEnumerable<Ambiente> SortedAmbientes => sortOpcao switch
     {

@@ -101,12 +101,25 @@
                 else
                 {
                     <div class="grid grid-2">
-                        <div class="form-group"><label class="form-label">Nome Completo</label><input class="form-input" placeholder="Nome completo" @bind="novoNome" /></div>
-                        <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" placeholder="email@empresa.com" @bind="novoEmail" /></div>
+                        <div class="form-group">
+                            <label class="form-label">Nome Completo <span class="text-destructive">*</span></label>
+                            <input class="form-input" placeholder="Nome completo" maxlength="100" @bind="novoNome" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email <span class="text-destructive">*</span></label>
+                            <input class="form-input" type="email" placeholder="email@empresa.com" maxlength="150" @bind="novoEmail" />
+                        </div>
                     </div>
                     <div class="grid grid-2">
-                        <div class="form-group"><label class="form-label">CPF</label><input class="form-input" placeholder="000.000.000-00" @bind="novoCpf" /></div>
-                        <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" placeholder="Cargo" @bind="novoCargo" /></div>
+                        <div class="form-group">
+                            <label class="form-label">CPF <span class="text-destructive">*</span></label>
+                            <input class="form-input" placeholder="00000000000 (só números)" maxlength="11" pattern="\d{11}" inputmode="numeric" @bind="novoCpf" />
+                            <p class="text-xs text-muted">11 dígitos, sem pontos ou traços</p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Cargo <span class="text-destructive">*</span></label>
+                            <input class="form-input" placeholder="Cargo" maxlength="100" @bind="novoCargo" />
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Modo de Acesso</label>
@@ -201,6 +214,30 @@
 
         isCadastrando = true;
         erroDialog = null;
+
+        // Validações de formato (doc_tecnica §4.1)
+        var cpfDigitos = new string(novoCpf.Where(char.IsDigit).ToArray());
+        if (cpfDigitos.Length != 11)
+        {
+            erroDialog = "CPF deve ter exatamente 11 dígitos.";
+            isCadastrando = false;
+            return;
+        }
+        novoCpf = cpfDigitos; // normaliza para apenas dígitos
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(novoEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        {
+            erroDialog = "Email inválido.";
+            isCadastrando = false;
+            return;
+        }
+
+        if (novoNome.Length > 100 || novoCargo.Length > 100 || novoEmail.Length > 150)
+        {
+            erroDialog = "Algum campo excedeu o tamanho máximo permitido.";
+            isCadastrando = false;
+            return;
+        }
 
         try
         {

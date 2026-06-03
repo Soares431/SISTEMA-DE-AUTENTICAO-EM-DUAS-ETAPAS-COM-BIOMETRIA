@@ -45,6 +45,9 @@ namespace BiometricAcess.Worker.Services
                 return;
             }
 
+            // Heartbeat de status online/offline
+            _dispositivoRepository.RegistrarHeartbeat(dispositivo.EnderecoIP);
+
             // C2: busca o Ambiente pelo DispositivoT50Id — antes usava o ID do dispositivo como ambienteId
             var ambiente = _ambienteRepository.ListarTodos()
                 .FirstOrDefault(a => a.DispositivoT50Id == dispositivo.Id);
