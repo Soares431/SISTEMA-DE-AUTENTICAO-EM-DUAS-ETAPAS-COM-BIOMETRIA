@@ -117,22 +117,30 @@
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label class="form-label">Nome Completo <span class="text-destructive">*</span></label>
-                            <input class="form-input" placeholder="Nome completo" maxlength="100" @bind="novoNome" />
+                            <input class="form-input" placeholder="Nome completo" maxlength="100"
+                                   onkeyup="window.maskTextoSeguro(this, 100)"
+                                   @bind="novoNome" @bind:event="oninput" />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Email <span class="text-destructive">*</span></label>
-                            <input class="form-input" type="email" placeholder="email@empresa.com" maxlength="150" @bind="novoEmail" />
+                            <input class="form-input" type="email" placeholder="email@empresa.com" maxlength="150"
+                                   @bind="novoEmail" @bind:event="oninput" />
                         </div>
                     </div>
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label class="form-label">CPF <span class="text-destructive">*</span></label>
-                            <input class="form-input" placeholder="00000000000 (só números)" maxlength="11" pattern="\d{11}" inputmode="numeric" @bind="novoCpf" />
-                            <p class="text-xs text-muted">11 dígitos, sem pontos ou traços</p>
+                            <input class="form-input" placeholder="000.000.000-00" maxlength="14"
+                                   inputmode="numeric"
+                                   onkeyup="window.maskCpf(this)"
+                                   @bind="novoCpf" @bind:event="oninput" />
+                            <p class="text-xs text-muted">Formato: 000.000.000-00</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Cargo <span class="text-destructive">*</span></label>
-                            <input class="form-input" placeholder="Cargo" maxlength="100" @bind="novoCargo" />
+                            <input class="form-input" placeholder="Cargo" maxlength="100"
+                                   onkeyup="window.maskTextoSeguro(this, 100)"
+                                   @bind="novoCargo" @bind:event="oninput" />
                         </div>
                     </div>
                     <div class="form-group">
@@ -240,23 +248,22 @@
         erroDialog = null;
 
         // Validações de formato (doc_tecnica §4.1)
-        var cpfDigitos = new string(novoCpf.Where(char.IsDigit).ToArray());
-        if (cpfDigitos.Length != 11)
+        if (!FormatHelper.CpfValido(novoCpf))
         {
-            erroDialog = "CPF deve ter exatamente 11 dígitos.";
+            erroDialog = "CPF inválido — verifique os dígitos.";
             isCadastrando = false;
             return;
         }
-        novoCpf = cpfDigitos; // normaliza para apenas dígitos
+        novoCpf = FormatHelper.SoDigitos(novoCpf); // normaliza para apenas dígitos
 
-        if (!System.Text.RegularExpressions.Regex.IsMatch(novoEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        if (!FormatHelper.EmailValido(novoEmail))
         {
             erroDialog = "Email inválido.";
             isCadastrando = false;
             return;
         }
 
-        if (novoNome.Length > 100 || novoCargo.Length > 100 || novoEmail.Length > 150)
+        if (novoNome.Length > 100 || novoCargo.Length > 100)
         {
             erroDialog = "Algum campo excedeu o tamanho máximo permitido.";
             isCadastrando = false;

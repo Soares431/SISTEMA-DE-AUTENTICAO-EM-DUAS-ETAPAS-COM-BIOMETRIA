@@ -123,9 +123,9 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Cadastrar Nova Câmera</h3><p>Adicione uma nova câmera ao sistema de monitoramento</p></div>
             <div class="modal-body space-y-sm">
-                <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" placeholder="Ex: Recepção - Entrada" @bind="novoNome" /></div>
-                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://usuario:senha@ip:porta/stream" @bind="novoRtsp" /></div>
-                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" placeholder="http://ip:porta/onvif/device_service" @bind="novoOnvif" /></div>
+                <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" maxlength="80" placeholder="Ex: Recepção - Entrada" @bind="novoNome" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://usuario:senha@ip:porta/stream" @bind="novoRtsp" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" placeholder="http://ip:porta/onvif/device_service" @bind="novoOnvif" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
                     <select class="form-select" @bind="novoTipo">
@@ -154,9 +154,9 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Editar Câmera</h3><p>Atualize os dados da câmera</p></div>
             <div class="modal-body space-y-sm">
-                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" @bind="editandoCamera.Nome" /></div>
-                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" @bind="editandoCamera.UrlRTSP" /></div>
-                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" @bind="editandoCamera.EnderecoONVIF" /></div>
+                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="80" @bind="editandoCamera.Nome" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" @bind="editandoCamera.UrlRTSP" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" @bind="editandoCamera.EnderecoONVIF" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
                     <select class="form-select" @bind="editandoCamera.Tipo">

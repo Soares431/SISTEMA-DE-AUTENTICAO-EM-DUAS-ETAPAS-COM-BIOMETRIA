@@ -216,9 +216,9 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Adicionar Câmera</h3><p>Configure uma nova câmera para este ambiente</p></div>
             <div class="modal-body space-y-sm">
-                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" placeholder="Ex: Câmera Principal" @bind="novaCameraNome" /></div>
-                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" placeholder="rtsp://..." @bind="novaCameraRtsp" /></div>
-                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" placeholder="http://ip:porta/onvif/device_service" @bind="novaCameraOnvif" /></div>
+                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="80" placeholder="Ex: Câmera Principal" @bind="novaCameraNome" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://..." @bind="novaCameraRtsp" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" placeholder="http://ip:porta/onvif/device_service" @bind="novaCameraOnvif" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
                     <select class="form-select" @bind="novaCameraTipo">

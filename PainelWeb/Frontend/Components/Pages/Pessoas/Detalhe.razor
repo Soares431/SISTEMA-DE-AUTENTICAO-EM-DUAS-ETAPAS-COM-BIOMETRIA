@@ -121,9 +121,21 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Editar Perfil</h3><p>Atualize as informacoes da pessoa</p></div>
             <div class="modal-body space-y-sm">
-                <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="100" @bind="editNome" /></div>
-                <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" maxlength="150" @bind="editEmail" /></div>
-                <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" maxlength="100" @bind="editCargo" /></div>
+                <div class="form-group">
+                    <label class="form-label">Nome</label>
+                    <input class="form-input" maxlength="100" onkeyup="window.maskTextoSeguro(this, 100)"
+                           @bind="editNome" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input class="form-input" type="email" maxlength="150"
+                           @bind="editEmail" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cargo</label>
+                    <input class="form-input" maxlength="100" onkeyup="window.maskTextoSeguro(this, 100)"
+                           @bind="editCargo" @bind:event="oninput" />
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showEdit = false">Cancelar</button>
@@ -283,9 +295,9 @@
         if (pessoa == null) return;
         if (string.IsNullOrWhiteSpace(editNome) || string.IsNullOrWhiteSpace(editEmail) || string.IsNullOrWhiteSpace(editCargo))
             return;
-        if (!System.Text.RegularExpressions.Regex.IsMatch(editEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        if (!FormatHelper.EmailValido(editEmail))
             return;
-        if (editNome.Length > 100 || editEmail.Length > 150 || editCargo.Length > 100)
+        if (editNome.Length > 100 || editCargo.Length > 100)
             return;
 
         pessoa.Nome = editNome;

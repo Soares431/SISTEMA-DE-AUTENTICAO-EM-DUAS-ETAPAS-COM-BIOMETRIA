@@ -97,7 +97,7 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Criar Novo Ambiente</h3><p>Adicione um novo ambiente ao sistema de controle de acesso</p></div>
             <div class="modal-body space-y-sm">
-                <div class="form-group"><label class="form-label">Nome do Ambiente</label><input class="form-input" placeholder="Ex: Sala de Reuniões" @bind="novoNome" /></div>
+                <div class="form-group"><label class="form-label">Nome do Ambiente</label><input class="form-input" maxlength="80" placeholder="Ex: Sala de Reuniões" @bind="novoNome" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Dispositivo T50</label>
                     @if (dispositivos.Any())

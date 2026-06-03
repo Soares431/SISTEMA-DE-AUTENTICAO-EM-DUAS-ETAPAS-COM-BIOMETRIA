@@ -114,6 +114,43 @@ window.baixarPdf = async function(url, token, filename) {
     }
 };
 
+// -----------------------------------------------------------------------------
+// Máscaras de input — formatação em tempo real conforme o usuário digita
+// Uso: <input @oninput="..." onkeyup="window.maskCpf(this)" /> + maxlength="14"
+// Blazor lê o input.value já formatado quando @bind dispara.
+// -----------------------------------------------------------------------------
+
+// CPF: 999.999.999-99 — limita a 11 dígitos
+window.maskCpf = function(el) {
+    var v = (el.value || '').replace(/\D/g, '').slice(0, 11);
+    var out = v;
+    if (v.length > 9)      out = v.substring(0,3) + '.' + v.substring(3,6) + '.' + v.substring(6,9) + '-' + v.substring(9);
+    else if (v.length > 6) out = v.substring(0,3) + '.' + v.substring(3,6) + '.' + v.substring(6);
+    else if (v.length > 3) out = v.substring(0,3) + '.' + v.substring(3);
+    el.value = out;
+};
+
+// Telefone: (99) 99999-9999 ou (99) 9999-9999 — limita 11 dígitos
+window.maskTelefone = function(el) {
+    var v = (el.value || '').replace(/\D/g, '').slice(0, 11);
+    var out = v;
+    if (v.length > 10)     out = '(' + v.substring(0,2) + ') ' + v.substring(2,7) + '-' + v.substring(7,11);
+    else if (v.length > 6) out = '(' + v.substring(0,2) + ') ' + v.substring(2,6) + '-' + v.substring(6);
+    else if (v.length > 2) out = '(' + v.substring(0,2) + ') ' + v.substring(2);
+    else if (v.length > 0) out = '(' + v;
+    el.value = out;
+};
+
+// Bloqueia caracteres não-numéricos em campos de ID/senha/código (6 dígitos)
+window.maskSomenteDigitos = function(el, max) {
+    el.value = (el.value || '').replace(/\D/g, '').slice(0, max || 11);
+};
+
+// Sanitiza nome/cargo — letras, acentos, espaço, apóstrofo e hífen
+window.maskTextoSeguro = function(el, max) {
+    el.value = (el.value || '').replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '').slice(0, max || 100);
+};
+
 window.downloadCsv = function(filename, csvContent) {
     var blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     var url  = URL.createObjectURL(blob);
