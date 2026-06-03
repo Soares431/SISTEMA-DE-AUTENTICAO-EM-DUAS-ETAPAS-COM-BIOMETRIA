@@ -136,6 +136,7 @@ Tempo estimado total: **1 dia útil** (com lista da seção 2 preenchida).
 | 1.5 | Criar pasta para gravações | Ex: `C:\5cta\cameras\` com permissão de leitura/escrita |
 | 1.6 | Definir variável de ambiente `CAMERA_BASE_PATH` | `[Environment]::SetEnvironmentVariable("CAMERA_BASE_PATH", "C:\5cta\cameras", "Machine")` |
 | 1.7 | Definir variáveis SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` no escopo `Machine` |
+| 1.8 | Instalar FFmpeg e definir `FFMPEG_PATH` | Baixar de gyan.dev, extrair em `C:\ffmpeg\`, `setx FFMPEG_PATH "C:\ffmpeg\bin\ffmpeg.exe"` |
 
 ### Fase 2 — Implantação
 
@@ -225,6 +226,7 @@ Devem ser setadas no escopo `Machine` (sobrevive a logoff):
 [Environment]::SetEnvironmentVariable("SMTP_USER",        "sistema@ebmail",         "Machine")
 [Environment]::SetEnvironmentVariable("SMTP_PASS",        "<senha>",                "Machine")
 [Environment]::SetEnvironmentVariable("CAMERA_BASE_PATH", "C:\5cta\cameras",        "Machine")
+[Environment]::SetEnvironmentVariable("FFMPEG_PATH",      "C:\ffmpeg\bin\ffmpeg.exe","Machine")
 ```
 
 Depois de setar, **reiniciar os serviços** para as variáveis serem lidas.
@@ -320,32 +322,33 @@ Recompilar Worker, reiniciar serviço, testar novamente.
 
 | Causa | Como resolver |
 |---|---|
-| Câmera não detecta movimento | Ajustar sensibilidade na câmera |
-| `CAMERA_BASE_PATH` errado | Verificar variável de ambiente |
-| Câmera salva arquivo em outro caminho | Criar symlink ou ajustar `CameraService` |
+| FFmpeg não está instalado/no PATH | Instalar FFmpeg, validar com `ffmpeg -version` ou setar `FFMPEG_PATH` |
+| `CAMERA_BASE_PATH` errado ou sem permissão de escrita | Verificar variável de ambiente e ACL do diretório |
+| RTSP da câmera inválido ou inacessível | Testar URL no VLC; validar firewall TCP 554 |
 | `TempoEsperaGravacaoSeg` muito curto | Aumentar (até 120s) no ambiente |
-| Arquivo não é `.mp4` | `CameraService.MonitorarNovoArquivo` filtra por `*.mp4` — ajustar para extensão real (`.avi`, `.h264`) |
 | Câmera marcada como "interna" + entrada negada | Comportamento correto, doc §5.11 |
+| Ambiente sem câmera cadastrada | Cadastrar câmera no ambiente via painel |
 
-### 5.4 Streaming RTSP
+### 5.4 Gravação e visualização das gravações
 
-**Estado atual:** botão "Ao Vivo" abre modal com placeholder estático. Não há streaming real.
+**Estado atual (a partir do Bloco D):** o sistema **grava sob demanda via FFmpeg** quando o T50M libera acesso. Não depende mais de DVR despejando arquivos em pasta — basta a câmera/DVR ter uma URL RTSP acessível.
 
-**Por que não dá pra fazer só com C#:** navegadores não suportam RTSP nativamente. Precisa de proxy RTSP → HLS/WebRTC rodando ao lado do sistema.
+**Como funciona:**
+1. Pessoa libera acesso no T50M → `EventProcessor` aciona `CameraService.GravarTrechoRTSP(ambienteId, timestamp, duracao)`
+2. FFmpeg conecta no RTSP da câmera do ambiente e captura `TempoEsperaGravacaoSeg` segundos
+3. Arquivo salvo em `{CAMERA_BASE_PATH}/ambiente_{id}/acesso_{yyyyMMdd_HHmmss}.mp4`
+4. `TentativaAcesso.GravacaoPath` recebe o caminho
+5. Painel exibe player HTML5 in-app (modal) com a gravação via `GET /api/gravacoes/{id}`
 
-**Como entregar (3 opções, do mais simples ao mais robusto):**
+**Pré-requisito de servidor:** FFmpeg instalado. Em Windows:
+```powershell
+# Baixar de https://www.gyan.dev/ffmpeg/builds/ (release essentials)
+# Extrair em C:\ffmpeg\
+[Environment]::SetEnvironmentVariable("FFMPEG_PATH", "C:\ffmpeg\bin\ffmpeg.exe", "Machine")
+# OU adicionar C:\ffmpeg\bin ao PATH e deixar FFMPEG_PATH vazio
+```
 
-1. **VLC externo (rápido, ruim)**: admin clica "Ao Vivo" e o painel mostra a URL RTSP que ele copia e cola no VLC. Sem integração real.
-
-2. **FFmpeg + HLS (recomendado)**:
-   - Instalar FFmpeg no servidor
-   - Script PowerShell que para cada câmera ativa roda: `ffmpeg -i rtsp://... -c:v copy -f hls -hls_time 4 -hls_list_size 5 C:\5cta\hls\camera_{id}\index.m3u8`
-   - Configurar IIS ou nginx para servir `/hls/camera_{id}/index.m3u8`
-   - No painel substituir o placeholder por `<video controls><source src="/hls/camera_{id}/index.m3u8" type="application/vnd.apple.mpegurl"></video>` + biblioteca [hls.js](https://github.com/video-dev/hls.js)
-
-3. **nginx-rtmp (mais robusto)**: nginx compilado com módulo RTMP atua como bridge RTSP → HLS automático. Documentação extensa online.
-
-> Recomendação: combinar com cliente que vamos entregar **opção 1** no sign-off + **opção 2 documentada** para ser implementada em uma manutenção posterior.
+**Streaming ao vivo (placeholder):** o botão "Ao Vivo" das câmeras ainda mostra placeholder. Para streaming live (não só gravações), seria necessário FFmpeg em loop convertendo RTSP→HLS + hls.js no painel. Documentado como pendência de manutenção futura.
 
 ### 5.5 Email Zimbra falha
 

@@ -1,11 +1,16 @@
 using InfraestruturaBloco1.Services;
 using Microsoft.EntityFrameworkCore;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 using Xunit;
 
 namespace BiometricAcess.Worker.Tests
 {
+    // Testes do novo CameraService (Bloco D — FFmpeg sob demanda).
+    // Os testes não exercitam o FFmpeg em si — apenas os caminhos de guard sem hardware:
+    // ambiente sem câmera, câmera sem RTSP. O comportamento real do FFmpeg precisa
+    // ser validado em integração (com hardware) e está fora deste suite.
     public class CameraServiceTests : IDisposable
     {
         private readonly string _tempDir;
@@ -36,67 +41,48 @@ namespace BiometricAcess.Worker.Tests
         {
             var logRepo = new LogAdminImplemetions(db);
             var cameraRepo = new CameraImplemetions(db);
-            return new CameraService(logRepo, cameraRepo, _tempDir);
+            // FFMPEG_PATH inválido — testes não devem chegar a invocar o ffmpeg
+            return new CameraService(logRepo, cameraRepo, _tempDir, "ffmpeg-inexistente");
         }
 
         [Fact]
-        public async Task MonitorarNovoArquivo_DiretorioInexistente_RetornaNull()
+        public async Task GravarTrechoRTSP_AmbienteSemCamera_RetornaNull()
         {
             using var db = CriarContexto();
             var service = CriarService(db);
-            // Ambiente 999 nunca teve diretório criado
+
+            var path = await service.GravarTrechoRTSP(999, DateTime.UtcNow, duracaoSeg: 1);
+            Assert.Null(path);
+        }
+
+        [Fact]
+        public async Task GravarTrechoRTSP_CameraSemRtsp_RetornaNull()
+        {
+            using var db = CriarContexto();
+            db.Ambientes.Add(new Ambiente { Id = 1, Nome = "Amb1", DispositivoT50Id = 1 });
+            db.Cameras.Add(new Camera { Id = 10, Nome = "C", UrlRTSP = "", Tipo = "interna", AmbienteId = 1, Ativa = true });
+            db.SaveChanges();
+
+            var service = CriarService(db);
+            var path = await service.GravarTrechoRTSP(1, DateTime.UtcNow, duracaoSeg: 1);
+            Assert.Null(path);
+        }
+
+        [Fact]
+        public void FfmpegDisponivel_ComBinarioInexistente_RetornaFalse()
+        {
+            using var db = CriarContexto();
+            var service = CriarService(db);
+            Assert.False(service.FfmpegDisponivel());
+        }
+
+        [Fact]
+        public async Task MonitorarNovoArquivo_WrapperLegado_DelegaParaGravarTrecho()
+        {
+            using var db = CriarContexto();
+            var service = CriarService(db);
+            // Ambiente inexistente → null, mesmo via wrapper antigo
             var path = await service.MonitorarNovoArquivo(999, DateTime.UtcNow, tempoEsperaSeg: 1);
-            Assert.Null(path);
-        }
-
-        [Fact]
-        public async Task MonitorarNovoArquivo_QuandoArquivoExiste_RetornaPath()
-        {
-            using var db = CriarContexto();
-            var service = CriarService(db);
-
-            var ambienteId = 42;
-            var ambDir = Path.Combine(_tempDir, $"ambiente_{ambienteId}");
-            Directory.CreateDirectory(ambDir);
-            var arquivo = Path.Combine(ambDir, "video1.mp4");
-            await File.WriteAllBytesAsync(arquivo, new byte[] { 1, 2, 3 });
-
-            var timestamp = DateTime.UtcNow.AddSeconds(-5);
-            var path = await service.MonitorarNovoArquivo(ambienteId, timestamp, tempoEsperaSeg: 2);
-
-            Assert.NotNull(path);
-            Assert.Equal(arquivo, path);
-        }
-
-        [Fact]
-        public async Task MonitorarNovoArquivo_TimeoutSemArquivo_RetornaNull()
-        {
-            using var db = CriarContexto();
-            var service = CriarService(db);
-
-            var ambienteId = 43;
-            Directory.CreateDirectory(Path.Combine(_tempDir, $"ambiente_{ambienteId}"));
-
-            var path = await service.MonitorarNovoArquivo(ambienteId, DateTime.UtcNow, tempoEsperaSeg: 1);
-            Assert.Null(path);
-        }
-
-        [Fact]
-        public async Task MonitorarNovoArquivo_IgnoraArquivosAntigos()
-        {
-            using var db = CriarContexto();
-            var service = CriarService(db);
-
-            var ambienteId = 44;
-            var ambDir = Path.Combine(_tempDir, $"ambiente_{ambienteId}");
-            Directory.CreateDirectory(ambDir);
-            var antigo = Path.Combine(ambDir, "old.mp4");
-            await File.WriteAllBytesAsync(antigo, new byte[] { 0 });
-            // Marca o arquivo como criado 1h atrás
-            File.SetCreationTimeUtc(antigo, DateTime.UtcNow.AddHours(-1));
-
-            // Procura arquivos criados a partir de "agora" — o antigo não deve qualificar
-            var path = await service.MonitorarNovoArquivo(ambienteId, DateTime.UtcNow, tempoEsperaSeg: 1);
             Assert.Null(path);
         }
     }

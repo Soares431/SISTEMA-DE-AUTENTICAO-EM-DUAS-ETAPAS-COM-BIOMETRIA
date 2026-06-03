@@ -129,6 +129,35 @@
     </div>
 </div>
 
+@if (gravacaoAberta.HasValue)
+{
+    <div class="modal-overlay" @onclick="FecharGravacao">
+        <div class="modal" style="max-width:720px;width:90%" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Gravação da tentativa #@gravacaoAberta</h3>
+                <p>Visualização do momento do acesso</p>
+            </div>
+            <div class="modal-body">
+                @if (gravacaoCarregando)
+                {
+                    <div class="loading-overlay" style="position:relative;height:300px;background:#000;border-radius:8px">
+                        <div class="spinner spinner-lg"></div>
+                        <div class="loading-text">Carregando gravação…</div>
+                    </div>
+                }
+                else if (gravacaoErro != null)
+                {
+                    <div class="alert alert-danger">@gravacaoErro</div>
+                }
+                <video id="player-gravacao" controls autoplay style="width:100%;background:#000;border-radius:8px;@(gravacaoCarregando ? "display:none" : "")"></video>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" @onclick="FecharGravacao">Fechar</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string search = "";
     private string statusFilter = "todos";
@@ -182,10 +211,29 @@
 
     private void LimparDatas() { dataInicio = null; dataFim = null; }
 
+    private int? gravacaoAberta;
+    private bool gravacaoCarregando;
+    private string? gravacaoErro;
+
     private async Task AbrirGravacao(int tentativaId)
     {
+        gravacaoAberta = tentativaId;
+        gravacaoCarregando = true;
+        gravacaoErro = null;
+        StateHasChanged();
+
         var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("abrirGravacao", apiUrl, tentativaId, TokenStore.Token);
+        await Task.Yield(); // garante o render do modal antes do JS interop
+        var ok = await JS.InvokeAsync<bool>("carregarVideoNoElemento", apiUrl, tentativaId, TokenStore.Token, "player-gravacao");
+        if (!ok) gravacaoErro = "Não foi possível carregar a gravação.";
+        gravacaoCarregando = false;
+    }
+
+    private async Task FecharGravacao()
+    {
+        await JS.InvokeVoidAsync("liberarVideoBlob", "player-gravacao");
+        gravacaoAberta = null;
+        gravacaoErro = null;
     }
 
     private async Task ExportarPdf()

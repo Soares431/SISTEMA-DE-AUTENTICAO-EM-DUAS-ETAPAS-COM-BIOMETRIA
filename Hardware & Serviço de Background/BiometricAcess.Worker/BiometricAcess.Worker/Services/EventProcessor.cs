@@ -125,7 +125,7 @@ namespace BiometricAcess.Worker.Services
             var tentativa = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
 
             // HW-16 — aguarda gravação da câmera; I5: usa TempoEsperaGravacaoSeg do ambiente
-            var gravacaoPath = await _cameraService.MonitorarNovoArquivo(ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
+            var gravacaoPath = await _cameraService.GravarTrechoRTSP(ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
             if (gravacaoPath != null)
             {
                 // C3: usa Atualizar para evitar registro duplicado (antes chamava Registrar novamente)

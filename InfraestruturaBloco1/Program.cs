@@ -30,7 +30,8 @@ builder.Services.AddScoped<CameraService>(provider =>
     new CameraService(
         provider.GetRequiredService<ILogAdminRepository>(),
         provider.GetRequiredService<ICameraRepository>(),
-        builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes"
+        builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes",
+        Environment.GetEnvironmentVariable("FFMPEG_PATH")
     ));
 // Serviços do Bloco 4 — Relatórios
 builder.Services.AddScoped<RelatorioAmbienteService>();

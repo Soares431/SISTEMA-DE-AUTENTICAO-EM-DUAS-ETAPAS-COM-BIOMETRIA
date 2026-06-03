@@ -98,7 +98,7 @@ namespace BiometricAcess.Worker.Simulador
                 var cameraService = scope.ServiceProvider.GetService<CameraService>();
                 if (cameraService != null)
                 {
-                    var gravacaoPath = await cameraService.MonitorarNovoArquivo(
+                    var gravacaoPath = await cameraService.GravarTrechoRTSP(
                         ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
                     if (gravacaoPath != null)
                     {

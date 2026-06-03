@@ -92,6 +92,41 @@ window.abrirGravacao = async function(apiBaseUrl, tentativaId, token) {
     }
 };
 
+// Carrega gravação como blob URL e injeta num <video> existente.
+// Usado pelo player modal in-app (Histórico.razor).
+window.carregarVideoNoElemento = async function(apiBaseUrl, tentativaId, token, videoElementId) {
+    try {
+        var video = document.getElementById(videoElementId);
+        if (!video) return false;
+        var resp = await fetch(apiBaseUrl + 'api/gravacoes/' + tentativaId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+            video.poster = '';
+            return false;
+        }
+        var blob = await resp.blob();
+        // Revoga URL anterior pra evitar leak
+        if (video.dataset.blobUrl) URL.revokeObjectURL(video.dataset.blobUrl);
+        var url = URL.createObjectURL(blob);
+        video.dataset.blobUrl = url;
+        video.src = url;
+        return true;
+    } catch (e) {
+        console.error('Erro ao carregar vídeo:', e);
+        return false;
+    }
+};
+
+window.liberarVideoBlob = function(videoElementId) {
+    var video = document.getElementById(videoElementId);
+    if (video && video.dataset.blobUrl) {
+        URL.revokeObjectURL(video.dataset.blobUrl);
+        delete video.dataset.blobUrl;
+        video.src = '';
+    }
+};
+
 // Baixa um arquivo PDF autenticado e dispara download no navegador.
 window.baixarPdf = async function(url, token, filename) {
     try {

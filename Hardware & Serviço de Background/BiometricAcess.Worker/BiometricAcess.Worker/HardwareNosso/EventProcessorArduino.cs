@@ -178,7 +178,7 @@ public class EventProcessorArduino : IEventProcessor
         // HW-16 — aguarda gravação da câmera em entradas liberadas (doc_tecnica §5.11)
         if (_cameraService != null)
         {
-            var gravacaoPath = await _cameraService.MonitorarNovoArquivo(
+            var gravacaoPath = await _cameraService.GravarTrechoRTSP(
                 ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
             if (gravacaoPath != null)
             {

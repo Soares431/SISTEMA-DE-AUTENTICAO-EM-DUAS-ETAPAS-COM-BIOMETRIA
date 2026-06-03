@@ -40,7 +40,8 @@ builder.Services.AddScoped<CameraService>(sp =>
     new CameraService(
         sp.GetRequiredService<ILogAdminRepository>(),
         sp.GetRequiredService<ICameraRepository>(),
-        Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras"
+        Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras",
+        Environment.GetEnvironmentVariable("FFMPEG_PATH")
     ));
 
 // ═══════════════════════════════════════════════════════════════
