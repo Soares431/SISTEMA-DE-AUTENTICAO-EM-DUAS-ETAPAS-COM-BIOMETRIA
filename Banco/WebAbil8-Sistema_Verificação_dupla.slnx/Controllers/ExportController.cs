@@ -17,6 +17,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
         private readonly IAmbienteRepository _ambienteRepo;
         private readonly IPessoaRepository _pessoaRepo;
         private readonly IAmbientePessoaRepository _ambientePessoaRepo;
+        private readonly IAdministradorRepository _adminRepo;
 
         static ExportController()
         {
@@ -29,13 +30,15 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             ILogAdminRepository logRepo,
             IAmbienteRepository ambienteRepo,
             IPessoaRepository pessoaRepo,
-            IAmbientePessoaRepository ambientePessoaRepo)
+            IAmbientePessoaRepository ambientePessoaRepo,
+            IAdministradorRepository adminRepo)
         {
             _tentativaRepo = tentativaRepo;
             _logRepo = logRepo;
             _ambienteRepo = ambienteRepo;
             _pessoaRepo = pessoaRepo;
             _ambientePessoaRepo = ambientePessoaRepo;
+            _adminRepo = adminRepo;
         }
 
         // GET /api/export/historico.pdf
@@ -80,6 +83,50 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             }).ToList();
 
             return PdfFile("Logs de Auditoria", cabecalhos, linhas, "logs.pdf");
+        }
+
+        // GET /api/export/pessoas.pdf
+        [HttpGet("pessoas.pdf")]
+        public async Task<IActionResult> PessoasPdf()
+        {
+            var dados = (await _pessoaRepo.ListarTodos())
+                .OrderBy(p => p.Nome)
+                .ToList();
+
+            var cabecalhos = new List<string> { "Nome Completo", "CPF", "Cargo" };
+            var linhas = dados.Select(p => new List<string>
+            {
+                p.Nome ?? "-",
+                FormatarCpf(p.Cpf),
+                p.Cargo ?? "-"
+            }).ToList();
+
+            return PdfFile("Pessoas Cadastradas", cabecalhos, linhas, "pessoas.pdf");
+        }
+
+        // GET /api/export/admins.pdf
+        [HttpGet("admins.pdf")]
+        public IActionResult AdminsPdf()
+        {
+            var dados = _adminRepo.ListarTodos();
+            var cabecalhos = new List<string> { "Nome Completo", "Login", "Cargo", "Email" };
+            var linhas = dados.Select(a => new List<string>
+            {
+                a.NomeCompleto ?? "-",
+                a.Login ?? "-",
+                a.Cargo ?? "-",
+                a.Email ?? "-"
+            }).ToList();
+
+            return PdfFile("Administradores", cabecalhos, linhas, "admins.pdf");
+        }
+
+        private static string FormatarCpf(string? cpf)
+        {
+            if (string.IsNullOrWhiteSpace(cpf)) return "-";
+            var digitos = new string(cpf.Where(char.IsDigit).ToArray());
+            if (digitos.Length != 11) return cpf;
+            return $"{digitos.Substring(0,3)}.{digitos.Substring(3,3)}.{digitos.Substring(6,3)}-{digitos.Substring(9,2)}";
         }
 
         // GET /api/export/relatorio-ambiente/{ambienteId}.pdf?de=...&ate=...

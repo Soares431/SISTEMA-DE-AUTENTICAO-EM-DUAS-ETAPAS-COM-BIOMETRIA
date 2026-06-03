@@ -4,11 +4,17 @@
 @inject ISenhaRepository SenhaRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject IJSRuntime JS
+@inject IConfiguration Config
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Pessoas</h1><p class="text-muted">Gerencie pessoas e permissoes de acesso</p></div>
-        <button class="btn btn-primary" @onclick="() => showDialog = true"><Icon Name="plus" Size="16" /> Nova Pessoa</button>
+        <div class="flex gap-2">
+            <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> CSV</button>
+            <button class="btn btn-outline" @onclick="ExportarPdf"><Icon Name="file-text" Size="16" /> PDF</button>
+            <button class="btn btn-primary" @onclick="() => showDialog = true"><Icon Name="plus" Size="16" /> Nova Pessoa</button>
+        </div>
     </div>
 
     <div class="flex gap-4" style="flex-wrap: wrap;">
@@ -79,6 +85,13 @@
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Cadastrar Nova Pessoa</h3><p>Adicione uma nova pessoa ao sistema de controle de acesso</p></div>
             <div class="modal-body space-y-sm">
+                @if (isCadastrando)
+                {
+                    <div class="loading-overlay">
+                        <div class="spinner spinner-lg"></div>
+                        <div class="loading-text">Cadastrando pessoa, gerando senha e ID…</div>
+                    </div>
+                }
                 @if (senhaMostrada != null)
                 {
                     <div class="alert alert-success">
@@ -138,9 +151,17 @@
                 }
                 else
                 {
-                    <button class="btn btn-outline" @onclick="FecharDialog">Cancelar</button>
+                    <button class="btn btn-outline" @onclick="FecharDialog" disabled="@isCadastrando">Cancelar</button>
                     <button class="btn btn-primary" @onclick="HandleCadastrar" disabled="@isCadastrando">
-                        @(isCadastrando ? "Cadastrando..." : "Cadastrar")
+                        @if (isCadastrando)
+                        {
+                            <span class="spinner"></span>
+                            <span>Cadastrando…</span>
+                        }
+                        else
+                        {
+                            <span>Cadastrar</span>
+                        }
                     </button>
                 }
             </div>
@@ -298,5 +319,31 @@
         {
             isCadastrando = false;
         }
+    }
+
+    private async Task ExportarPdf()
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/pessoas.pdf", TokenStore.Token, "pessoas.pdf");
+    }
+
+    private async Task ExportarCsv()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Nome Completo,CPF,Cargo");
+        foreach (var p in Sorted)
+        {
+            var cpfFmt = FormatarCpf(p.Cpf);
+            sb.AppendLine($"\"{p.Nome}\",\"{cpfFmt}\",\"{p.Cargo}\"");
+        }
+        await JS.InvokeVoidAsync("downloadCsv", $"pessoas_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+    }
+
+    private static string FormatarCpf(string? cpf)
+    {
+        if (string.IsNullOrWhiteSpace(cpf)) return "";
+        var d = new string(cpf.Where(char.IsDigit).ToArray());
+        if (d.Length != 11) return cpf;
+        return $"{d.Substring(0,3)}.{d.Substring(3,3)}.{d.Substring(6,3)}-{d.Substring(9,2)}";
     }
 }

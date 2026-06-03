@@ -41,7 +41,10 @@
                     </div>
                     <div class="mt-6 pt-6 border-t space-y-xs">
                         <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
-                        <button class="btn btn-outline btn-block" @onclick="HandleReenviarSenha" disabled="@isReenviando"><Icon Name="mail" Size="16" /> @(isReenviando ? "Reenviando..." : "Reenviar Senha")</button>
+                        <button class="btn btn-outline btn-block" @onclick="HandleReenviarSenha" disabled="@isReenviando">
+                            @if (isReenviando) { <span class="spinner"></span><span>Reenviando…</span> }
+                            else { <Icon Name="mail" Size="16" /> <span>Reenviar ID + Senha</span> }
+                        </button>
                         <button class="btn btn-outline btn-block" @onclick="() => showConfirmReset = true"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
                         @if (pessoa.Status == "ativo")
                         {
@@ -252,9 +255,9 @@
             var client = HttpClientFactory.CreateClient("BancoAPI");
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", TokenStore.Token);
-            var resp = await client.PostAsync($"api/person/{pessoa.Id}/reenviar-senha", null);
+            var resp = await client.PostAsync($"api/person/{pessoa.Id}/reenviar-credenciais", null);
             if (resp.IsSuccessStatusCode)
-                await JS.InvokeVoidAsync("alert", "Senha reenviada. Verifique o email do usuário (ou o console do servidor caso SMTP esteja indisponível).");
+                await JS.InvokeVoidAsync("alert", "Credenciais (ID + senha) reenviadas. Verifique o email do usuário (ou o console do servidor caso SMTP esteja indisponível).");
             else
                 await JS.InvokeVoidAsync("alert", $"Falha ao reenviar (HTTP {(int)resp.StatusCode}).");
         }

@@ -86,9 +86,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return NoContent();
         }
 
-        // INT-02 — Reenvio de senha por email (descriptografa senhaClear + MailKit/Zimbra)
+        // INT-02 — Reenvio de credenciais (ID + senha) por email
+        // Aceita os dois paths: /reenviar-senha (legado) e /reenviar-credenciais (novo)
         [HttpPost("{id}/reenviar-senha")]
-        public async Task<IActionResult> ReenviarSenha(long id)
+        [HttpPost("{id}/reenviar-credenciais")]
+        public async Task<IActionResult> ReenviarCredenciais(long id)
         {
             var pessoa = await _pessoaRepository.BuscarPorId(id);
             if (pessoa == null) return NotFound();
@@ -108,7 +110,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             }
 
             var corpoHtml = $@"<h2>Olá, {pessoa.Nome}!</h2>
-<p>Sua senha de acesso ao sistema é: <strong>{senhaPlain}</strong></p>
+<p>Seguem suas credenciais de acesso ao sistema do 5º CTA:</p>
+<table style=""border-collapse:collapse"">
+<tr><td style=""padding:6px 12px""><strong>ID do usuário (T50):</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{pessoa.Id}</td></tr>
+<tr><td style=""padding:6px 12px""><strong>Senha provisória:</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{senhaPlain}</td></tr>
+</table>
+<p>No terminal T50, digite o <strong>ID</strong> seguido da <strong>senha</strong> para liberar o acesso.</p>
 <p>Não compartilhe com terceiros.</p>";
 
             var fallback = false;
@@ -122,14 +129,14 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 if (string.IsNullOrEmpty(host) || !int.TryParse(portStr, out var port))
                 {
                     fallback = true;
-                    Console.WriteLine($"[FALLBACK] SMTP não configurado. Senha de {pessoa.Email}: {senhaPlain}");
+                    Console.WriteLine($"[FALLBACK] SMTP não configurado. Credenciais de {pessoa.Email}: ID={pessoa.Id} Senha={senhaPlain}");
                 }
                 else
                 {
                     var msg = new MimeMessage();
                     msg.From.Add(new MailboxAddress("Sistema 5º CTA", user ?? "noreply@5cta.local"));
                     msg.To.Add(new MailboxAddress(pessoa.Nome, pessoa.Email));
-                    msg.Subject = "Reenvio de Senha — 5º CTA";
+                    msg.Subject = "Credenciais de acesso — 5º CTA";
                     msg.Body = new TextPart("html") { Text = corpoHtml };
 
                     using var smtp = new SmtpClient();
@@ -143,15 +150,15 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             {
                 fallback = true;
                 _logger.LogWarning(ex, "Falha SMTP — usando fallback console para pessoa {id}", id);
-                Console.WriteLine($"[FALLBACK] Erro SMTP. Senha de {pessoa.Email}: {senhaPlain}");
+                Console.WriteLine($"[FALLBACK] Erro SMTP. Credenciais de {pessoa.Email}: ID={pessoa.Id} Senha={senhaPlain}");
             }
 
             // Registra auditoria
             var adminIdClaim = User.FindFirst("adminId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (int.TryParse(adminIdClaim, out var adminId))
-                _logRepository.Registrar(adminId, "ReenvioSenha", "Pessoa", (int)id);
+                _logRepository.Registrar(adminId, "ReenvioCredenciais", "Pessoa", (int)id);
 
-            return Ok(new { sucesso = true, fallback, mensagem = fallback ? "SMTP indisponível — senha exibida no console do servidor." : "Email enviado." });
+            return Ok(new { sucesso = true, fallback, mensagem = fallback ? "SMTP indisponível — credenciais exibidas no console do servidor." : "Email enviado." });
         }
     }
 

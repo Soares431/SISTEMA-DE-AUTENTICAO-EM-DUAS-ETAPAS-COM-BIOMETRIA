@@ -72,6 +72,16 @@ builder.Services.AddScoped<LimparDadosExpiradosJob>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// CORS — permite que o Frontend (porta 8080) faça fetch autenticado para esta API (porta 5018).
+// Sem isso, downloads de PDF feitos pelo JS interop falham com erro CORS no browser.
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(p => p
+        .WithOrigins("http://localhost:8080")
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 // ✅ Build() APENAS aqui, depois de todos os serviços registrados
 var app = builder.Build();
 
@@ -206,6 +216,7 @@ using (var scope = app.Services.CreateScope())
 // UseHttpsRedirection removido — Int1 é API interna (localhost apenas).
 // O redirect HTTP→HTTPS fazia o HttpClient do Int3 falhar no certificado dev.
 
+app.UseCors();
 app.UseAuthentication(); // ← adicionado
 app.UseAuthorization();
 

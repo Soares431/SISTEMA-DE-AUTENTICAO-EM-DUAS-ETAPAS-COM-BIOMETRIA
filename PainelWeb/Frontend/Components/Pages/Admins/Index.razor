@@ -3,12 +3,18 @@
 @inject IAdministradorRepository AdminRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject IJSRuntime JS
+@inject IConfiguration Config
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
         <div><h1 class="text-2xl font-bold">Administradores</h1><p class="text-muted">Gestão de usuários administrativos do sistema</p></div>
-        <p class="text-muted text-sm"><Icon Name="info" Size="14" /> Criação de administradores apenas via acesso direto ao banco de dados</p>
+        <div class="flex gap-2 items-center">
+            <button class="btn btn-outline" @onclick="ExportarCsv"><Icon Name="download" Size="16" /> CSV</button>
+            <button class="btn btn-outline" @onclick="ExportarPdf"><Icon Name="file-text" Size="16" /> PDF</button>
+        </div>
     </div>
+    <p class="text-muted text-sm"><Icon Name="info" Size="14" /> Criação de administradores apenas via acesso direto ao banco de dados</p>
 
     <div class="flex gap-4" style="flex-wrap: wrap;">
         <div class="input-icon-wrapper flex-1" style="min-width: 200px;">
@@ -94,4 +100,21 @@
 
     private string SortIcon(string coluna) =>
         sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
+
+    private async Task ExportarPdf()
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/admins.pdf", TokenStore.Token, "admins.pdf");
+    }
+
+    private async Task ExportarCsv()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Nome Completo,Login,Cargo,Email");
+        foreach (var a in Sorted)
+        {
+            sb.AppendLine($"\"{a.NomeCompleto}\",\"{a.Login}\",\"{a.Cargo ?? ""}\",\"{a.Email ?? ""}\"");
+        }
+        await JS.InvokeVoidAsync("downloadCsv", $"admins_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+    }
 }

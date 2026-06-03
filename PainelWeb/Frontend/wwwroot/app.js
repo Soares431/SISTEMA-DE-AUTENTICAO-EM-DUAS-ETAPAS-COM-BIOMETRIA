@@ -195,10 +195,10 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
     _permitidos = Array.isArray(permitidosData) ? permitidosData.slice() : new Array(24).fill(0);
     _negados    = Array.isArray(negadosData)    ? negadosData.slice()    : new Array(24).fill(0);
 
-    // 24 rótulos — 00:00 até 23:00
+    // 24 rótulos — 00 até 23
     var labels = [];
     for (var i = 0; i < 24; i++) {
-        labels.push(i.toString().padStart(2, '0') + ':00');
+        labels.push(i.toString().padStart(2, '0'));
     }
 
     _dashboardChart = new Chart(ctx, {
@@ -272,10 +272,9 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
                     callbacks: {
                         // Usa _horaAtual (módulo-level) — sempre atualizada pelo updateDashboardChart
                         title: function(items) {
-                            var h   = parseInt(items[0].label, 10);
-                            var fim = (h + 1 < 24 ? (h + 1) : 0).toString().padStart(2, '0') + ':59';
+                            var h = parseInt(items[0].label, 10);
                             var agora = h === _horaAtual ? '   ◄ agora' : '';
-                            return items[0].label + ' → ' + fim + agora;
+                            return 'Hora ' + items[0].label + 'h' + agora;
                         },
                         label: function(item) {
                             var idx   = item.dataIndex;
@@ -302,9 +301,8 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
                         color: textMuted,
                         maxRotation: 0,
                         autoSkip: false,
-                        font: { size: 11 },
-                        // Rótulo a cada 3 horas: 00:00, 03:00, 06:00 ... 21:00
-                        callback: function(val, idx) { return idx % 3 === 0 ? labels[idx] : ''; }
+                        font: { size: 11 }
+                        // Mostra todas as 24 horas (00, 01, ..., 23) — Chart.js pula automaticamente se faltar espaço
                     }
                 },
                 y: {
