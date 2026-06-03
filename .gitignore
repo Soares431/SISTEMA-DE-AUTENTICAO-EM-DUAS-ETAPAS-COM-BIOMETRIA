@@ -6,6 +6,10 @@
 # Arquivo de contexto local para ClaudeCode — não versionar
 CLAUDE.md
 
+# appsettings.Production.json NÃO entra no repo (contém JwtKey, AesKey, etc).
+# Use os templates appsettings.Production.template.json como base.
+appsettings.Production.json
+
 # Pastas de build temporário geradas pelo ClaudeCode para verificação
 **/Tempbuild_int*_check/
 

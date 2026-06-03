@@ -1,0 +1,132 @@
+@page "/minha-conta"
+@using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@inject IAdministradorRepository AdminRepo
+@inject ILogAdminRepository LogRepo
+@inject ITokenStore TokenStore
+@inject NavigationManager Nav
+
+<div class="space-y" style="max-width:600px;margin:0 auto">
+    <div>
+        <h1 class="text-2xl font-bold">Minha Conta</h1>
+        <p class="text-muted">Altere a senha do administrador @(admin?.NomeCompleto ?? "")</p>
+    </div>
+
+    @if (admin == null)
+    {
+        <p class="text-muted">Carregando…</p>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><Icon Name="user" Size="20" /> Dados</div>
+            </div>
+            <div class="card-content">
+                <dl class="space-y-sm">
+                    <div><dt class="text-muted text-sm">Login</dt><dd class="font-mono">@admin.Login</dd></div>
+                    <div><dt class="text-muted text-sm">Nome</dt><dd>@admin.NomeCompleto</dd></div>
+                    <div><dt class="text-muted text-sm">Cargo</dt><dd>@(admin.Cargo ?? "-")</dd></div>
+                    <div><dt class="text-muted text-sm">Email</dt><dd>@(admin.Email ?? "-")</dd></div>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><Icon Name="key" Size="20" /> Alterar Senha</div>
+                <p class="card-description">Por segurança, confirme a senha atual antes de definir uma nova.</p>
+            </div>
+            <div class="card-content">
+                @if (erro != null) { <div class="alert alert-danger mb-4">@erro</div> }
+                @if (sucesso != null) { <div class="alert alert-success mb-4">@sucesso</div> }
+                <div class="space-y-sm">
+                    <div class="form-group">
+                        <label class="form-label">Senha Atual *</label>
+                        <input class="form-input" type="password" maxlength="64"
+                               @bind="senhaAtual" @bind:event="oninput" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nova Senha *</label>
+                        <input class="form-input" type="password" maxlength="64"
+                               @bind="novaSenha" @bind:event="oninput" />
+                        <p class="text-xs text-muted">Mínimo 6 caracteres.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirmar Nova Senha *</label>
+                        <input class="form-input" type="password" maxlength="64"
+                               @bind="confirmarSenha" @bind:event="oninput" />
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-primary" @onclick="HandleAlterar" disabled="@isSalvando">
+                            @if (isSalvando) { <span class="spinner"></span><span>Salvando…</span> }
+                            else { <span>Alterar Senha</span> }
+                        </button>
+                        <button class="btn btn-outline" @onclick='() => Nav.NavigateTo("/")' disabled="@isSalvando">Voltar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private Administrador? admin;
+    private string senhaAtual = "";
+    private string novaSenha = "";
+    private string confirmarSenha = "";
+    private string? erro;
+    private string? sucesso;
+    private bool isSalvando;
+
+    protected override void OnInitialized()
+    {
+        admin = AdminRepo.BuscarPorId(TokenStore.AdminId);
+        if (admin == null) Nav.NavigateTo("/login");
+    }
+
+    private void HandleAlterar()
+    {
+        erro = null;
+        sucesso = null;
+        if (admin == null) return;
+
+        if (string.IsNullOrEmpty(senhaAtual) || string.IsNullOrEmpty(novaSenha) || string.IsNullOrEmpty(confirmarSenha))
+        {
+            erro = "Preencha todos os campos."; return;
+        }
+        if (!BCrypt.Net.BCrypt.Verify(senhaAtual, admin.SenhaHash))
+        {
+            erro = "Senha atual incorreta."; return;
+        }
+        if (novaSenha.Length < 6)
+        {
+            erro = "A nova senha deve ter pelo menos 6 caracteres."; return;
+        }
+        if (novaSenha == senhaAtual)
+        {
+            erro = "A nova senha precisa ser diferente da atual."; return;
+        }
+        if (novaSenha != confirmarSenha)
+        {
+            erro = "A confirmação não bate com a nova senha."; return;
+        }
+
+        isSalvando = true;
+        try
+        {
+            admin.SenhaHash = BCrypt.Net.BCrypt.HashPassword(novaSenha, workFactor: 10);
+            AdminRepo.Atualizar(admin);
+            LogRepo.Registrar(TokenStore.AdminId, "TrocarSenha", "Administrador", admin.Id);
+            sucesso = "Senha alterada com sucesso.";
+            senhaAtual = novaSenha = confirmarSenha = "";
+        }
+        catch (Exception ex)
+        {
+            erro = "Erro ao salvar: " + ex.Message;
+        }
+        finally
+        {
+            isSalvando = false;
+        }
+    }
+}

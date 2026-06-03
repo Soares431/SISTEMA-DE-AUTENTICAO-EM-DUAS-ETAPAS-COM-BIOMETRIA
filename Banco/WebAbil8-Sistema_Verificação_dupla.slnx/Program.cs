@@ -273,6 +273,27 @@ using (var scope = app.Services.CreateScope())
 // UseHttpsRedirection removido — Int1 é API interna (localhost apenas).
 // O redirect HTTP→HTTPS fazia o HttpClient do Int3 falhar no certificado dev.
 
+// Diagnóstico de variáveis críticas de ambiente — loga warning no startup se faltarem.
+// Não bloqueia a subida do serviço; só facilita troubleshooting na entrega ao cliente.
+{
+    var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+
+    string? VarVazia(string nome) => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(nome)) ? nome : null;
+    var smtpFaltando = new[] { "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS" }
+        .Select(VarVazia).Where(v => v != null).ToList();
+    if (smtpFaltando.Any())
+        startupLogger.LogWarning("Variáveis SMTP não configuradas: {vars}. Reenvio de credenciais cairá no fallback console.",
+            string.Join(", ", smtpFaltando));
+    else
+        startupLogger.LogInformation("Variáveis SMTP configuradas (host={host}).", Environment.GetEnvironmentVariable("SMTP_HOST"));
+
+    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CAMERA_BASE_PATH")))
+        startupLogger.LogWarning("CAMERA_BASE_PATH não configurado — usando './cameras' relativo ao processo.");
+
+    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FFMPEG_PATH")))
+        startupLogger.LogWarning("FFMPEG_PATH não configurado — assumindo 'ffmpeg' no PATH do sistema. Sem FFmpeg gravações não serão geradas.");
+}
+
 app.UseCors();
 app.UseAuthentication(); // ← adicionado
 app.UseAuthorization();
