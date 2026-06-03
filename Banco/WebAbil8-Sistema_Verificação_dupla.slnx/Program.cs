@@ -61,6 +61,7 @@ builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions
 builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ISenhaRepository, SenhaImplemetions>();
+builder.Services.AddScoped<ICodigoRepository, CodigoImplemetions>();
 builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
@@ -154,6 +155,47 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
+    // Migração inline — cria tabela codigoDisponivel se não existir (pool de IDs 100000-999999)
+    bool codigoTabelaExiste;
+    using (var checkCmd = conn.CreateCommand())
+    {
+        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='codigoDisponivel'";
+        codigoTabelaExiste = checkCmd.ExecuteScalar() != null;
+    }
+    if (!codigoTabelaExiste)
+    {
+        using var createCmd = conn.CreateCommand();
+        createCmd.CommandText = @"
+            CREATE TABLE codigoDisponivel (
+                codigo   VARCHAR(6) NOT NULL PRIMARY KEY,
+                emUso    INTEGER NOT NULL DEFAULT 0,
+                pessoaId INTEGER NULL REFERENCES pessoa(id) ON DELETE SET NULL
+            )";
+        createCmd.ExecuteNonQuery();
+    }
+
+    // Migração inline — adiciona codigoUsuario à pessoa
+    var pessoaColsExistentes = new HashSet<string>();
+    using (var pragmaCmd4 = conn.CreateCommand())
+    {
+        pragmaCmd4.CommandText = "SELECT name FROM pragma_table_info('pessoa')";
+        using var rdr4 = pragmaCmd4.ExecuteReader();
+        while (rdr4.Read()) pessoaColsExistentes.Add(rdr4.GetString(0));
+    }
+    if (!pessoaColsExistentes.Contains("codigoUsuario"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN codigoUsuario VARCHAR(6) NULL";
+        alterCmd.ExecuteNonQuery();
+    }
+
+    // Índice unique para garantir códigos distintos
+    using (var idxCmd = conn.CreateCommand())
+    {
+        idxCmd.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS idx_pessoa_codigoUsuario ON pessoa(codigoUsuario)";
+        idxCmd.ExecuteNonQuery();
+    }
+
     if (!db.SenhasDisponiveis.Any())
     {
         var triviais = new HashSet<string> {
@@ -171,6 +213,21 @@ using (var scope = app.Services.CreateScope())
             });
 
         db.SenhasDisponiveis.AddRange(senhas);
+        db.SaveChanges();
+    }
+
+    // Pool de CodigoUsuario (ID exibido p/ usuário e usado como EmployeeId no T50M)
+    // Mesma faixa 100000-999999, sem bloqueio de "triviais" — ID não é segredo.
+    if (!db.CodigosDisponiveis.Any())
+    {
+        var codigos = Enumerable.Range(100000, 900000)
+            .Select(i => new CodigoDisponivel
+            {
+                Codigo = i.ToString(),
+                EmUso = false,
+                PessoaId = null
+            });
+        db.CodigosDisponiveis.AddRange(codigos);
         db.SaveChanges();
     }
 

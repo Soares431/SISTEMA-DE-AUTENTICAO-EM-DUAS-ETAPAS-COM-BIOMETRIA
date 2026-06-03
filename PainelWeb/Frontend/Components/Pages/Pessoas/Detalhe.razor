@@ -4,6 +4,8 @@
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject ICodigoRepository CodigoRepo
+@inject ISenhaRepository SenhaRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject NavigationManager Nav
@@ -30,6 +32,11 @@
                     <div class="avatar avatar-lg" style="margin: 0 auto 1rem;">@GetInitials(pessoa.Nome)</div>
                     <h2 class="text-xl font-semibold">@pessoa.Nome</h2><p class="text-muted">@pessoa.Cargo</p>
                     <div style="text-align: left; margin-top: 1.5rem;" class="space-y-xs">
+                        <div class="flex items-center gap-3 text-sm">
+                            <Icon Name="hash" Size="16" CssClass="text-muted" />
+                            <span class="text-muted">ID T50:</span>
+                            <span class="font-mono font-semibold">@(pessoa.CodigoUsuario ?? "—")</span>
+                        </div>
                         <div class="flex items-center gap-3 text-sm"><Icon Name="mail" Size="16" CssClass="text-muted" /> @pessoa.Email</div>
                         <div class="flex items-center gap-3 text-sm">
                             <Icon Name="fingerprint" Size="16" CssClass="text-muted" />
@@ -334,8 +341,30 @@
         erroExcluir = null;
         try
         {
+            // 1. Remove vínculos com ambientes
             foreach (var amb in AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id))
                 AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
+
+            // 2. Libera CodigoUsuario de volta ao pool
+            if (!string.IsNullOrEmpty(pessoa.CodigoUsuario))
+            {
+                try { CodigoRepo.Liberar(pessoa.CodigoUsuario); }
+                catch { /* código já liberado ou inexistente */ }
+            }
+
+            // 3. Libera a senha de volta ao pool
+            try
+            {
+                foreach (var s in SenhaRepo.ListarTodos().Where(x => x.PessoaId == pessoa.Id))
+                {
+                    s.EmUso = false;
+                    s.PessoaId = null;
+                    SenhaRepo.Atualizar(s);
+                }
+            }
+            catch { /* senha não localizada */ }
+
+            // 4. Auditoria + remove pessoa
             LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
             await PessoaRepo.Remover(pessoa.Id);
             Nav.NavigateTo("/pessoas");

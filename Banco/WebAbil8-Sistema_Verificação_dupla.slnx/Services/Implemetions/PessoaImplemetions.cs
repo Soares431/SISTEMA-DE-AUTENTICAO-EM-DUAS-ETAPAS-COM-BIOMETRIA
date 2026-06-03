@@ -48,6 +48,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 return await _context.Pessoas.FindAsync(id);
             }
 
+            public async Task<Pessoa?> BuscarPorCodigoUsuario(string codigoUsuario)
+            {
+                return await _context.Pessoas
+                    .FirstOrDefaultAsync(p => p.CodigoUsuario == codigoUsuario);
+            }
+
             public async Task<Pessoa> Atualizar(Pessoa pessoa)
             {
                 var existing = await _context.Pessoas.FindAsync(pessoa.Id);

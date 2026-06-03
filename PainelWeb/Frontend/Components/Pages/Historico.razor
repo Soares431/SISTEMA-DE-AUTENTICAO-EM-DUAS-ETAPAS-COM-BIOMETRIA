@@ -99,7 +99,7 @@
                                     {
                                         <a href="/pessoas/@item.PessoaId" class="flex items-center gap-2" style="text-decoration:none;cursor:pointer">
                                             <Icon Name="user" Size="16" CssClass="text-muted" />
-                                            <span>@(item.Pessoa?.Nome ?? $"ID {item.PessoaId}")</span>
+                                            <span>@(item.Pessoa?.Nome ?? $"ID {item.Pessoa?.CodigoUsuario ?? item.PessoaId.ToString()}")</span>
                                         </a>
                                     }
                                     else
@@ -200,7 +200,7 @@
         sb.AppendLine("Data/Hora,Pessoa,Ambiente,Status,Motivo,Gravacao");
         foreach (var item in Sorted)
         {
-            var pessoa = item.Pessoa?.Nome ?? $"ID {item.PessoaId}";
+            var pessoa = item.Pessoa?.Nome ?? $"ID {item.Pessoa?.CodigoUsuario ?? item.PessoaId.ToString()}";
             var amb = item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}";
             var status = item.AcessoLiberado ? "Permitido" : "Negado";
             var motivo = item.MotivoNegacao ?? "";

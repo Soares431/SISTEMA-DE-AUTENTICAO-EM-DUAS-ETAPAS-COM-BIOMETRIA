@@ -17,6 +17,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         public DbSet<LogAdmin> LogsAdmin { get; set; }
         public DbSet<Administrador> Administradores { get; set; }
         public DbSet<SenhaDisponivel> SenhasDisponiveis { get; set; }
+        public DbSet<CodigoDisponivel> CodigosDisponiveis { get; set; }
         public DbSet<Configuracao> Configuracoes { get; set; }
 
         // Relacionamento muitos-para-muitos (se você ainda usar essa entidade)

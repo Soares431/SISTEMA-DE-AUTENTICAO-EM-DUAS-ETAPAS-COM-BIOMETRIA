@@ -48,7 +48,10 @@ namespace BiometricAcess.Worker.Simulador
             var config       = await configRepo.BuscarPorChave();
             var retencaoDias = config?.RetencaoGravacoesTentativasDias ?? 90;
 
-            var pessoa = await pessoaRepo.BuscarPorId(evento.PessoaID);
+            // T50M envia o CodigoUsuario (6 dígitos do pool) como UserCode/PessoaID.
+            // Procura primeiro por CodigoUsuario; fallback para Pessoa.Id (compatibilidade com cadastros antigos sem CodigoUsuario).
+            var pessoa = await pessoaRepo.BuscarPorCodigoUsuario(evento.PessoaID.ToString())
+                          ?? await pessoaRepo.BuscarPorId(evento.PessoaID);
 
             bool acessoLiberado;
             string? motivoNegacao = null;

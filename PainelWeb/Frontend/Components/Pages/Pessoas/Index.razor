@@ -2,6 +2,7 @@
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject IPessoaRepository PessoaRepo
 @inject ISenhaRepository SenhaRepo
+@inject ICodigoRepository CodigoRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject IJSRuntime JS
@@ -98,7 +99,7 @@
                         <strong>Pessoa cadastrada!</strong> Anote as informações abaixo:<br />
                         <div style="margin-top: 0.5rem;">
                             <span class="text-muted text-sm">ID do usuário (T50):</span><br />
-                            <span style="font-size: 1.2rem; font-weight: bold; letter-spacing: 0.1rem;">@pessoaCadastradaId</span>
+                            <span style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@pessoaCadastradaCodigo</span>
                         </div>
                         <div style="margin-top: 0.5rem;">
                             <span class="text-muted text-sm">Senha provisória:</span><br />
@@ -184,6 +185,7 @@
     private List<Pessoa> todasPessoas = new();
     private string? senhaMostrada = null;
     private long pessoaCadastradaId = 0;
+    private string pessoaCadastradaCodigo = "";
     private string pessoaCadastradaModo = "";
     private string? erroDialog = null;
     private bool isCadastrando = false;
@@ -222,6 +224,7 @@
         showDialog = false;
         senhaMostrada = null;
         pessoaCadastradaId = 0;
+        pessoaCadastradaCodigo = "";
         pessoaCadastradaModo = "";
         erroDialog = null;
         novoNome = novoEmail = novoCpf = novoCargo = "";
@@ -262,11 +265,30 @@
 
         try
         {
+            // Pega código do pool (100000-999999) — vira CodigoUsuario, exibido na UI e enviado ao T50M
+            var codigoDisp = CodigoRepo.BuscarDisponivel();
+            if (codigoDisp == null)
+            {
+                erroDialog = "Não há códigos de usuário disponíveis no sistema (pool esgotado).";
+                return;
+            }
+
+            // Pega senha do pool — diferente do código pra evitar ID=senha
             var senhaDisp = SenhaRepo.BuscarDisponivel();
             if (senhaDisp == null)
             {
                 erroDialog = "Não há senhas disponíveis no sistema. Cadastre senhas antes de adicionar pessoas.";
                 return;
+            }
+
+            // Garante senha ≠ código (ambos do range 100000-999999)
+            int tentSenha = 0;
+            while (senhaDisp.Senha == codigoDisp.Codigo && tentSenha < 5)
+            {
+                var nova = SenhaRepo.BuscarDisponivel();
+                if (nova == null) break;
+                senhaDisp = nova;
+                tentSenha++;
             }
 
             var pessoa = new Pessoa
@@ -275,6 +297,7 @@
                 Email = novoEmail,
                 Cpf = novoCpf,
                 Cargo = novoCargo,
+                CodigoUsuario = codigoDisp.Codigo,
                 senhaClear = senhaDisp.Senha,
                 senhaHash = BCrypt.Net.BCrypt.HashPassword(senhaDisp.Senha, workFactor: 10),
                 modoAcesso = novoModoAcesso,
@@ -284,22 +307,8 @@
 
             var pessoaSalva = await PessoaRepo.Adicionar(pessoa);
 
-            // BD-22 / doc_tecnica §5.1 passo 5: Senha ≠ ID
-            // O ID só é conhecido após o Adicionar (auto-increment). Se a senha sorteada
-            // bater com o ID, sorteia outra (até 3 tentativas pra evitar loop infinito).
-            var idStr = pessoaSalva.Id.ToString();
-            int tentativas = 0;
-            while (senhaDisp.Senha == idStr && tentativas < 3)
-            {
-                var nova = SenhaRepo.BuscarDisponivel();
-                if (nova == null || nova.Senha == idStr) { tentativas++; continue; }
-                senhaDisp = nova;
-                var novoHash = BCrypt.Net.BCrypt.HashPassword(senhaDisp.Senha, workFactor: 10);
-                await PessoaRepo.AtualizarSenha(pessoaSalva.Id, senhaDisp.Senha, novoHash);
-                tentativas++;
-            }
-
-            // Marca a senha como em uso e vincula à pessoa
+            // Marca código e senha como EmUso vinculados à pessoa
+            CodigoRepo.MarcarEmUso(codigoDisp.Codigo, true, pessoaSalva.Id);
             senhaDisp.EmUso = true;
             senhaDisp.PessoaId = pessoaSalva.Id;
             SenhaRepo.Atualizar(senhaDisp);
@@ -307,6 +316,7 @@
             LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSalva.Id);
 
             todasPessoas = await PessoaRepo.ListarTodos();
+            pessoaCadastradaCodigo = codigoDisp.Codigo;
             pessoaCadastradaId = pessoaSalva.Id;
             pessoaCadastradaModo = novoModoAcesso;
             senhaMostrada = senhaDisp.Senha;

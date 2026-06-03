@@ -15,16 +15,25 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
     {
         private IPessoaRepository _pessoaRepository;
         private readonly ILogAdminRepository _logRepository;
+        private readonly IAmbientePessoaRepository _ambientePessoaRepository;
+        private readonly ICodigoRepository _codigoRepository;
+        private readonly ISenhaRepository _senhaRepository;
         private readonly IConfiguration _config;
         private readonly ILogger<PersonController> _logger;
 
         public PersonController(IPessoaRepository pessoaRepository,
             ILogAdminRepository logRepository,
+            IAmbientePessoaRepository ambientePessoaRepository,
+            ICodigoRepository codigoRepository,
+            ISenhaRepository senhaRepository,
             IConfiguration config,
             ILogger<PersonController> logger)
         {
             _pessoaRepository = pessoaRepository;
             _logRepository = logRepository;
+            _ambientePessoaRepository = ambientePessoaRepository;
+            _codigoRepository = codigoRepository;
+            _senhaRepository = senhaRepository;
             _config = config;
             _logger = logger;
         }
@@ -77,12 +86,51 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return Ok(updatedPerson);
         }
 
+        // DELETE /api/person/{id}
+        // Remoção definitiva — libera CodigoUsuario e Senha de volta aos pools, remove vínculos
+        // de ambientes e auditoria. Use com cuidado: ação irreversível.
+        // Para revogar acesso temporariamente, use o endpoint de inativação.
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(long id)
         {
             _logger.LogInformation("Delete Person with ID {id}", id);
+            var pessoa = await _pessoaRepository.BuscarPorId(id);
+            if (pessoa == null) return NotFound();
+
+            // 1. Remove vínculos com ambientes
+            var ambientes = _ambientePessoaRepository.ListarAmbientesDaPessoa(id);
+            foreach (var amb in ambientes)
+                _ambientePessoaRepository.RemoverPessoa(amb.Id, id);
+
+            // 2. Libera CodigoUsuario de volta ao pool
+            if (!string.IsNullOrEmpty(pessoa.CodigoUsuario))
+            {
+                try { _codigoRepository.Liberar(pessoa.CodigoUsuario); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Falha ao liberar código {c}", pessoa.CodigoUsuario); }
+            }
+
+            // 3. Libera a senha de volta ao pool (busca por PessoaId)
+            try
+            {
+                var senhas = _senhaRepository.ListarTodos();
+                foreach (var s in senhas.Where(s => s.PessoaId == id))
+                {
+                    s.EmUso = false;
+                    s.PessoaId = null;
+                    _senhaRepository.Atualizar(s);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Falha ao liberar senha da pessoa {id}", id); }
+
+            // 4. Remove a pessoa
             await _pessoaRepository.Remover(id);
-            _logger.LogDebug("Person with ID {id} deleted successfully", id);
+
+            // 5. Registra auditoria
+            var adminIdClaim = User.FindFirst("adminId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(adminIdClaim, out var adminId))
+                _logRepository.Registrar(adminId, "Remocao", "Pessoa", (int)id);
+
+            _logger.LogInformation("Person with ID {id} permanently deleted", id);
             return NoContent();
         }
 
@@ -109,10 +157,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 return StatusCode(500, "Falha ao recuperar a senha cifrada.");
             }
 
+            var idMostrar = pessoa.CodigoUsuario ?? pessoa.Id.ToString();
             var corpoHtml = $@"<h2>Olá, {pessoa.Nome}!</h2>
 <p>Seguem suas credenciais de acesso ao sistema do 5º CTA:</p>
 <table style=""border-collapse:collapse"">
-<tr><td style=""padding:6px 12px""><strong>ID do usuário (T50):</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{pessoa.Id}</td></tr>
+<tr><td style=""padding:6px 12px""><strong>ID do usuário (T50):</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{idMostrar}</td></tr>
 <tr><td style=""padding:6px 12px""><strong>Senha provisória:</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{senhaPlain}</td></tr>
 </table>
 <p>No terminal T50, digite o <strong>ID</strong> seguido da <strong>senha</strong> para liberar o acesso.</p>
@@ -129,7 +178,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 if (string.IsNullOrEmpty(host) || !int.TryParse(portStr, out var port))
                 {
                     fallback = true;
-                    Console.WriteLine($"[FALLBACK] SMTP não configurado. Credenciais de {pessoa.Email}: ID={pessoa.Id} Senha={senhaPlain}");
+                    Console.WriteLine($"[FALLBACK] SMTP não configurado. Credenciais de {pessoa.Email}: ID={idMostrar} Senha={senhaPlain}");
                 }
                 else
                 {
@@ -150,7 +199,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             {
                 fallback = true;
                 _logger.LogWarning(ex, "Falha SMTP — usando fallback console para pessoa {id}", id);
-                Console.WriteLine($"[FALLBACK] Erro SMTP. Credenciais de {pessoa.Email}: ID={pessoa.Id} Senha={senhaPlain}");
+                Console.WriteLine($"[FALLBACK] Erro SMTP. Credenciais de {pessoa.Email}: ID={idMostrar} Senha={senhaPlain}");
             }
 
             // Registra auditoria

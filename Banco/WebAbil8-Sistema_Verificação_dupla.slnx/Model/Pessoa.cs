@@ -6,12 +6,20 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 {
     [Table("Pessoa")]
     [Index(nameof(Cpf), IsUnique = true)]
+    [Index(nameof(CodigoUsuario), IsUnique = true)]
     public class Pessoa
     {
         [Key]
         [Column("id")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
+
+        // Código de 6 dígitos (100000-999999) exibido na UI e usado como EmployeeId no T50M.
+        // Vindo do pool CodigoDisponivel. Nullable para compatibilidade com cadastros antigos
+        // (que serão preenchidos por migração de dados).
+        [Column("codigoUsuario", TypeName = "varchar(6)")]
+        [MaxLength(6)]
+        public string? CodigoUsuario { get; set; }
 
         [Required]
         [Column("nome",TypeName="varchar(80)")]

@@ -6,6 +6,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
     {
         Task<Pessoa> Adicionar(Pessoa pessoa);
         Task<Pessoa> BuscarPorId(long id);
+        Task<Pessoa?> BuscarPorCodigoUsuario(string codigoUsuario);
         Task<Pessoa> BuscarPorCPF(string cpf);
         Task<List<Pessoa>> ListarTodos();
         Task<Pessoa> Atualizar(Pessoa pessoa);

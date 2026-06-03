@@ -63,7 +63,9 @@ public class EventProcessorArduino : IEventProcessor
         // Heartbeat de status online/offline
         _dispositivoRepository.RegistrarHeartbeat(dispositivo.EnderecoIP);
 
-        var pessoa = await _pessoaRepository.BuscarPorId(evento.PessoaID);
+        // Arduino envia o CodigoUsuario (6 dígitos) — busca por código primeiro, fallback no Id legado
+        var pessoa = await _pessoaRepository.BuscarPorCodigoUsuario(evento.PessoaID.ToString())
+                      ?? await _pessoaRepository.BuscarPorId(evento.PessoaID);
 
         // ── EVT|ID — Arduino mandou só o ID ──────────────────────────
         // C# decide se pede senha (primeiro acesso) ou digital (já tem biometria)

@@ -57,7 +57,9 @@ namespace BiometricAcess.Worker.Services
                 return;
             }
 
-            var pessoa = await _pessoaRepository.BuscarPorId(evento.PessoaID);
+            // T50M envia o CodigoUsuario (6 dígitos) — busca por código primeiro, fallback no Id legado
+            var pessoa = await _pessoaRepository.BuscarPorCodigoUsuario(evento.PessoaID.ToString())
+                          ?? await _pessoaRepository.BuscarPorId(evento.PessoaID);
 
             if (pessoa == null)
             {
@@ -96,15 +98,18 @@ namespace BiometricAcess.Worker.Services
 
         private async Task FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, int ambienteId)
         {
-            Console.WriteLine($"Primeiro acesso — Pessoa: {pessoa.Id} | Iniciando captura de digital...");
+            Console.WriteLine($"Primeiro acesso — Pessoa: {pessoa.Id} ({pessoa.CodigoUsuario}) | Iniciando captura de digital...");
+
+            // Comunicação com T50M usa CodigoUsuario (EmployeeId 6 dígitos do pool)
+            var codigoT50 = CodigoT50DePessoa(pessoa);
 
             // I1: EnrollFingerprint retorna o template diretamente — elimina chamada redundante ao DownloadTemplate
-            var template = _anvizService.IniciarCapturaDigital((int)pessoa.Id);
+            var template = _anvizService.IniciarCapturaDigital(codigoT50);
             if (template != null)
             {
                 await _pessoaRepository.SalvarTemplate(pessoa.Id, template);
                 await _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
-                _anvizService.AlterarModo((int)pessoa.Id, "digital_id");
+                _anvizService.AlterarModo(codigoT50, "digital_id");
                 Console.WriteLine($"Biometria cadastrada — Pessoa: {pessoa.Id}");
             }
 
@@ -161,6 +166,15 @@ namespace BiometricAcess.Worker.Services
 
             _tentativaRepository.Registrar(tentativa);
             return tentativa;
+        }
+
+        // Converte Pessoa em ID a ser enviado ao T50M. Prefere CodigoUsuario (6 dígitos do pool).
+        // Fallback para Pessoa.Id se ainda não migrado (compat. cadastros legados).
+        private static int CodigoT50DePessoa(Pessoa pessoa)
+        {
+            if (!string.IsNullOrEmpty(pessoa.CodigoUsuario) && int.TryParse(pessoa.CodigoUsuario, out var c))
+                return c;
+            return (int)pessoa.Id;
         }
     }
 }
