@@ -273,6 +273,31 @@ using (var scope = app.Services.CreateScope())
         softDeleteOrfaos.ExecuteNonQuery();
     }
 
+    // Limpa gravacaoPath de tentativas cujo arquivo MP4 não existe mais em disco.
+    // Importante depois de mudar a pasta padrão (cameras/ → gravacoes/): paths antigos
+    // viraram broken links no histórico. Sem isto, o botão "Ver" mostra erro.
+    using (var listTentativas = conn.CreateCommand())
+    {
+        listTentativas.CommandText = "SELECT id, gravacaoPath FROM tentativaAcesso WHERE gravacaoPath IS NOT NULL AND gravacaoPath != ''";
+        var paraLimpar = new List<int>();
+        using (var rdr = listTentativas.ExecuteReader())
+        {
+            while (rdr.Read())
+            {
+                var id = rdr.GetInt32(0);
+                var path = rdr.GetString(1);
+                if (!File.Exists(path)) paraLimpar.Add(id);
+            }
+        }
+        if (paraLimpar.Count > 0)
+        {
+            using var clean = conn.CreateCommand();
+            clean.CommandText = $"UPDATE tentativaAcesso SET gravacaoPath = NULL WHERE id IN ({string.Join(",", paraLimpar)})";
+            clean.ExecuteNonQuery();
+            Console.WriteLine($"[INT1 CLEANUP] {paraLimpar.Count} gravacaoPath órfãos limpos (arquivos não existem).");
+        }
+    }
+
     // Migração inline — tabela pessoaT50 (qual pessoa está cadastrada em qual T50).
     // Permite múltiplos T50 por ambiente onde admin escolhe em quais a pessoa fica.
     bool pessoaT50Existe;

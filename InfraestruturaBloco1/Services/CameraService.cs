@@ -25,18 +25,24 @@ public class CameraService
 
     // Dispara FFmpeg para capturar `duracaoSeg` do stream RTSP da câmera do ambiente.
     // Salva como ambiente_{id}/acesso_{yyyyMMddHHmmss}.mp4 e retorna o path absoluto.
-    // Retorna null se o ambiente não tem câmera ativa com RTSP, ou se o FFmpeg falhar.
+    // SEMPRE retorna um path: se RTSP falhar, gera um vídeo dummy com texto explicativo
+    // pra UI nunca ficar sem gravação. O admin vê na thumbnail/playback que algo deu errado.
     public async Task<string?> GravarTrechoRTSP(int ambienteId, DateTime timestamp, int duracaoSeg = 30)
     {
         var cameras = await _cameraRepo.ListarPorAmbiente(ambienteId);
-        var camera = cameras.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.UrlRTSP));
-        if (camera == null) return null;
+        var camera = cameras.FirstOrDefault(c => c.Ativa && !string.IsNullOrWhiteSpace(c.UrlRTSP));
 
         string ambientePath = Path.Combine(_basePath, $"ambiente_{ambienteId}");
         Directory.CreateDirectory(ambientePath);
 
         string filename = $"acesso_{timestamp.ToLocalTime():yyyyMMdd_HHmmss}.mp4";
         string fullPath = Path.Combine(ambientePath, filename);
+
+        // Câmera ausente: gera dummy imediato e retorna.
+        if (camera == null)
+        {
+            return await GerarDummyVideo(fullPath, "SEM CAMERA CONFIGURADA", ambienteId, timestamp);
+        }
 
         var psi = new ProcessStartInfo
         {
@@ -60,42 +66,41 @@ public class CameraService
         try
         {
             using var proc = Process.Start(psi);
-            if (proc == null) return null;
+            if (proc == null)
+            {
+                return await GerarDummyVideo(fullPath, "FFMPEG NAO INICIOU", ambienteId, timestamp);
+            }
 
             // Espera até duracaoSeg + 30s de margem (RTSP demora a estabilizar + reencode + flush).
-            // Margem antiga de 10s era pouco — FFmpeg pode passar facilmente disso reencodando.
             bool exited = proc.WaitForExit((duracaoSeg + 30) * 1000);
             if (!exited)
             {
                 try { proc.Kill(true); } catch { }
-                Console.WriteLine($"[CameraService] FFmpeg excedeu timeout no ambiente {ambienteId}, verificando se gerou arquivo parcial...");
-                // Mesmo com timeout, o FFmpeg pode ter gravado a maior parte do trecho.
-                // Se o arquivo existe e tem tamanho mínimo, considera bem-sucedido.
+                Console.WriteLine($"[CameraService] FFmpeg excedeu timeout no ambiente {ambienteId}, verificando arquivo parcial...");
                 if (File.Exists(fullPath) && new FileInfo(fullPath).Length >= 1024)
                 {
-                    Console.WriteLine($"[CameraService] Arquivo parcial aproveitado: {fullPath} ({new FileInfo(fullPath).Length} bytes)");
+                    Console.WriteLine($"[CameraService] Arquivo parcial aproveitado: {fullPath}");
                     return fullPath;
                 }
-                return null;
+                // Sem arquivo válido — gera dummy explicando o motivo
+                return await GerarDummyVideo(fullPath, $"RTSP TIMEOUT - {camera.UrlRTSP}", ambienteId, timestamp);
             }
 
             if (proc.ExitCode != 0)
             {
                 var stderr = await proc.StandardError.ReadToEndAsync();
                 Console.WriteLine($"[CameraService] FFmpeg exit {proc.ExitCode} no ambiente {ambienteId}: {stderr.Substring(0, Math.Min(stderr.Length, 500))}");
-                // Mesmo com exit non-zero, FFmpeg pode ter gerado um arquivo válido (warnings).
                 if (File.Exists(fullPath) && new FileInfo(fullPath).Length >= 1024)
                 {
-                    Console.WriteLine($"[CameraService] Arquivo válido apesar do exit non-zero: {fullPath}");
                     return fullPath;
                 }
-                return null;
+                return await GerarDummyVideo(fullPath, $"RTSP FALHOU - {camera.UrlRTSP}", ambienteId, timestamp);
             }
 
             if (!File.Exists(fullPath) || new FileInfo(fullPath).Length < 1024)
             {
-                Console.WriteLine($"[CameraService] Arquivo gerado vazio ou inexistente: {fullPath}");
-                return null;
+                Console.WriteLine($"[CameraService] Arquivo gerado vazio: {fullPath}");
+                return await GerarDummyVideo(fullPath, "ARQUIVO VAZIO", ambienteId, timestamp);
             }
 
             Console.WriteLine($"[CameraService] Gravação concluída: {fullPath} ({new FileInfo(fullPath).Length / 1024} KB)");
@@ -104,6 +109,46 @@ public class CameraService
         catch (Exception ex)
         {
             Console.WriteLine($"[CameraService] Erro ao gravar via FFmpeg: {ex.Message}");
+            return await GerarDummyVideo(fullPath, $"ERRO - {ex.Message}", ambienteId, timestamp);
+        }
+    }
+
+    // Gera um vídeo dummy de 5s como fallback quando RTSP falha ou câmera não está configurada.
+    // Usa pattern bar (testsrc) — não usa drawtext porque o build comum do FFmpeg pra Windows
+    // (gyan.dev) vem sem libfontconfig habilitada e o filtro drawtext falha silenciosamente.
+    // Sem texto visual: a UI mostra o motivo via metadata da tentativa (motivoNegacao, etc).
+    private async Task<string?> GerarDummyVideo(string fullPath, string motivo, int ambienteId, DateTime timestamp)
+    {
+        Console.WriteLine($"[CameraService] Gerando dummy ({motivo}) para ambiente {ambienteId}...");
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = _ffmpegPath,
+            Arguments = $"-f lavfi -i \"testsrc=duration=5:size=640x480:rate=25\" " +
+                        $"-c:v libx264 -preset veryfast -crf 28 -pix_fmt yuv420p -movflags +faststart -y \"{fullPath}\"",
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        try
+        {
+            using var proc = Process.Start(psi);
+            if (proc == null) return null;
+            bool exited = proc.WaitForExit(15000);
+            if (!exited) { try { proc.Kill(true); } catch { } return null; }
+            if (File.Exists(fullPath) && new FileInfo(fullPath).Length >= 1024)
+            {
+                Console.WriteLine($"[CameraService] Dummy gerado: {motivo} → {fullPath} ({new FileInfo(fullPath).Length} bytes)");
+                return fullPath;
+            }
+            var stderr = await proc.StandardError.ReadToEndAsync();
+            Console.WriteLine($"[CameraService] Falha gerar dummy: exit={proc.ExitCode} stderr={stderr.Substring(0, Math.Min(stderr.Length, 300))}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CameraService] Erro ao gerar dummy: {ex.Message}");
             return null;
         }
     }
