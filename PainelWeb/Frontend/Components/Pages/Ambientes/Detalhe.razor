@@ -36,7 +36,7 @@
         <div class="tabs-list">
             <button class="tab-trigger @(activeTab == "t50" ? "active" : "")" @onclick='() => activeTab = "t50"'>Dispositivo T50</button>
             <button class="tab-trigger @(activeTab == "pessoas" ? "active" : "")" @onclick='() => activeTab = "pessoas"'>Pessoas com Acesso</button>
-            <button class="tab-trigger @(activeTab == "cameras" ? "active" : "")" @onclick='() => activeTab = "cameras"'>Câmeras</button>
+            <button class="tab-trigger" @onclick="@(() => Nav.NavigateTo($"/cameras?ambienteId={Id}"))">Câmeras <Icon Name="external-link" Size="12" /></button>
             <button class="tab-trigger @(activeTab == "config" ? "active" : "")" @onclick='() => activeTab = "config"'>Configurações</button>
         </div>
 
@@ -125,30 +125,6 @@
                             }
                         </tbody>
                     </table>
-                </div>
-            </div>
-        }
-        else if (activeTab == "cameras")
-        {
-            <div class="card">
-                <div class="card-header card-header-row">
-                    <div><div class="card-title"><Icon Name="camera" Size="20" /> Câmeras</div><p class="card-description">@cameras.Count câmeras configuradas</p></div>
-                    <button class="btn btn-primary" @onclick="() => showAddCamera = true"><Icon Name="plus" Size="16" /> Adicionar Câmera</button>
-                </div>
-                <div class="card-content">
-                    <div class="grid grid-2" style="gap: 1.5rem;">
-                        @foreach (var cam in cameras)
-                        {
-                            <div class="card" style="background: color-mix(in srgb, var(--muted) 30%, transparent);">
-                                <div class="card-content pt-6">
-                                    <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;"><Icon Name="camera" Size="48" CssClass="text-muted" /></div>
-                                    <div class="flex justify-between items-center"><span class="font-medium">@cam.Nome</span><span class="badge @(cam.Ativa ? "badge-success" : "badge-muted")">@(cam.Ativa ? "Ativa" : "Inativa")</span></div>
-                                    <p class="text-sm font-mono text-muted">@(cam.UrlRTSP ?? "-")</p>
-                                    <button class="btn btn-outline btn-block mt-4" disabled="@(!cam.Ativa)">Ver Ao Vivo</button>
-                                </div>
-                            </div>
-                        }
-                    </div>
                 </div>
             </div>
         }

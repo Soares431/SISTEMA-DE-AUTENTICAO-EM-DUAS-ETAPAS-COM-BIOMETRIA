@@ -12,6 +12,7 @@ namespace BiometricAcess.Worker.Simulador
         public static EventoAcesso GerarEventoComBanco(IServiceScopeFactory scopeFactory)
         {
             int pessoaID;
+            string ipDispositivo = "192.168.0.218"; // fallback se não houver T50 cadastrado
             try
             {
                 using var scope = scopeFactory.CreateScope();
@@ -31,6 +32,18 @@ namespace BiometricAcess.Worker.Simulador
                     // 20% das vezes (ou banco vazio): ID inexistente → testa "nao_cadastrado"
                     pessoaID = _random.Next(100000, 1000000);
                 }
+
+                // IP do simulador: pega o IP de um T50 ALEATÓRIO entre os cadastrados.
+                // Isso garante que o EventProcessor encontre o T50 e gere a tentativa.
+                // Sem isso, o simulador mandava IP hardcoded 192.168.0.218 que não bate
+                // com os IPs reais cadastrados pelo admin (ex: 192.168.0.10) e os eventos
+                // eram silenciosamente ignorados.
+                var dispositivoRepo = scope.ServiceProvider.GetRequiredService<IDispositivoT50Repository>();
+                var t50s = dispositivoRepo.ListarTodos();
+                if (t50s.Count > 0)
+                {
+                    ipDispositivo = t50s[_random.Next(t50s.Count)].EnderecoIP;
+                }
             }
             catch
             {
@@ -45,7 +58,7 @@ namespace BiometricAcess.Worker.Simulador
                 TipoVerificacao = tipoVerificacao,
                 AcessoLiberado = false, // decidido pelo EventProcessor com base no banco
                 DataHora = DateTime.UtcNow,
-                IpDispositivo = "192.168.0.218"
+                IpDispositivo = ipDispositivo
             };
         }
 

@@ -12,6 +12,7 @@
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IAsyncDisposable
 
 <div class="space-y">
@@ -241,6 +242,15 @@
         todasCameras = await CameraRepo.ListarComFiltros(null, null);
         ambientes = AmbienteRepo.ListarTodos();
         if (ambientes.Any()) novoAmbienteId = ambientes.First().Id;
+
+        // Pré-aplica filtro de ambiente vindo na URL (?ambienteId=X) — usado pelo link
+        // da tab "Câmeras" no detalhe do ambiente
+        var uri = new Uri(Nav.Uri);
+        var qs = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (qs.TryGetValue("ambienteId", out var amb) && !string.IsNullOrEmpty(amb))
+        {
+            ambienteFilter = amb.ToString();
+        }
     }
 
     private void OpenLiveView(Camera cam)

@@ -91,9 +91,12 @@ namespace BiometricAcess.Worker.Simulador
                 acessoLiberado = false;
                 motivoNegacao  = "sem_permissao";
             }
-            else if (!pessoaT50Repo.EstaCadastrada(pessoa.Id, dispositivo.Id))
+            else if (evento.TipoVerificacao == "digital_id"
+                  && pessoa.modoAcesso == "digital_e_senha"
+                  && !pessoaT50Repo.EstaCadastrada(pessoa.Id, dispositivo.Id))
             {
-                // Pessoa tem acesso ao ambiente mas a biometria dela não foi cadastrada NESTE T50 específico.
+                // Pessoa tem acesso ao ambiente, MAS a biometria dela não está cadastrada NESTE T50.
+                // Só nega quando o evento é "digital_id" — se for "senha_id" não precisa do template.
                 // Acontece quando o ambiente tem múltiplos T50 e admin escolheu não cadastrar a digital em todos.
                 acessoLiberado = false;
                 motivoNegacao  = "biometria_nao_cadastrada_neste_t50";
