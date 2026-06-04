@@ -235,9 +235,18 @@
 
         var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
         await Task.Yield(); // garante o render do modal antes do JS interop
-        var ok = await JS.InvokeAsync<bool>("carregarVideoNoElemento", apiUrl, tentativaId, TokenStore.Token, "player-gravacao");
-        if (!ok) gravacaoErro = "Não foi possível carregar a gravação.";
+        var resultado = await JS.InvokeAsync<CarregarVideoResultado>("carregarVideoNoElemento", apiUrl, tentativaId, TokenStore.Token, "player-gravacao");
+        if (!resultado.Ok) gravacaoErro = resultado.Reason ?? "Não foi possível carregar a gravação.";
         gravacaoCarregando = false;
+    }
+
+    // DTO para o retorno do JS — propriedades minúsculas pra bater com JSON do JavaScript
+    private class CarregarVideoResultado
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("ok")]
+        public bool Ok { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        public string? Reason { get; set; }
     }
 
     private async Task FecharGravacao()

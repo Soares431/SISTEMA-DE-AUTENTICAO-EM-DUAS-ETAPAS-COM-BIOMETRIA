@@ -42,12 +42,15 @@ public class CameraService
         {
             FileName = _ffmpegPath,
             // -rtsp_transport tcp: mais confiável que UDP em redes restritas (5º CTA)
+            // -stimeout 5000000: 5s timeout de conexão RTSP — sem isso, URL inacessível
+            //   ficava travada esperando até o WaitForExit estourar (90s)
             // -t: duração máxima
             // -c:v libx264 -preset veryfast -c:a aac: reencode pra garantir compat. HTML5
+            //   -an: sem áudio (várias câmeras IP não têm mic, evita warning de codec)
             // -movflags +faststart: permite playback enquanto baixa
             // -y: sobrescreve se já existir
-            Arguments = $"-rtsp_transport tcp -i \"{camera.UrlRTSP}\" -t {duracaoSeg} " +
-                        $"-c:v libx264 -preset veryfast -crf 28 -c:a aac -movflags +faststart " +
+            Arguments = $"-rtsp_transport tcp -stimeout 5000000 -i \"{camera.UrlRTSP}\" -t {duracaoSeg} " +
+                        $"-c:v libx264 -preset veryfast -crf 28 -an -movflags +faststart " +
                         $"-y \"{fullPath}\"",
             UseShellExecute = false,
             RedirectStandardError = true,

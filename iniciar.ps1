@@ -58,11 +58,8 @@ if ($int1Ok) {
     exit 1
 }
 
-Write-Host "[2/3] Iniciando Int2 - Worker (janela visivel para acompanhar simulador/gravacoes)..." -ForegroundColor Green
-# Janela visível: o Worker printa logs importantes sobre FFmpeg, eventos do simulador
-# e status das gravações. Sem isso fica difícil diagnosticar por que uma tentativa
-# não tem video associado.
-$p2 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int2'; dotnet run" -WindowStyle Normal -PassThru
+Write-Host "[2/3] Iniciando Int2 - Worker (em segundo plano)..." -ForegroundColor Green
+$p2 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int2'; dotnet run" -WindowStyle Hidden -PassThru
 
 Write-Host "[3/3] Iniciando Int3 - Painel Web (em segundo plano)..." -ForegroundColor Green
 $p3 = Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$int3'; dotnet run" -WindowStyle Hidden -PassThru

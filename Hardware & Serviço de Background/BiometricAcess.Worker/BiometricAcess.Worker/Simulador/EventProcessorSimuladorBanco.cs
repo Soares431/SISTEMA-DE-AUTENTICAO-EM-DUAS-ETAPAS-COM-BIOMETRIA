@@ -122,28 +122,25 @@ namespace BiometricAcess.Worker.Simulador
 
             Console.WriteLine($"[SimuladorBanco] Pessoa {evento.PessoaID} | {(acessoLiberado ? "LIBERADO" : $"NEGADO — {motivoNegacao}")} | Ambiente: {ambiente.Nome}");
 
-            // HW-16 / doc_tecnica §5.11 — aguarda gravação só em entradas liberadas
-            if (acessoLiberado)
+            // doc_tecnica §5.11 — TODA tentativa (liberada ou negada) gera gravação,
+            // porque o objetivo é registrar ATIVIDADE no ambiente, não só sucessos.
+            var cameraService = scope.ServiceProvider.GetService<CameraService>();
+            if (cameraService == null)
             {
-                var cameraService = scope.ServiceProvider.GetService<CameraService>();
-                if (cameraService == null)
+                Console.WriteLine($"[SimuladorBanco] AVISO: CameraService não registrado no DI — gravação pulada");
+            }
+            else
+            {
+                var cameraRepo = scope.ServiceProvider.GetRequiredService<ICameraRepository>();
+                var cams = await cameraRepo.ListarPorAmbiente(ambiente.Id);
+                var camRtsp = cams.FirstOrDefault(c => c.Ativa && !string.IsNullOrWhiteSpace(c.UrlRTSP));
+                if (camRtsp == null)
                 {
-                    Console.WriteLine($"[SimuladorBanco] AVISO: CameraService não registrado no DI — gravação pulada");
+                    Console.WriteLine($"[SimuladorBanco] Ambiente {ambiente.Nome} não tem câmera ativa com UrlRTSP cadastrada — sem gravação.");
                 }
                 else
                 {
-                    var cameraRepo = scope.ServiceProvider.GetRequiredService<ICameraRepository>();
-                    var cams = await cameraRepo.ListarPorAmbiente(ambiente.Id);
-                    var camRtsp = cams.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.UrlRTSP));
-                    if (camRtsp == null)
-                    {
-                        Console.WriteLine($"[SimuladorBanco] Ambiente {ambiente.Nome} não tem câmera com UrlRTSP cadastrada — sem gravação.");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) — câmera '{camRtsp.Nome}' em {camRtsp.UrlRTSP}");
-                    }
-
+                    Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) — câmera '{camRtsp.Nome}' em {camRtsp.UrlRTSP}");
                     var gravacaoPath = await cameraService.GravarTrechoRTSP(
                         ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
                     if (gravacaoPath != null)
@@ -151,6 +148,10 @@ namespace BiometricAcess.Worker.Simulador
                         tentativa.GravacaoPath = gravacaoPath;
                         tentativaRepo.Atualizar(tentativa);
                         Console.WriteLine($"[SimuladorBanco] Gravação associada — {gravacaoPath}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SimuladorBanco] Gravação FALHOU — verifique se a URL RTSP '{camRtsp.UrlRTSP}' está acessível.");
                     }
                 }
             }

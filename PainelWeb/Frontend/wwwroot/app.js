@@ -97,24 +97,27 @@ window.abrirGravacao = async function(apiBaseUrl, tentativaId, token) {
 window.carregarVideoNoElemento = async function(apiBaseUrl, tentativaId, token, videoElementId) {
     try {
         var video = document.getElementById(videoElementId);
-        if (!video) return false;
+        if (!video) return { ok: false, reason: 'Elemento de vídeo não encontrado.' };
         var resp = await fetch(apiBaseUrl + 'api/gravacoes/' + tentativaId, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!resp.ok) {
-            video.poster = '';
-            return false;
+            // Mensagem amigável conforme o motivo do 404
+            var reason = resp.status === 404
+                ? 'Arquivo de gravação não encontrado no servidor (pode ter sido apagado ou nunca foi gerado).'
+                : 'Erro HTTP ' + resp.status + ' ao buscar a gravação.';
+            console.warn('Falha ao carregar gravação:', resp.status, await resp.text());
+            return { ok: false, reason: reason };
         }
         var blob = await resp.blob();
-        // Revoga URL anterior pra evitar leak
         if (video.dataset.blobUrl) URL.revokeObjectURL(video.dataset.blobUrl);
         var url = URL.createObjectURL(blob);
         video.dataset.blobUrl = url;
         video.src = url;
-        return true;
+        return { ok: true };
     } catch (e) {
         console.error('Erro ao carregar vídeo:', e);
-        return false;
+        return { ok: false, reason: 'Erro de rede ao buscar a gravação: ' + e.message };
     }
 };
 

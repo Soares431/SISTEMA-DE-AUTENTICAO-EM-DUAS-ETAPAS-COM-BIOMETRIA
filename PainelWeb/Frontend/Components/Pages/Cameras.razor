@@ -152,7 +152,11 @@
             <div class="modal-header"><h3>Cadastrar Nova Câmera</h3><p>Adicione uma nova câmera ao sistema de monitoramento</p></div>
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" maxlength="80" placeholder="Ex: Recepção - Entrada" @bind="novoNome" @bind:event="oninput" /></div>
-                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://usuario:senha@ip:porta/stream" @bind="novoRtsp" @bind:event="oninput" /></div>
+                <div class="form-group">
+                    <label class="form-label">URL RTSP <span class="text-destructive">*</span></label>
+                    <input class="form-input" maxlength="255" placeholder="rtsp://localhost:8554/webcam" @bind="novoRtsp" @bind:event="oninput" />
+                    <p class="text-xs text-muted">Teste local (MediaMTX+webcam): <code>rtsp://localhost:8554/webcam</code>. Em produção: <code>rtsp://usuario:senha@ip-da-camera:554/stream</code></p>
+                </div>
                 <div class="form-group">
                     <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, para feed ao vivo no painel)</span></label>
                     <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="novoHls" @bind:event="oninput" />
