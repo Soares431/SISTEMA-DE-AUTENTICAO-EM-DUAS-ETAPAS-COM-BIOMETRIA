@@ -42,7 +42,12 @@
         {
             <div class="grid grid-2">
                 <div class="card">
-                    <div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Informações do Dispositivo</div></div>
+                    <div class="card-header card-header-row">
+                        <div class="card-title"><Icon Name="settings" Size="20" /> Informações do Dispositivo</div>
+                        <button class="btn btn-outline btn-sm" @onclick="AbrirTrocarT50">
+                            <Icon Name="settings" Size="14" /> Trocar T50
+                        </button>
+                    </div>
                     <div class="card-content">
                         <div class="grid grid-2" style="gap: 1rem;">
                             <div><p class="text-sm text-muted">Endereço IP</p><p class="font-mono">@(dispositivo?.EnderecoIP ?? "-")</p></div>
@@ -239,6 +244,52 @@
     </div>
 }
 
+@if (showTrocarT50 && ambiente != null)
+{
+    <div class="modal-overlay">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Trocar Dispositivo T50</h3>
+                <p>Vincule este ambiente a outro terminal Anviz T50</p>
+            </div>
+            <div class="modal-body space-y-sm">
+                @if (errTrocarT50 != null) { <div class="alert alert-danger">@errTrocarT50</div> }
+                <div class="form-group">
+                    <label class="form-label">T50 atual</label>
+                    <p class="font-mono text-muted">@(dispositivo?.Nome ?? "(nenhum)") · @(dispositivo?.EnderecoIP ?? "-")</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Novo T50 <span class="text-destructive">*</span></label>
+                    @if (dispositivosDisponiveis.Any())
+                    {
+                        <select class="form-select" @bind="novoT50IdSelecionado">
+                            @foreach (var d in dispositivosDisponiveis)
+                            {
+                                <option value="@d.Id">@d.Nome (@d.EnderecoIP) — @d.DigitaisCadastradas/1000 digitais</option>
+                            }
+                        </select>
+                        <p class="text-xs text-muted">Lista todos os T50 cadastrados. A capacidade biométrica do novo T50 precisa comportar as pessoas vinculadas.</p>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-muted">Nenhum outro T50 disponível. <a href="/dispositivos" class="text-primary">Cadastrar T50</a></p>
+                    }
+                </div>
+                <div class="alert alert-warning">
+                    <strong>Atenção:</strong> trocar o T50 não migra biometrias já cadastradas — em produção, as digitais precisam ser
+                    re-cadastradas no novo terminal. Pessoas continuam vinculadas ao ambiente.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showTrocarT50 = false" disabled="@isTrocandoT50">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleTrocarT50" disabled="@(isTrocandoT50 || !dispositivosDisponiveis.Any() || novoT50IdSelecionado == 0 || novoT50IdSelecionado == ambiente.DispositivoT50Id)">
+                    @if (isTrocandoT50) { <span class="spinner"></span><span>Trocando…</span> } else { <span>Confirmar troca</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (showConfirmExcluir && ambiente != null)
 {
     <div class="modal-overlay">
@@ -281,6 +332,45 @@
     private bool isSalvandoConfig = false;
     private bool isAdicionandoCamera = false;
     private bool isAdicionandoPessoa = false;
+    private bool showTrocarT50 = false;
+    private bool isTrocandoT50 = false;
+    private string? errTrocarT50 = null;
+    private int novoT50IdSelecionado = 0;
+    private List<DispositivoT50> dispositivosDisponiveis = new();
+
+    private void AbrirTrocarT50()
+    {
+        errTrocarT50 = null;
+        // Recarrega lista de T50 — admin pode ter cadastrado um novo enquanto a tela estava aberta
+        dispositivosDisponiveis = DispositivoRepo.ListarTodos();
+        novoT50IdSelecionado = ambiente?.DispositivoT50Id ?? 0;
+        showTrocarT50 = true;
+    }
+
+    private async Task HandleTrocarT50()
+    {
+        if (ambiente == null) return;
+        if (novoT50IdSelecionado == 0) { errTrocarT50 = "Selecione um T50."; return; }
+        if (novoT50IdSelecionado == ambiente.DispositivoT50Id) { errTrocarT50 = "O T50 selecionado já é o atual."; return; }
+
+        var novo = dispositivosDisponiveis.FirstOrDefault(d => d.Id == novoT50IdSelecionado);
+        if (novo == null) { errTrocarT50 = "T50 selecionado não existe mais."; return; }
+
+        isTrocandoT50 = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var antigoId = ambiente.DispositivoT50Id;
+            ambiente.DispositivoT50Id = novoT50IdSelecionado;
+            AmbienteRepo.Atualizar(ambiente);
+            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", ambiente.Id);
+            dispositivo = novo;
+            showTrocarT50 = false;
+        }
+        catch (Exception ex) { errTrocarT50 = ex.Message; }
+        finally { isTrocandoT50 = false; }
+    }
     private string nomeConfirmacaoExcluir = "";
     private string? erroExcluir = null;
     private long pessoaIdParaRemover = 0;
