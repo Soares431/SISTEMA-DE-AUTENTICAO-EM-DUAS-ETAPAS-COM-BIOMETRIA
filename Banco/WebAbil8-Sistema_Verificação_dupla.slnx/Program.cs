@@ -224,15 +224,43 @@ using (var scope = app.Services.CreateScope())
     // Backfill defensivo: roda SEMPRE (não só na criação da tabela). Cobre o caso de
     // ambientes pré-existentes que não foram migrados na primeira execução depois do refactor.
     // É idempotente — o WHERE NOT EXISTS evita duplicação.
+    // Também ignora ambientes cujo dispositivoT50Id aponta para um T50 que já não existe
+    // (FK orfã herdada de excluir T50 sem cascade) — isso travava o startup com SQLite Error 19.
     using (var backfillCmd = conn.CreateCommand())
     {
         backfillCmd.CommandText = @"
             INSERT INTO ambienteT50 (ambienteId, dispositivoT50Id, dataVinculo, ehPrincipal)
             SELECT a.id, a.dispositivoT50Id, datetime('now'), 1
             FROM ambiente a
+            INNER JOIN dispositivoT50 d ON d.id = a.dispositivoT50Id
             WHERE a.dispositivoT50Id IS NOT NULL AND a.dispositivoT50Id > 0
               AND NOT EXISTS (SELECT 1 FROM ambienteT50 at WHERE at.ambienteId = a.id AND at.dispositivoT50Id = a.dispositivoT50Id)";
         backfillCmd.ExecuteNonQuery();
+    }
+
+    // Ambientes cujo dispositivoT50Id aponta para T50 deletado:
+    // (a) se há outro T50 vinculado em ambienteT50, aponta pra ele
+    // (b) se não há nenhum, marca como excluido (soft-delete) — não dá pra setar
+    //     dispositivoT50Id=NULL porque a coluna é NOT NULL no schema antigo
+    using (var fixDangling = conn.CreateCommand())
+    {
+        fixDangling.CommandText = @"
+            UPDATE ambiente
+            SET dispositivoT50Id = COALESCE(
+                (SELECT at.dispositivoT50Id FROM ambienteT50 at WHERE at.ambienteId = ambiente.id LIMIT 1),
+                dispositivoT50Id
+            )
+            WHERE dispositivoT50Id NOT IN (SELECT id FROM dispositivoT50)";
+        fixDangling.ExecuteNonQuery();
+    }
+    using (var softDeleteOrfaos = conn.CreateCommand())
+    {
+        softDeleteOrfaos.CommandText = @"
+            UPDATE ambiente
+            SET excluido = 1, dataExclusao = datetime('now')
+            WHERE excluido = 0
+              AND dispositivoT50Id NOT IN (SELECT id FROM dispositivoT50)";
+        softDeleteOrfaos.ExecuteNonQuery();
     }
 
     // Migração inline — tabela pessoaT50 (qual pessoa está cadastrada em qual T50).
