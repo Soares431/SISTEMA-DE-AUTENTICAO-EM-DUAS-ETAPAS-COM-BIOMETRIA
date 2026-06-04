@@ -246,6 +246,10 @@
 
         isCadastrando = true;
         erroDialog = null;
+        // Força repintura do DOM com o overlay de loading antes do trabalho síncrono pesado
+        // (BCrypt + busca código + AES + 2 SaveChanges). Sem isto a UI só atualizaria no fim.
+        StateHasChanged();
+        await Task.Yield();
 
         // Validações de formato (doc_tecnica §4.1)
         if (!FormatHelper.CpfValido(novoCpf))
@@ -341,20 +345,48 @@
     private async Task ExportarPdf()
     {
         var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/pessoas.pdf", TokenStore.Token, "pessoas.pdf");
+        var qs = MontarQueryFiltros();
+        await JS.InvokeVoidAsync("baixarPdf",
+            apiUrl + "api/export/pessoas.pdf" + qs,
+            TokenStore.Token,
+            $"pessoas{SufixoFiltros()}.pdf");
     }
 
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Nome Completo,CPF,Cargo");
-        foreach (var p in Sorted)
+        foreach (var p in Sorted) // Sorted já aplica todos os filtros ativos
         {
-            var cpfFmt = FormatarCpf(p.Cpf);
-            sb.AppendLine($"\"{p.Nome}\",\"{cpfFmt}\",\"{p.Cargo}\"");
+            sb.AppendLine($"\"{p.Nome}\",\"{FormatarCpf(p.Cpf)}\",\"{p.Cargo}\"");
         }
-        await JS.InvokeVoidAsync("downloadCsv", $"pessoas_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+        await JS.InvokeVoidAsync("downloadCsv",
+            $"pessoas_{DateTime.Now:yyyyMMdd_HHmm}{SufixoFiltros()}.csv",
+            sb.ToString());
     }
+
+    private string MontarQueryFiltros()
+    {
+        var q = new List<string>();
+        if (!string.IsNullOrEmpty(search))    q.Add($"search={Uri.EscapeDataString(search)}");
+        if (statusFilter != "todos")          q.Add($"status={statusFilter}");
+        if (modoFilter != "todos")            q.Add($"modo={modoFilter}");
+        if (biometriaFilter != "todos")       q.Add($"biometria={biometriaFilter}");
+        return q.Count > 0 ? "?" + string.Join("&", q) : "";
+    }
+
+    private string SufixoFiltros()
+    {
+        var s = new List<string>();
+        if (statusFilter != "todos")          s.Add(statusFilter);
+        if (modoFilter != "todos")            s.Add(Slug(modoFilter));
+        if (biometriaFilter != "todos")       s.Add($"bio-{biometriaFilter}");
+        if (!string.IsNullOrEmpty(search))    s.Add($"busca-{Slug(search)}");
+        return s.Count > 0 ? "_" + string.Join("_", s) : "";
+    }
+
+    private static string Slug(string s) =>
+        new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 
     private static string FormatarCpf(string? cpf)
     {

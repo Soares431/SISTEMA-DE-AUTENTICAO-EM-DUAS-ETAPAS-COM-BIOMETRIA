@@ -63,7 +63,6 @@
                             <th @onclick="@(() => AlternarOrdem("admin"))" style="cursor:pointer;user-select:none">Admin @SortIcon("admin")</th>
                             <th @onclick="@(() => AlternarOrdem("acao"))" style="cursor:pointer;user-select:none">Ação @SortIcon("acao")</th>
                             <th @onclick="@(() => AlternarOrdem("entidade"))" style="cursor:pointer;user-select:none">Entidade @SortIcon("entidade")</th>
-                            <th>ID Entidade</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,7 +96,6 @@
                                         @log.EntidadeAfetada
                                     }
                                 </td>
-                                <td class="font-mono text-sm text-muted">@(log.EntidadeId?.ToString() ?? "-")</td>
                             </tr>
                         }
                     </tbody>
@@ -179,18 +177,47 @@
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Data/Hora,Admin,Acao,Entidade,ID Entidade");
+        sb.AppendLine("Data/Hora,Admin,Acao,Entidade");
         foreach (var log in Sorted)
         {
             var admin = log.Administrador?.NomeCompleto ?? $"Admin {log.AdminId}";
-            sb.AppendLine($"{DateHelper.Local(log.DataHora):dd/MM/yyyy HH:mm:ss},\"{admin}\",{log.Acao},{log.EntidadeAfetada},{log.EntidadeId?.ToString() ?? ""}");
+            sb.AppendLine($"{DateHelper.Local(log.DataHora):dd/MM/yyyy HH:mm:ss},\"{admin}\",{log.Acao},{log.EntidadeAfetada}");
         }
-        await JS.InvokeVoidAsync("downloadCsv", $"logs_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+        await JS.InvokeVoidAsync("downloadCsv",
+            $"logs_{DateTime.Now:yyyyMMdd_HHmm}{SufixoFiltros()}.csv",
+            sb.ToString());
     }
 
     private async Task ExportarPdf()
     {
         var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/logs.pdf", TokenStore.Token, "logs.pdf");
+        var qs = MontarQueryFiltros();
+        await JS.InvokeVoidAsync("baixarPdf",
+            apiUrl + "api/export/logs.pdf" + qs,
+            TokenStore.Token,
+            $"logs{SufixoFiltros()}.pdf");
     }
+
+    private string MontarQueryFiltros()
+    {
+        var q = new List<string>();
+        if (!string.IsNullOrEmpty(search))    q.Add($"search={Uri.EscapeDataString(search)}");
+        if (acaoFilter != "todos")            q.Add($"acao={Uri.EscapeDataString(acaoFilter)}");
+        if (entidadeFilter != "todos")        q.Add($"entidade={Uri.EscapeDataString(entidadeFilter)}");
+        if (adminFilter != "todos")           q.Add($"adminId={adminFilter}");
+        return q.Count > 0 ? "?" + string.Join("&", q) : "";
+    }
+
+    private string SufixoFiltros()
+    {
+        var s = new List<string>();
+        if (acaoFilter != "todos")            s.Add(Slug(acaoFilter));
+        if (entidadeFilter != "todos")        s.Add(Slug(entidadeFilter));
+        if (adminFilter != "todos")           s.Add($"adm-{adminFilter}");
+        if (!string.IsNullOrEmpty(search))    s.Add($"busca-{Slug(search)}");
+        return s.Count > 0 ? "_" + string.Join("_", s) : "";
+    }
+
+    private static string Slug(string s) =>
+        new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }

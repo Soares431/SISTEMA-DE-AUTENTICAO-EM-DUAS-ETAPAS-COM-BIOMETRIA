@@ -4,6 +4,7 @@
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject IDispositivoT50Repository DispositivoRepo
 @inject ICodigoRepository CodigoRepo
 @inject ISenhaRepository SenhaRepo
 @inject ILogAdminRepository LogRepo
@@ -200,8 +201,11 @@
                 @if (erroExcluir != null) { <div class="alert alert-danger">@erroExcluir</div> }
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">Cancelar</button>
-                <button class="btn btn-primary text-destructive" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != pessoa.Nome)">Excluir Permanentemente</button>
+                <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }" disabled="@isExcluindo">Cancelar</button>
+                <button class="btn btn-primary text-destructive" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != pessoa.Nome || isExcluindo)">
+                    @if (isExcluindo) { <span class="spinner"></span><span>Excluindo…</span> }
+                    else { <span>Excluir Permanentemente</span> }
+                </button>
             </div>
         </div>
     </div>
@@ -347,24 +351,49 @@
         showConfirmInativar = false;
     }
 
+    private bool isExcluindo;
+
     private async Task HandleConfirmarExcluir()
     {
-        if (pessoa == null) return;
+        if (pessoa == null || isExcluindo) return;
         erroExcluir = null;
+        isExcluindo = true;
+        // Força repintura do DOM com o spinner antes do trabalho síncrono pesado
+        StateHasChanged();
+        await Task.Yield();
         try
         {
-            // 1. Remove vínculos com ambientes
-            foreach (var amb in AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id))
+            // 1. Snapshot dos ambientes ANTES de remover (precisamos pra decrementar T50 depois)
+            var ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
+            var tinhaBiometria = pessoa.biometriaCadastrada != null;
+
+            // 2. Remove vínculos com ambientes
+            foreach (var amb in ambientesPessoa)
                 AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
 
-            // 2. Libera CodigoUsuario de volta ao pool
+            // 3. Decrementa DigitaisCadastradas do T50 de cada ambiente que tinha vínculo
+            // (a digital ficava propagada em cada T50 dos ambientes que ela acessava)
+            if (tinhaBiometria)
+            {
+                foreach (var amb in ambientesPessoa)
+                {
+                    var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
+                    if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+                    {
+                        dispositivo.DigitaisCadastradas--;
+                        DispositivoRepo.Atualizar(dispositivo);
+                    }
+                }
+            }
+
+            // 4. Libera CodigoUsuario de volta ao pool
             if (!string.IsNullOrEmpty(pessoa.CodigoUsuario))
             {
                 try { CodigoRepo.Liberar(pessoa.CodigoUsuario); }
                 catch { /* código já liberado ou inexistente */ }
             }
 
-            // 3. Libera a senha de volta ao pool
+            // 5. Libera a senha de volta ao pool
             try
             {
                 foreach (var s in SenhaRepo.ListarTodos().Where(x => x.PessoaId == pessoa.Id))
@@ -376,7 +405,7 @@
             }
             catch { /* senha não localizada */ }
 
-            // 4. Auditoria + remove pessoa
+            // 6. Auditoria + remove pessoa
             LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
             await PessoaRepo.Remover(pessoa.Id);
             Nav.NavigateTo("/pessoas");
@@ -384,6 +413,10 @@
         catch (Exception ex)
         {
             erroExcluir = ex.Message;
+        }
+        finally
+        {
+            isExcluindo = false;
         }
     }
 

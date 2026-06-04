@@ -16,6 +16,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
         private IPessoaRepository _pessoaRepository;
         private readonly ILogAdminRepository _logRepository;
         private readonly IAmbientePessoaRepository _ambientePessoaRepository;
+        private readonly IDispositivoT50Repository _dispositivoRepository;
         private readonly ICodigoRepository _codigoRepository;
         private readonly ISenhaRepository _senhaRepository;
         private readonly IConfiguration _config;
@@ -24,6 +25,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
         public PersonController(IPessoaRepository pessoaRepository,
             ILogAdminRepository logRepository,
             IAmbientePessoaRepository ambientePessoaRepository,
+            IDispositivoT50Repository dispositivoRepository,
             ICodigoRepository codigoRepository,
             ISenhaRepository senhaRepository,
             IConfiguration config,
@@ -32,6 +34,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             _pessoaRepository = pessoaRepository;
             _logRepository = logRepository;
             _ambientePessoaRepository = ambientePessoaRepository;
+            _dispositivoRepository = dispositivoRepository;
             _codigoRepository = codigoRepository;
             _senhaRepository = senhaRepository;
             _config = config;
@@ -97,19 +100,36 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             var pessoa = await _pessoaRepository.BuscarPorId(id);
             if (pessoa == null) return NotFound();
 
-            // 1. Remove vínculos com ambientes
+            // 1. Snapshot dos ambientes ANTES de remover (necessário pra decrementar T50)
             var ambientes = _ambientePessoaRepository.ListarAmbientesDaPessoa(id);
+            var tinhaBiometria = pessoa.biometriaCadastrada != null;
+
+            // 2. Remove vínculos com ambientes
             foreach (var amb in ambientes)
                 _ambientePessoaRepository.RemoverPessoa(amb.Id, id);
 
-            // 2. Libera CodigoUsuario de volta ao pool
+            // 3. Decrementa DigitaisCadastradas do T50 de cada ambiente que a pessoa frequentava
+            if (tinhaBiometria)
+            {
+                foreach (var amb in ambientes)
+                {
+                    var dispositivo = _dispositivoRepository.BuscarPorId(amb.DispositivoT50Id);
+                    if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+                    {
+                        dispositivo.DigitaisCadastradas--;
+                        _dispositivoRepository.Atualizar(dispositivo);
+                    }
+                }
+            }
+
+            // 4. Libera CodigoUsuario de volta ao pool
             if (!string.IsNullOrEmpty(pessoa.CodigoUsuario))
             {
                 try { _codigoRepository.Liberar(pessoa.CodigoUsuario); }
                 catch (Exception ex) { _logger.LogWarning(ex, "Falha ao liberar código {c}", pessoa.CodigoUsuario); }
             }
 
-            // 3. Libera a senha de volta ao pool (busca por PessoaId)
+            // 5. Libera a senha de volta ao pool (busca por PessoaId)
             try
             {
                 var senhas = _senhaRepository.ListarTodos();
@@ -122,10 +142,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             }
             catch (Exception ex) { _logger.LogWarning(ex, "Falha ao liberar senha da pessoa {id}", id); }
 
-            // 4. Remove a pessoa
+            // 6. Remove a pessoa
             await _pessoaRepository.Remover(id);
 
-            // 5. Registra auditoria
+            // 7. Registra auditoria
             var adminIdClaim = User.FindFirst("adminId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (int.TryParse(adminIdClaim, out var adminId))
                 _logRepository.Registrar(adminId, "Remocao", "Pessoa", (int)id);

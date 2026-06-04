@@ -41,11 +41,20 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             _adminRepo = adminRepo;
         }
 
-        // GET /api/export/historico.pdf
+        // GET /api/export/historico.pdf?search=&status=&ambienteId=&tipo=&gravacao=&de=&ate=
         [HttpGet("historico.pdf")]
-        public IActionResult HistoricoPdf()
+        public IActionResult HistoricoPdf(
+            [FromQuery] string? search,
+            [FromQuery] string? status,
+            [FromQuery] int? ambienteId,
+            [FromQuery] string? tipo,
+            [FromQuery] string? gravacao,
+            [FromQuery] DateTime? de,
+            [FromQuery] DateTime? ate)
         {
-            var dados = _tentativaRepo.ListarTodos()
+            var dados = AplicarFiltrosHistorico(
+                _tentativaRepo.ListarTodos(),
+                search, status, ambienteId, tipo, gravacao, de, ate)
                 .OrderByDescending(t => t.DataHora)
                 .Take(500)
                 .ToList();
@@ -63,33 +72,74 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return PdfFile("Histórico de Acessos", cabecalhos, linhas, "historico.pdf");
         }
 
-        // GET /api/export/logs.pdf
-        [HttpGet("logs.pdf")]
-        public IActionResult LogsPdf()
+        private static IEnumerable<Model.TentativaAcesso> AplicarFiltrosHistorico(
+            IEnumerable<Model.TentativaAcesso> fonte,
+            string? search, string? status, int? ambienteId,
+            string? tipo, string? gravacao, DateTime? de, DateTime? ate)
         {
-            var dados = _logRepo.ListarTodos()
+            return fonte.Where(h =>
+                (string.IsNullOrEmpty(search) ||
+                    (h.Pessoa?.Nome?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (h.Ambiente?.Nome?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (string.IsNullOrEmpty(status) || status == "todos" ||
+                    (status == "permitido" ? h.AcessoLiberado : !h.AcessoLiberado)) &&
+                (!ambienteId.HasValue || h.AmbienteId == ambienteId.Value) &&
+                (string.IsNullOrEmpty(tipo) || tipo == "todos" || h.TipoVerificacao == tipo) &&
+                (string.IsNullOrEmpty(gravacao) || gravacao == "todos" ||
+                    (gravacao == "com" ? h.GravacaoPath != null : h.GravacaoPath == null)) &&
+                (!de.HasValue  || h.DataHora.Date >= de.Value.Date) &&
+                (!ate.HasValue || h.DataHora.Date <= ate.Value.Date));
+        }
+
+        // GET /api/export/logs.pdf?search=&acao=&entidade=&adminId=
+        [HttpGet("logs.pdf")]
+        public IActionResult LogsPdf(
+            [FromQuery] string? search,
+            [FromQuery] string? acao,
+            [FromQuery] string? entidade,
+            [FromQuery] int? adminId)
+        {
+            var dados = _logRepo.ListarTodos().Where(l =>
+                (string.IsNullOrEmpty(search) ||
+                    l.Acao.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    l.EntidadeAfetada.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    (l.Administrador?.NomeCompleto?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (string.IsNullOrEmpty(acao) || acao == "todos" || l.Acao == acao) &&
+                (string.IsNullOrEmpty(entidade) || entidade == "todos" || l.EntidadeAfetada == entidade) &&
+                (!adminId.HasValue || l.AdminId == adminId.Value))
                 .OrderByDescending(l => l.DataHora)
                 .Take(500)
                 .ToList();
 
-            var cabecalhos = new List<string> { "Data/Hora", "Admin", "Ação", "Entidade", "Entidade ID" };
+            var cabecalhos = new List<string> { "Data/Hora", "Admin", "Ação", "Entidade" };
             var linhas = dados.Select(l => new List<string>
             {
                 l.DataHora.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss"),
                 l.Administrador?.NomeCompleto ?? $"Admin {l.AdminId}",
                 l.Acao,
-                l.EntidadeAfetada,
-                l.EntidadeId?.ToString() ?? "-"
+                l.EntidadeAfetada
             }).ToList();
 
             return PdfFile("Logs de Auditoria", cabecalhos, linhas, "logs.pdf");
         }
 
-        // GET /api/export/pessoas.pdf
+        // GET /api/export/pessoas.pdf?search=&status=&modo=&biometria=
         [HttpGet("pessoas.pdf")]
-        public async Task<IActionResult> PessoasPdf()
+        public async Task<IActionResult> PessoasPdf(
+            [FromQuery] string? search,
+            [FromQuery] string? status,
+            [FromQuery] string? modo,
+            [FromQuery] string? biometria)
         {
-            var dados = (await _pessoaRepo.ListarTodos())
+            var dados = (await _pessoaRepo.ListarTodos()).Where(p =>
+                (string.IsNullOrEmpty(search) ||
+                    (p.Nome?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Cargo?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (string.IsNullOrEmpty(status) || status == "todos" || p.Status == status) &&
+                (string.IsNullOrEmpty(modo) || modo == "todos" || p.modoAcesso == modo) &&
+                (string.IsNullOrEmpty(biometria) || biometria == "todos" ||
+                    (biometria == "sim" ? p.biometriaCadastrada != null : p.biometriaCadastrada == null)))
                 .OrderBy(p => p.Nome)
                 .ToList();
 
@@ -104,18 +154,27 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return PdfFile("Pessoas Cadastradas", cabecalhos, linhas, "pessoas.pdf");
         }
 
-        // GET /api/export/admins.pdf
+        // GET /api/export/admins.pdf?search=
+        // Por decisão de segurança: NÃO exporta Login (vetor de ataque dispensável).
         [HttpGet("admins.pdf")]
-        public IActionResult AdminsPdf()
+        public IActionResult AdminsPdf([FromQuery] string? search)
         {
-            var dados = _adminRepo.ListarTodos();
-            var cabecalhos = new List<string> { "Nome Completo", "Login", "Cargo", "Email" };
+            var dados = _adminRepo.ListarTodos().Where(a =>
+                string.IsNullOrEmpty(search) ||
+                (a.NomeCompleto?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (a.Cargo?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (a.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+
+            var cabecalhos = new List<string> { "Nome Completo", "CPF", "Cargo", "Email", "Telefone", "Cadastro" };
             var linhas = dados.Select(a => new List<string>
             {
                 a.NomeCompleto ?? "-",
-                a.Login ?? "-",
+                FormatarCpf(a.Cpf),
                 a.Cargo ?? "-",
-                a.Email ?? "-"
+                a.Email ?? "-",
+                FormatarTelefone(a.Telefone),
+                a.DataCriacao.ToLocalTime().ToString("dd/MM/yyyy")
             }).ToList();
 
             return PdfFile("Administradores", cabecalhos, linhas, "admins.pdf");
@@ -129,48 +188,16 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return $"{digitos.Substring(0,3)}.{digitos.Substring(3,3)}.{digitos.Substring(6,3)}-{digitos.Substring(9,2)}";
         }
 
-        // GET /api/export/relatorio-ambiente/{ambienteId}.pdf?de=...&ate=...
-        [HttpGet("relatorio-ambiente/{ambienteId:int}.pdf")]
-        public async Task<IActionResult> RelatorioAmbientePdf(int ambienteId, [FromQuery] DateTime? de, [FromQuery] DateTime? ate)
+        private static string FormatarTelefone(string? telefone)
         {
-            var ambiente = _ambienteRepo.BuscarPorId(ambienteId);
-            if (ambiente == null) return NotFound();
-
-            var pessoasAmb = _ambientePessoaRepo.ListarPessoasDoAmbiente(ambienteId);
-            var tentativas = _tentativaRepo.ListarPorAmbiente(ambienteId)
-                .Where(t => (!de.HasValue || t.DataHora >= de.Value)
-                         && (!ate.HasValue || t.DataHora <= ate.Value))
-                .OrderByDescending(t => t.DataHora)
-                .ToList();
-
-            var bytes = Document.Create(c => c.Page(p =>
+            if (string.IsNullOrWhiteSpace(telefone)) return "-";
+            var d = new string(telefone.Where(char.IsDigit).ToArray());
+            return d.Length switch
             {
-                p.Margin(20);
-                p.Header().Column(col =>
-                {
-                    col.Item().Text($"Relatório do Ambiente: {ambiente.Nome}").FontSize(18).Bold();
-                    if (de.HasValue || ate.HasValue)
-                        col.Item().Text($"Período: {de?.ToString("dd/MM/yyyy") ?? "-"} a {ate?.ToString("dd/MM/yyyy") ?? "-"}").FontSize(10);
-                });
-                p.Content().Column(col =>
-                {
-                    col.Item().PaddingTop(10).Text("Pessoas com Acesso").Bold();
-                    foreach (var pe in pessoasAmb)
-                        col.Item().Text($"• {pe.Nome} ({pe.Cargo})").FontSize(10);
-
-                    col.Item().PaddingTop(15).Text($"Tentativas no Período ({tentativas.Count})").Bold();
-                    foreach (var t in tentativas.Take(200))
-                    {
-                        col.Item().Text(
-                            $"{t.DataHora.ToLocalTime():dd/MM/yyyy HH:mm} — " +
-                            $"{(t.Pessoa?.Nome ?? "Desconhecido")} — " +
-                            $"{(t.AcessoLiberado ? "Permitido" : $"Negado ({t.MotivoNegacao})")}"
-                        ).FontSize(9);
-                    }
-                });
-            })).GeneratePdf();
-
-            return File(bytes, "application/pdf", $"relatorio_ambiente_{ambienteId}.pdf");
+                11 => $"({d.Substring(0,2)}) {d.Substring(2,5)}-{d.Substring(7,4)}",
+                10 => $"({d.Substring(0,2)}) {d.Substring(2,4)}-{d.Substring(6,4)}",
+                _ => telefone
+            };
         }
 
         private IActionResult PdfFile(string titulo, List<string> cabecalhos, List<List<string>> linhas, string filename)

@@ -171,14 +171,21 @@
     private List<TentativaAcesso> todasTentativas = new();
     private List<Ambiente> ambientes = new();
 
-    protected override Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         todasTentativas = TentativaRepo.ListarTodos()
             .OrderByDescending(t => t.DataHora)
             .Take(500)
             .ToList();
         ambientes = AmbienteRepo.ListarTodos();
-        return Task.CompletedTask;
+
+        // Pré-aplica filtros vindos pela URL (ex: /historico?ambienteId=3 ao chegar do "Ver no Histórico")
+        var uri = new Uri(Nav.Uri);
+        var qs = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (qs.TryGetValue("ambienteId", out var amb) && !string.IsNullOrEmpty(amb))
+            ambFilter = amb.ToString();
+        if (qs.TryGetValue("status", out var st) && !string.IsNullOrEmpty(st))
+            statusFilter = st.ToString();
     }
 
     private IEnumerable<TentativaAcesso> Filtered => todasTentativas.Where(h =>
@@ -239,14 +246,18 @@
     private async Task ExportarPdf()
     {
         var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/historico.pdf", TokenStore.Token, "historico.pdf");
+        var qs = MontarQueryFiltros();
+        await JS.InvokeVoidAsync("baixarPdf",
+            apiUrl + "api/export/historico.pdf" + qs,
+            TokenStore.Token,
+            $"historico{SufixoFiltros()}.pdf");
     }
 
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Data/Hora,Pessoa,Ambiente,Status,Motivo,Gravacao");
-        foreach (var item in Sorted)
+        foreach (var item in Sorted) // Sorted já aplica todos os filtros ativos
         {
             var pessoa = item.Pessoa?.Nome ?? $"ID {item.Pessoa?.CodigoUsuario ?? item.PessoaId.ToString()}";
             var amb = item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}";
@@ -255,6 +266,37 @@
             var gravacao = item.GravacaoPath ?? "";
             sb.AppendLine($"{DateHelper.Local(item.DataHora):dd/MM/yyyy HH:mm:ss},\"{pessoa}\",\"{amb}\",{status},{motivo},{gravacao}");
         }
-        await JS.InvokeVoidAsync("downloadCsv", $"historico_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+        await JS.InvokeVoidAsync("downloadCsv",
+            $"historico_{DateTime.Now:yyyyMMdd_HHmm}{SufixoFiltros()}.csv",
+            sb.ToString());
     }
+
+    private string MontarQueryFiltros()
+    {
+        var q = new List<string>();
+        if (!string.IsNullOrEmpty(search))    q.Add($"search={Uri.EscapeDataString(search)}");
+        if (statusFilter != "todos")          q.Add($"status={statusFilter}");
+        if (ambFilter != "todos")             q.Add($"ambienteId={ambFilter}");
+        if (tipoFilter != "todos")            q.Add($"tipo={tipoFilter}");
+        if (gravacaoFilter != "todos")        q.Add($"gravacao={gravacaoFilter}");
+        if (dataInicio != null)               q.Add($"de={dataInicio.Value:yyyy-MM-dd}");
+        if (dataFim != null)                  q.Add($"ate={dataFim.Value:yyyy-MM-dd}");
+        return q.Count > 0 ? "?" + string.Join("&", q) : "";
+    }
+
+    private string SufixoFiltros()
+    {
+        var s = new List<string>();
+        if (statusFilter != "todos")          s.Add(statusFilter);
+        if (ambFilter != "todos")             s.Add($"amb-{ambFilter}");
+        if (tipoFilter != "todos")            s.Add(Slug(tipoFilter));
+        if (gravacaoFilter != "todos")        s.Add($"grav-{gravacaoFilter}");
+        if (dataInicio != null)               s.Add($"de-{dataInicio.Value:yyyyMMdd}");
+        if (dataFim != null)                  s.Add($"ate-{dataFim.Value:yyyyMMdd}");
+        if (!string.IsNullOrEmpty(search))    s.Add($"busca-{Slug(search)}");
+        return s.Count > 0 ? "_" + string.Join("_", s) : "";
+    }
+
+    private static string Slug(string s) =>
+        new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }

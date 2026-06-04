@@ -34,7 +34,6 @@ builder.Services.AddScoped<CameraService>(provider =>
         Environment.GetEnvironmentVariable("FFMPEG_PATH")
     ));
 // Serviços do Bloco 4 — Relatórios
-builder.Services.AddScoped<RelatorioAmbienteService>();
 builder.Services.AddScoped<ExportService>();
 
 // Configuração do Hangfire sem SQLite

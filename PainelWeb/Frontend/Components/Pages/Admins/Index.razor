@@ -18,7 +18,7 @@
 
     <div class="flex gap-4" style="flex-wrap: wrap;">
         <div class="input-icon-wrapper flex-1" style="min-width: 200px;">
-            <Icon Name="search" /><input class="form-input" placeholder="Buscar por nome, login ou cargo..." @bind="search" @bind:event="oninput" />
+            <Icon Name="search" /><input class="form-input" placeholder="Buscar por nome, cargo ou email..." @bind="search" @bind:event="oninput" />
         </div>
     </div>
 
@@ -28,9 +28,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th @onclick="@(() => AlternarOrdem("id"))" style="cursor:pointer;user-select:none">ID @SortIcon("id")</th>
                             <th @onclick="@(() => AlternarOrdem("nome"))" style="cursor:pointer;user-select:none">Nome Completo @SortIcon("nome")</th>
-                            <th @onclick="@(() => AlternarOrdem("login"))" style="cursor:pointer;user-select:none">Login @SortIcon("login")</th>
                             <th @onclick="@(() => AlternarOrdem("cargo"))" style="cursor:pointer;user-select:none">Cargo / Patente @SortIcon("cargo")</th>
                             <th @onclick="@(() => AlternarOrdem("email"))" style="cursor:pointer;user-select:none">Email @SortIcon("email")</th>
                             <th @onclick="@(() => AlternarOrdem("datacriacao"))" style="cursor:pointer;user-select:none">Criado em @SortIcon("datacriacao")</th>
@@ -41,9 +39,7 @@
                         @foreach (var a in Sorted)
                         {
                             <tr>
-                                <td class="font-mono text-sm text-muted">@a.Id</td>
                                 <td><span class="font-semibold">@a.NomeCompleto</span></td>
-                                <td class="font-mono text-sm">@a.Login</td>
                                 <td class="text-muted">@(a.Cargo ?? "-")</td>
                                 <td class="text-muted text-sm">@(a.Email ?? "-")</td>
                                 <td class="text-muted text-sm">@DateHelper.Local(a.DataCriacao).ToString("dd/MM/yyyy")</td>
@@ -78,14 +74,11 @@
     private IEnumerable<Administrador> Filtered => todosAdmins.Where(a =>
         string.IsNullOrEmpty(search) ||
         a.NomeCompleto.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-        a.Login.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         (a.Cargo?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
         (a.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
 
     private IEnumerable<Administrador> Sorted => sortColumn switch
     {
-        "id" => sortAsc ? Filtered.OrderBy(a => a.Id) : Filtered.OrderByDescending(a => a.Id),
-        "login" => sortAsc ? Filtered.OrderBy(a => a.Login) : Filtered.OrderByDescending(a => a.Login),
         "cargo" => sortAsc ? Filtered.OrderBy(a => a.Cargo) : Filtered.OrderByDescending(a => a.Cargo),
         "email" => sortAsc ? Filtered.OrderBy(a => a.Email) : Filtered.OrderByDescending(a => a.Email),
         "datacriacao" => sortAsc ? Filtered.OrderBy(a => a.DataCriacao) : Filtered.OrderByDescending(a => a.DataCriacao),
@@ -104,17 +97,29 @@
     private async Task ExportarPdf()
     {
         var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("baixarPdf", apiUrl + "api/export/admins.pdf", TokenStore.Token, "admins.pdf");
+        var qs = !string.IsNullOrEmpty(search) ? $"?search={Uri.EscapeDataString(search)}" : "";
+        var sufixo = !string.IsNullOrEmpty(search) ? $"_busca-{Slug(search)}" : "";
+        await JS.InvokeVoidAsync("baixarPdf",
+            apiUrl + "api/export/admins.pdf" + qs,
+            TokenStore.Token,
+            $"admins{sufixo}.pdf");
     }
 
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Nome Completo,Login,Cargo,Email");
+        // Por segurança: NÃO exporta Login.
+        sb.AppendLine("Nome Completo,CPF,Cargo,Email,Telefone,Cadastro");
         foreach (var a in Sorted)
         {
-            sb.AppendLine($"\"{a.NomeCompleto}\",\"{a.Login}\",\"{a.Cargo ?? ""}\",\"{a.Email ?? ""}\"");
+            sb.AppendLine($"\"{a.NomeCompleto}\",\"{FormatHelper.FormatarCpf(a.Cpf)}\",\"{a.Cargo ?? ""}\",\"{a.Email ?? ""}\",\"{FormatHelper.FormatarTelefone(a.Telefone)}\",\"{DateHelper.Local(a.DataCriacao):dd/MM/yyyy}\"");
         }
-        await JS.InvokeVoidAsync("downloadCsv", $"admins_{DateTime.Now:yyyyMMdd_HHmm}.csv", sb.ToString());
+        var sufixo = !string.IsNullOrEmpty(search) ? $"_busca-{Slug(search)}" : "";
+        await JS.InvokeVoidAsync("downloadCsv",
+            $"admins_{DateTime.Now:yyyyMMdd_HHmm}{sufixo}.csv",
+            sb.ToString());
     }
+
+    private static string Slug(string s) =>
+        new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }

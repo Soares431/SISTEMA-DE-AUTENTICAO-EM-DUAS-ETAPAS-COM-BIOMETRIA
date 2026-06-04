@@ -2,8 +2,14 @@
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject IAdministradorRepository AdminRepo
 @inject ILogAdminRepository LogRepo
-@inject ITokenStore TokenStore
 @inject NavigationManager Nav
+
+@*
+   Tela apenas-leitura. Por decisão de segurança (projeto militar):
+   - Edição de dados, troca de senha e criação de admin são feitas SOMENTE via SQL direto no banco.
+   - O painel não expõe Login (vetor de ataque dispensável).
+   - Esta tela existe para auditoria: ver dados básicos + últimos logs.
+*@
 
 @if (admin == null)
 {
@@ -16,87 +22,26 @@ else
             <button class="btn btn-ghost" @onclick="@(() => Nav.NavigateTo("/admins"))"><Icon Name="arrow-left" Size="16" /> Voltar</button>
             <div class="flex-1">
                 <h1 class="text-2xl font-bold">@admin.NomeCompleto</h1>
-                <p class="text-muted">ID @admin.Id · Administrador do Sistema</p>
+                <p class="text-muted">Administrador do Sistema</p>
             </div>
-            @if (!modoEditar)
-            {
-                <button class="btn btn-outline" @onclick="IniciarEditar"><Icon Name="edit" Size="16" /> Editar</button>
-                <button class="btn btn-warning" @onclick="AbrirModalSenha"><Icon Name="lock" Size="16" /> Redefinir Senha</button>
-            }
         </div>
 
-        @if (sucesso != null)
-        {
-            <div class="alert alert-success">@sucesso</div>
-        }
-        @if (erro != null)
-        {
-            <div class="alert alert-danger">@erro</div>
-        }
+        <div class="alert alert-info">
+            <Icon Name="info" Size="16" /> Dados de administradores são editados apenas via SQL direto no banco. Consulte docs/scripts/README.md.
+        </div>
 
         <div class="grid grid-2" style="gap:1rem; align-items:start;">
             <div class="card">
-                <div class="card-header"><div class="card-title"><Icon Name="user" Size="20" /> Informações do Administrador</div></div>
+                <div class="card-header"><div class="card-title"><Icon Name="user" Size="20" /> Informações</div></div>
                 <div class="card-content">
-                    @if (!modoEditar)
-                    {
-                        <dl class="space-y-sm">
-                            <div><dt class="text-muted text-sm">Nome Completo</dt><dd class="font-semibold">@admin.NomeCompleto</dd></div>
-                            <div><dt class="text-muted text-sm">Login</dt><dd class="font-mono">@admin.Login</dd></div>
-                            <div><dt class="text-muted text-sm">CPF</dt><dd>@(FormatHelper.FormatarCpf(admin.Cpf) is var c && !string.IsNullOrEmpty(c) ? c : "-")</dd></div>
-                            <div><dt class="text-muted text-sm">Cargo / Patente</dt><dd>@(admin.Cargo ?? "-")</dd></div>
-                            <div><dt class="text-muted text-sm">Email</dt><dd>@(admin.Email ?? "-")</dd></div>
-                            <div><dt class="text-muted text-sm">Telefone</dt><dd>@(FormatHelper.FormatarTelefone(admin.Telefone) is var t && !string.IsNullOrEmpty(t) ? t : "-")</dd></div>
-                            <div><dt class="text-muted text-sm">Membro desde</dt><dd>@DateHelper.Local(admin.DataCriacao).ToString("dd/MM/yyyy 'às' HH:mm")</dd></div>
-                        </dl>
-                    }
-                    else
-                    {
-                        <div class="space-y-sm">
-                            <div class="form-group">
-                                <label class="form-label">Nome Completo *</label>
-                                <input class="form-input" maxlength="100" onkeyup="window.maskTextoSeguro(this, 100)"
-                                       @bind="editNome" @bind:event="oninput" />
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Login *</label>
-                                <input class="form-input" maxlength="40"
-                                       @bind="editLogin" @bind:event="oninput" />
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">CPF</label>
-                                <input class="form-input" maxlength="14" inputmode="numeric"
-                                       placeholder="000.000.000-00"
-                                       onkeyup="window.maskCpf(this)"
-                                       @bind="editCpf" @bind:event="oninput" />
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Cargo / Patente</label>
-                                <input class="form-input" maxlength="100" onkeyup="window.maskTextoSeguro(this, 100)"
-                                       @bind="editCargo" @bind:event="oninput" />
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Email</label>
-                                <input class="form-input" type="email" maxlength="150"
-                                       @bind="editEmail" @bind:event="oninput" />
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Telefone</label>
-                                <input class="form-input" maxlength="15" inputmode="numeric"
-                                       placeholder="(00) 00000-0000"
-                                       onkeyup="window.maskTelefone(this)"
-                                       @bind="editTelefone" @bind:event="oninput" />
-                            </div>
-                            @if (erro != null) { <div class="alert alert-danger">@erro</div> }
-                            <div class="flex gap-2 mt-4">
-                                <button class="btn btn-primary" @onclick="HandleSalvarEdicao" disabled="@isSalvando">
-                                    @if (isSalvando) { <span class="spinner"></span><span>Salvando…</span> }
-                                    else { <span>Salvar</span> }
-                                </button>
-                                <button class="btn btn-outline" @onclick="CancelarEditar" disabled="@isSalvando">Cancelar</button>
-                            </div>
-                        </div>
-                    }
+                    <dl class="space-y-sm">
+                        <div><dt class="text-muted text-sm">Nome Completo</dt><dd class="font-semibold">@admin.NomeCompleto</dd></div>
+                        <div><dt class="text-muted text-sm">CPF</dt><dd>@(string.IsNullOrEmpty(admin.Cpf) ? "-" : FormatHelper.FormatarCpf(admin.Cpf))</dd></div>
+                        <div><dt class="text-muted text-sm">Cargo / Patente</dt><dd>@(admin.Cargo ?? "-")</dd></div>
+                        <div><dt class="text-muted text-sm">Email</dt><dd>@(admin.Email ?? "-")</dd></div>
+                        <div><dt class="text-muted text-sm">Telefone</dt><dd>@(string.IsNullOrEmpty(admin.Telefone) ? "-" : FormatHelper.FormatarTelefone(admin.Telefone))</dd></div>
+                        <div><dt class="text-muted text-sm">Membro desde</dt><dd>@DateHelper.Local(admin.DataCriacao).ToString("dd/MM/yyyy 'às' HH:mm")</dd></div>
+                    </dl>
                 </div>
             </div>
 
@@ -114,7 +59,7 @@ else
                             {
                                 <div class="flex items-center gap-3 py-2" style="border-bottom:1px solid var(--border);">
                                     <span class="badge @GetAcaoBadge(log.Acao) badge-sm">@log.Acao</span>
-                                    <span class="text-sm text-muted flex-1">@log.EntidadeAfetada @(log.EntidadeId.HasValue ? $"#{log.EntidadeId}" : "")</span>
+                                    <span class="text-sm text-muted flex-1">@log.EntidadeAfetada</span>
                                     <span class="font-mono text-xs text-muted">@DateHelper.Local(log.DataHora).ToString("dd/MM HH:mm")</span>
                                 </div>
                             }
@@ -126,63 +71,13 @@ else
     </div>
 }
 
-@if (showConfirmSenha)
-{
-    <div class="modal-overlay" @onclick="() => showConfirmSenha = false">
-        <div class="modal" @onclick:stopPropagation="true">
-            <div class="modal-header"><h3>Redefinir Senha de @(admin?.NomeCompleto)</h3></div>
-            <div class="modal-body space-y-sm">
-                @if (erroSenha != null) { <div class="alert alert-danger">@erroSenha</div> }
-                <div class="form-group">
-                    <label class="form-label">Nova Senha *</label>
-                    <input class="form-input" type="password" maxlength="64" @bind="novaSenha" @bind:event="oninput" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Confirmar Nova Senha *</label>
-                    <input class="form-input" type="password" maxlength="64" @bind="confirmarNovaSenha" @bind:event="oninput" />
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" @onclick="() => showConfirmSenha = false">Cancelar</button>
-                <button class="btn btn-primary" @onclick="HandleRedefinirSenha">Confirmar</button>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     [Parameter] public int Id { get; set; }
 
     private Administrador? admin;
     private List<LogAdmin> logsAdmin = new();
-    private bool modoEditar = false;
-    private bool isSalvando = false;
-    private bool showConfirmSenha = false;
-    private string? sucesso = null;
-    private string? erro = null;
-    private string? erroSenha = null;
 
-    private string editNome = "";
-    private string editLogin = "";
-    private string editCpf = "";
-    private string editEmail = "";
-    private string editCargo = "";
-    private string editTelefone = "";
-
-    private string novaSenha = "";
-    private string confirmarNovaSenha = "";
-
-    protected override void OnInitialized() => Carregar();
-
-    private void AbrirModalSenha()
-    {
-        showConfirmSenha = true;
-        erroSenha = null;
-        novaSenha = "";
-        confirmarNovaSenha = "";
-    }
-
-    private void Carregar()
+    protected override void OnInitialized()
     {
         admin = AdminRepo.BuscarPorId(Id);
         if (admin != null)
@@ -194,88 +89,6 @@ else
         }
     }
 
-    private void IniciarEditar()
-    {
-        editNome = admin!.NomeCompleto;
-        editLogin = admin.Login;
-        editCpf = admin.Cpf ?? "";
-        editEmail = admin.Email ?? "";
-        editCargo = admin.Cargo ?? "";
-        editTelefone = admin.Telefone ?? "";
-        modoEditar = true;
-        sucesso = null;
-        erro = null;
-    }
-
-    private void CancelarEditar() { modoEditar = false; erro = null; }
-
-    private void HandleSalvarEdicao()
-    {
-        if (string.IsNullOrWhiteSpace(editNome) || string.IsNullOrWhiteSpace(editLogin))
-        {
-            erro = "Nome completo e login são obrigatórios.";
-            return;
-        }
-        if (editNome.Length > 100 || editLogin.Length > 40)
-        {
-            erro = "Nome ou login excederam o tamanho máximo permitido.";
-            return;
-        }
-        if (!string.IsNullOrWhiteSpace(editCpf) && !FormatHelper.CpfValido(editCpf))
-        {
-            erro = "CPF inválido.";
-            return;
-        }
-        if (!string.IsNullOrWhiteSpace(editEmail) && !FormatHelper.EmailValido(editEmail))
-        {
-            erro = "Email inválido.";
-            return;
-        }
-        if (!string.IsNullOrWhiteSpace(editTelefone) && !FormatHelper.TelefoneValido(editTelefone))
-        {
-            erro = "Telefone inválido (precisa de 10 ou 11 dígitos).";
-            return;
-        }
-        if (AdminRepo.LoginExiste(editLogin, admin!.Id))
-        {
-            erro = $"O login '{editLogin}' já está em uso por outro administrador.";
-            return;
-        }
-        isSalvando = true;
-        try
-        {
-            admin!.NomeCompleto = editNome.Trim();
-            admin.Login = editLogin.Trim();
-            admin.Cpf = string.IsNullOrWhiteSpace(editCpf) ? null : FormatHelper.SoDigitos(editCpf);
-            admin.Email = string.IsNullOrWhiteSpace(editEmail) ? null : editEmail.Trim();
-            admin.Cargo = string.IsNullOrWhiteSpace(editCargo) ? null : editCargo.Trim();
-            admin.Telefone = string.IsNullOrWhiteSpace(editTelefone) ? null : FormatHelper.SoDigitos(editTelefone);
-            AdminRepo.Atualizar(admin);
-            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Administrador", admin.Id);
-            sucesso = "Administrador atualizado com sucesso.";
-            modoEditar = false;
-            erro = null;
-            Carregar();
-        }
-        catch (Exception ex) { erro = ex.Message; }
-        finally { isSalvando = false; }
-    }
-
-    private void HandleRedefinirSenha()
-    {
-        erroSenha = null;
-        if (string.IsNullOrWhiteSpace(novaSenha)) { erroSenha = "A nova senha é obrigatória."; return; }
-        if (novaSenha.Length < 6) { erroSenha = "A senha deve ter pelo menos 6 caracteres."; return; }
-        if (novaSenha != confirmarNovaSenha) { erroSenha = "As senhas não coincidem."; return; }
-
-        admin!.SenhaHash = BCrypt.Net.BCrypt.HashPassword(novaSenha, workFactor: 10);
-        AdminRepo.Atualizar(admin);
-        LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Administrador", admin.Id);
-        showConfirmSenha = false;
-        novaSenha = confirmarNovaSenha = "";
-        sucesso = "Senha redefinida com sucesso.";
-    }
-
     private string GetAcaoBadge(string acao) => acao switch
     {
         "Remocao" => "badge-destructive",
@@ -283,6 +96,7 @@ else
         "ResetBiometria" => "badge-warning",
         "Adicionar" => "badge-success",
         "Atualizar" => "badge-primary",
+        "Login" => "badge-primary",
         _ => "badge-muted"
     };
 }

@@ -139,7 +139,7 @@
                         <p class="text-muted">Remove o ambiente, todas as @cameras.Count câmera(s), @pessoas.Count vínculo(s) de pessoa e o histórico de tentativas vinculado.</p>
                         <p class="text-sm text-muted">Pessoas que ficarem sem nenhum ambiente serão inativadas automaticamente.</p>
                     </div>
-                    <button class="btn btn-outline" @onclick="ExportarRelatorioPdf"><Icon Name="file-text" Size="16" /> Relatório PDF</button>
+                    <a class="btn btn-outline" href="/historico?ambienteId=@Id"><Icon Name="file-text" Size="16" /> Ver no Histórico</a>
                     <button class="btn btn-outline text-destructive" @onclick="() => showConfirmExcluir = true">Excluir Ambiente</button>
                 </div>
             </div>
@@ -465,12 +465,4 @@
         }
     }
 
-    private async Task ExportarRelatorioPdf()
-    {
-        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("baixarPdf",
-            apiUrl + $"api/export/relatorio-ambiente/{Id}.pdf",
-            TokenStore.Token,
-            $"relatorio_ambiente_{Id}.pdf");
-    }
 }
