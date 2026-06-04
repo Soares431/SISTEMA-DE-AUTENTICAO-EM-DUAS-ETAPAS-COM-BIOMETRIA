@@ -92,4 +92,26 @@ builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<TimeSyncWorker>();
 
 var host = builder.Build();
+
+// Verifica FFmpeg na inicialização e printa status visível no console.
+// Sem FFmpeg, GravarTrechoRTSP retorna null silenciosamente e nenhuma tentativa
+// fica com GravacaoPath preenchido.
+using (var scope = host.Services.CreateScope())
+{
+    var cameraService = scope.ServiceProvider.GetRequiredService<CameraService>();
+    var ffmpegOk = cameraService.FfmpegDisponivel();
+    var camBase = Path.GetFullPath(Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras");
+    Console.WriteLine("");
+    Console.WriteLine("═══════════════════════════════════════════════════════════════");
+    Console.WriteLine($"  FFmpeg disponível: {(ffmpegOk ? "SIM ✓" : "NÃO ✗ — gravações NÃO serão geradas")}");
+    Console.WriteLine($"  Pasta das gravações: {camBase}");
+    if (!ffmpegOk)
+    {
+        Console.WriteLine("  → Defina FFMPEG_PATH apontando para o ffmpeg.exe, ou");
+        Console.WriteLine("    coloque a pasta bin do FFmpeg no PATH do sistema.");
+    }
+    Console.WriteLine("═══════════════════════════════════════════════════════════════");
+    Console.WriteLine("");
+}
+
 host.Run();

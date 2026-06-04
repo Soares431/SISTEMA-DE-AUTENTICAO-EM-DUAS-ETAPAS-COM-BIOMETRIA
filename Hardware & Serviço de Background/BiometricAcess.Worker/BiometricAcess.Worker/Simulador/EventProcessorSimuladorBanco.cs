@@ -126,8 +126,24 @@ namespace BiometricAcess.Worker.Simulador
             if (acessoLiberado)
             {
                 var cameraService = scope.ServiceProvider.GetService<CameraService>();
-                if (cameraService != null)
+                if (cameraService == null)
                 {
+                    Console.WriteLine($"[SimuladorBanco] AVISO: CameraService não registrado no DI — gravação pulada");
+                }
+                else
+                {
+                    var cameraRepo = scope.ServiceProvider.GetRequiredService<ICameraRepository>();
+                    var cams = await cameraRepo.ListarPorAmbiente(ambiente.Id);
+                    var camRtsp = cams.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.UrlRTSP));
+                    if (camRtsp == null)
+                    {
+                        Console.WriteLine($"[SimuladorBanco] Ambiente {ambiente.Nome} não tem câmera com UrlRTSP cadastrada — sem gravação.");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) — câmera '{camRtsp.Nome}' em {camRtsp.UrlRTSP}");
+                    }
+
                     var gravacaoPath = await cameraService.GravarTrechoRTSP(
                         ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
                     if (gravacaoPath != null)
