@@ -11,6 +11,8 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -97,21 +99,34 @@
 
 @if (liveCamera != null)
 {
-    <div class="modal-overlay" @onclick="() => liveCamera = null">
+    <div class="modal-overlay">
         <div class="modal modal-lg" @onclick:stopPropagation="true">
-            <div class="modal-header"><h3><Icon Name="video" Size="20" /> @liveCamera.Nome</h3><p>Visualização ao vivo via RTSP - @(liveCamera.UrlRTSP ?? "-")</p></div>
+            <div class="modal-header">
+                <h3><Icon Name="video" Size="20" /> @liveCamera.Nome</h3>
+                <p>Visualização ao vivo @(string.IsNullOrEmpty(liveCamera.UrlHLS) ? "(URL HLS não configurada)" : "via HLS — " + liveCamera.UrlHLS)</p>
+            </div>
             <div class="modal-body">
-                <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center;">
-                    <div style="text-align: center;" class="space-y-sm">
-                        <Icon Name="camera" Size="96" CssClass="text-muted" />
-                        <p class="font-medium">Feed ao Vivo</p>
-                        <p class="text-sm text-muted">Conectando a @(liveCamera.UrlRTSP ?? "-")...</p>
+                @if (!string.IsNullOrEmpty(liveCamera.UrlHLS))
+                {
+                    <video id="liveVideo" class="aspect-video rounded-lg"
+                           style="width: 100%; background: #000;"
+                           controls autoplay muted playsinline></video>
+                }
+                else
+                {
+                    <div class="aspect-video rounded-lg" style="background: var(--muted); display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center;" class="space-y-sm">
+                            <Icon Name="camera" Size="96" CssClass="text-muted" />
+                            <p class="font-medium">URL HLS não configurada</p>
+                            <p class="text-sm text-muted">Browsers não suportam RTSP nativo. Configure a URL HLS desta câmera para ver ao vivo.</p>
+                            <p class="text-xs text-muted">RTSP: @(liveCamera.UrlRTSP ?? "-")</p>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
             <div class="modal-footer justify-between" style="justify-content: space-between;">
                 <div class="flex items-center gap-4 text-sm text-muted"><span>Ambiente: @(ambientes.FirstOrDefault(a => a.Id == liveCamera.AmbienteId)?.Nome ?? $"Ambiente {liveCamera.AmbienteId}")</span><span>Tipo: @liveCamera.Tipo</span></div>
-                <div class="flex gap-2"><button class="btn btn-outline btn-sm" @onclick="() => liveCamera = null">Fechar</button></div>
+                <div class="flex gap-2"><button class="btn btn-outline btn-sm" @onclick="FecharLiveView">Fechar</button></div>
             </div>
         </div>
     </div>
@@ -125,6 +140,11 @@
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" maxlength="80" placeholder="Ex: Recepção - Entrada" @bind="novoNome" @bind:event="oninput" /></div>
                 <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://usuario:senha@ip:porta/stream" @bind="novoRtsp" @bind:event="oninput" /></div>
+                <div class="form-group">
+                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, para feed ao vivo no painel)</span></label>
+                    <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="novoHls" @bind:event="oninput" />
+                    <p class="text-xs text-muted">Convenção MediaMTX: porta 8888. Ex: <code>http://localhost:8888/webcam/index.m3u8</code></p>
+                </div>
                 <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" placeholder="http://ip:porta/onvif/device_service" @bind="novoOnvif" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
@@ -156,6 +176,10 @@
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="80" @bind="editandoCamera.Nome" @bind:event="oninput" /></div>
                 <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" @bind="editandoCamera.UrlRTSP" @bind:event="oninput" /></div>
+                <div class="form-group">
+                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, para feed ao vivo no painel)</span></label>
+                    <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="editandoCamera.UrlHLS" @bind:event="oninput" />
+                </div>
                 <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" @bind="editandoCamera.EnderecoONVIF" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
@@ -195,9 +219,11 @@
     private List<Ambiente> ambientes = new();
     private string novoNome = "";
     private string novoRtsp = "";
+    private string novoHls = "";
     private string novoOnvif = "";
     private string novoTipo = "interna";
     private int novoAmbienteId = 0;
+    private bool hlsAtivo = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,7 +232,41 @@
         if (ambientes.Any()) novoAmbienteId = ambientes.First().Id;
     }
 
-    private void OpenLiveView(Camera cam) => liveCamera = cam;
+    private void OpenLiveView(Camera cam)
+    {
+        liveCamera = cam;
+        hlsAtivo = false; // será iniciado em OnAfterRenderAsync quando o <video> existir
+    }
+
+    private async Task FecharLiveView()
+    {
+        if (hlsAtivo)
+        {
+            await JS.InvokeVoidAsync("pararHls", "liveVideo");
+            hlsAtivo = false;
+        }
+        liveCamera = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Quando o modal abre e a câmera tem URL HLS, dispara o player.
+        // hlsAtivo evita reinicializar a cada re-render do componente.
+        if (liveCamera != null && !string.IsNullOrEmpty(liveCamera.UrlHLS) && !hlsAtivo)
+        {
+            hlsAtivo = true;
+            await JS.InvokeVoidAsync("iniciarHls", "liveVideo", liveCamera.UrlHLS);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Garante que o stream HLS é parado quando o usuário sai da página.
+        if (hlsAtivo)
+        {
+            try { await JS.InvokeVoidAsync("pararHls", "liveVideo"); } catch { }
+        }
+    }
 
     private void ConfirmarRemover(int id)
     {
@@ -240,6 +300,7 @@
         {
             Nome = novoNome,
             UrlRTSP = novoRtsp,
+            UrlHLS = string.IsNullOrWhiteSpace(novoHls) ? null : novoHls,
             EnderecoONVIF = string.IsNullOrWhiteSpace(novoOnvif) ? null : novoOnvif,
             Tipo = novoTipo,
             AmbienteId = novoAmbienteId,
@@ -249,7 +310,7 @@
         LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Camera", novaCamera.Id);
         todasCameras = await CameraRepo.ListarComFiltros(null, null);
         showCreate = false;
-        novoNome = novoRtsp = novoOnvif = "";
+        novoNome = novoRtsp = novoHls = novoOnvif = "";
     }
 
     private async Task HandleToggleAtiva(Camera cam)
@@ -268,6 +329,7 @@
             Id = cam.Id,
             Nome = cam.Nome,
             UrlRTSP = cam.UrlRTSP,
+            UrlHLS = cam.UrlHLS,
             EnderecoONVIF = cam.EnderecoONVIF,
             Tipo = cam.Tipo,
             AmbienteId = cam.AmbienteId,

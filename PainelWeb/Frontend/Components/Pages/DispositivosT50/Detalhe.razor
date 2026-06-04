@@ -121,8 +121,8 @@
                             @foreach (var a in ambientesVinculados)
                             {
                                 <tr>
-                                    <td class="font-medium"><a href="/ambientes/@a.Id" class="text-primary">@a.Nome</a></td>
-                                    <td class="text-right"><a href="/ambientes/@a.Id" class="btn btn-ghost btn-sm">Abrir <Icon Name="chevron-right" Size="16" /></a></td>
+                                    <td class="font-medium">@a.Nome</td>
+                                    <td class="text-right text-muted text-sm">ID @a.Id</td>
                                 </tr>
                             }
                         </tbody>

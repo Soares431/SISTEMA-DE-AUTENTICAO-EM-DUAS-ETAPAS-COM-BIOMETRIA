@@ -3,6 +3,7 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IDispositivoT50Repository DispositivoRepo
+@inject IAmbienteT50Repository AmbienteT50Repo
 @inject ICameraRepository CameraRepo
 @inject IPessoaRepository PessoaRepo
 @inject ITentativaAcessoRepository TentativaRepo
@@ -40,42 +41,98 @@
 
         @if (activeTab == "t50")
         {
-            <div class="grid grid-2">
-                <div class="card">
-                    <div class="card-header card-header-row">
-                        <div class="card-title"><Icon Name="settings" Size="20" /> Informações do Dispositivo</div>
-                        <button class="btn btn-outline btn-sm" @onclick="AbrirTrocarT50">
-                            <Icon Name="settings" Size="14" /> Trocar T50
+            <div class="card">
+                <div class="card-header card-header-row">
+                    <div>
+                        <div class="card-title"><Icon Name="settings" Size="20" /> Dispositivos T50 vinculados</div>
+                        <p class="card-description">@t50sVinculados.Count terminal(is) — o "principal" recebe os contadores de digitais ao cadastrar pessoas</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline btn-sm" @onclick="AbrirAdicionarT50">
+                            <Icon Name="plus" Size="14" /> Adicionar outro T50
+                        </button>
+                        <button class="btn btn-primary btn-sm" @onclick="AbrirTrocarT50" disabled="@(!t50sVinculados.Any())">
+                            <Icon Name="settings" Size="14" /> Trocar T50 (swap)
                         </button>
                     </div>
-                    <div class="card-content">
-                        <div class="grid grid-2" style="gap: 1rem;">
-                            <div><p class="text-sm text-muted">Endereço IP</p><p class="font-mono">@(dispositivo?.EnderecoIP ?? "-")</p></div>
-                            <div><p class="text-sm text-muted">Porta</p><p class="font-mono">@(dispositivo?.Porta ?? 0)</p></div>
-                            <div><p class="text-sm text-muted">Nome</p><p>@(dispositivo?.Nome ?? "-")</p></div>
-                            <div><p class="text-sm text-muted">Digitais Cadastradas</p><p class="font-medium">@(dispositivo?.DigitaisCadastradas ?? 0)</p></div>
-                        </div>
-                    </div>
                 </div>
-                <div class="card">
-                    <div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biométrica</div><p class="card-description">Armazenamento de templates biométricos</p></div>
-                    <div class="card-content space-y-sm">
-                        @{
-                            var pct = dispositivo != null ? (dispositivo.DigitaisCadastradas * 100 / 1000) : 0;
-                        }
-                        <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium @(pct >= 95 ? "text-destructive" : pct >= 85 ? "text-warning" : "")">@(dispositivo?.DigitaisCadastradas ?? 0) / 1000</span></div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>
-                        @if (pct >= 95)
-                        {
-                            <p class="text-sm text-destructive">Atenção: Capacidade crítica! Remova templates inativos urgentemente.</p>
-                        }
-                        else if (pct >= 85)
-                        {
-                            <p class="text-sm text-muted">Atenção: Capacidade acima de 85%. Considere limpar templates inativos.</p>
-                        }
-                    </div>
+                <div class="card-content">
+                    @if (!t50sVinculados.Any())
+                    {
+                        <div class="alert alert-warning">Nenhum T50 vinculado ainda. Use "Adicionar outro T50".</div>
+                    }
+                    else
+                    {
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>IP : Porta</th>
+                                    <th>Digitais</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var d in t50sVinculados)
+                                {
+                                    var ehPrincipal = (d.Id == ambiente.DispositivoT50Id);
+                                    var pctRow = d.DigitaisCadastradas * 100 / 1000;
+                                    <tr>
+                                        <td class="font-medium">
+                                            @d.Nome
+                                            @if (ehPrincipal) { <span class="badge badge-success" style="margin-left:0.5rem;">Principal</span> }
+                                        </td>
+                                        <td class="font-mono text-sm">@d.EnderecoIP : @d.Porta</td>
+                                        <td>
+                                            <div class="flex items-center gap-2">
+                                                <span class="@(pctRow >= 95 ? "text-destructive" : pctRow >= 85 ? "text-warning" : "")">@d.DigitaisCadastradas / 1000</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (!d.EstaOnline) { <span class="badge badge-destructive">Offline</span> }
+                                            else if (pctRow >= 95) { <span class="badge badge-warning">Crítico</span> }
+                                            else { <span class="badge badge-success">Online</span> }
+                                        </td>
+                                        <td class="text-right">
+                                            <div class="flex gap-2 justify-end">
+                                                @if (!ehPrincipal)
+                                                {
+                                                    <button class="btn btn-ghost btn-sm" @onclick="() => HandleTornarPrincipal(d.Id)" title="Tornar este o T50 principal">
+                                                        <Icon Name="settings" Size="14" /> Tornar principal
+                                                    </button>
+                                                }
+                                                @if (t50sVinculados.Count > 1)
+                                                {
+                                                    <button class="btn btn-ghost btn-sm text-destructive" @onclick="() => ConfirmarRemoverT50(d.Id)" title="Desvincular este T50">
+                                                        <Icon Name="trash" Size="14" />
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
                 </div>
             </div>
+
+            @if (dispositivo != null)
+            {
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biométrica do Principal (@dispositivo.Nome)</div></div>
+                    <div class="card-content space-y-sm">
+                        @{
+                            var pct = (dispositivo.DigitaisCadastradas * 100 / 1000);
+                        }
+                        <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium @(pct >= 95 ? "text-destructive" : pct >= 85 ? "text-warning" : "")">@dispositivo.DigitaisCadastradas / 1000</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>
+                        @if (pct >= 95) { <p class="text-sm text-destructive">Capacidade crítica! Remova templates inativos urgentemente.</p> }
+                        else if (pct >= 85) { <p class="text-sm text-muted">Acima de 85%. Considere limpar templates inativos.</p> }
+                    </div>
+                </div>
+            }
         }
         else if (activeTab == "pessoas")
         {
@@ -91,7 +148,7 @@
                             @foreach (var p in pessoas)
                             {
                                 <tr>
-                                    <td class="font-medium"><a href="/pessoas/@p.Id" class="text-primary">@p.Nome</a></td>
+                                    <td class="font-medium">@p.Nome</td>
                                     <td class="text-muted">@p.Cargo</td>
                                     <td class="text-right">
                                         <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => ConfirmarRemoverPessoa(p.Id)"><Icon Name="trash" Size="16" /></button>
@@ -225,6 +282,10 @@
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="80" placeholder="Ex: Câmera Principal" @bind="novaCameraNome" @bind:event="oninput" /></div>
                 <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://..." @bind="novaCameraRtsp" @bind:event="oninput" /></div>
+                <div class="form-group">
+                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, feed ao vivo)</span></label>
+                    <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="novaCameraHls" @bind:event="oninput" />
+                </div>
                 <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" placeholder="http://ip:porta/onvif/device_service" @bind="novaCameraOnvif" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
@@ -249,42 +310,113 @@
     <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h3>Trocar Dispositivo T50</h3>
-                <p>Vincule este ambiente a outro terminal Anviz T50</p>
+                <h3>Trocar T50 principal (swap)</h3>
+                <p>Faz swap dos contadores de digitais entre o T50 atual e outro já vinculado</p>
             </div>
             <div class="modal-body space-y-sm">
                 @if (errTrocarT50 != null) { <div class="alert alert-danger">@errTrocarT50</div> }
                 <div class="form-group">
-                    <label class="form-label">T50 atual</label>
-                    <p class="font-mono text-muted">@(dispositivo?.Nome ?? "(nenhum)") · @(dispositivo?.EnderecoIP ?? "-")</p>
+                    <label class="form-label">Principal atual</label>
+                    <p class="font-mono text-muted">@(dispositivo?.Nome ?? "(nenhum)") · @(dispositivo?.EnderecoIP ?? "-") · @(dispositivo?.DigitaisCadastradas ?? 0) digitais</p>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Novo T50 <span class="text-destructive">*</span></label>
-                    @if (dispositivosDisponiveis.Any())
+                    <label class="form-label">Novo principal <span class="text-destructive">*</span></label>
+                    @{
+                        var trocaveis = t50sVinculados.Where(d => d.Id != ambiente.DispositivoT50Id).ToList();
+                    }
+                    @if (trocaveis.Any())
                     {
                         <select class="form-select" @bind="novoT50IdSelecionado">
-                            @foreach (var d in dispositivosDisponiveis)
+                            @foreach (var d in trocaveis)
                             {
                                 <option value="@d.Id">@d.Nome (@d.EnderecoIP) — @d.DigitaisCadastradas/1000 digitais</option>
                             }
                         </select>
-                        <p class="text-xs text-muted">Lista todos os T50 cadastrados. A capacidade biométrica do novo T50 precisa comportar as pessoas vinculadas.</p>
+                        <p class="text-xs text-muted">Lista apenas T50s já vinculados a este ambiente. Use "Adicionar outro T50" para vincular um novo antes.</p>
                     }
                     else
                     {
-                        <p class="text-sm text-muted">Nenhum outro T50 disponível. <a href="/dispositivos" class="text-primary">Cadastrar T50</a></p>
+                        <p class="text-sm text-muted">Não há outros T50 vinculados a este ambiente. Adicione um primeiro.</p>
                     }
                 </div>
                 <div class="alert alert-warning">
-                    <strong>Atenção:</strong> trocar o T50 não migra biometrias já cadastradas — em produção, as digitais precisam ser
-                    re-cadastradas no novo terminal. Pessoas continuam vinculadas ao ambiente.
+                    <strong>Swap de digitais:</strong> os contadores DigitaisCadastradas dos dois T50 são trocados.
+                    Caso 1: A=100, B=0 → A=0, B=100. Caso 2: A=50, B=80 → A=80, B=50.
+                    Em produção, as biometrias físicas precisam ser re-sincronizadas com os terminais.
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showTrocarT50 = false" disabled="@isTrocandoT50">Cancelar</button>
-                <button class="btn btn-primary" @onclick="HandleTrocarT50" disabled="@(isTrocandoT50 || !dispositivosDisponiveis.Any() || novoT50IdSelecionado == 0 || novoT50IdSelecionado == ambiente.DispositivoT50Id)">
-                    @if (isTrocandoT50) { <span class="spinner"></span><span>Trocando…</span> } else { <span>Confirmar troca</span> }
+                <button class="btn btn-primary" @onclick="HandleTrocarT50" disabled="@(isTrocandoT50 || !trocaveis.Any() || novoT50IdSelecionado == 0 || novoT50IdSelecionado == ambiente.DispositivoT50Id)">
+                    @if (isTrocandoT50) { <span class="spinner"></span><span>Trocando…</span> } else { <span>Confirmar swap</span> }
                 </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showAddT50 && ambiente != null)
+{
+    <div class="modal-overlay">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Adicionar outro T50</h3>
+                <p>Vincula um terminal adicional a este ambiente</p>
+            </div>
+            <div class="modal-body space-y-sm">
+                @if (errAddT50 != null) { <div class="alert alert-danger">@errAddT50</div> }
+                @{
+                    var t50sLivres = todosT50.Where(d => !t50sVinculados.Any(v => v.Id == d.Id)).ToList();
+                }
+                <div class="form-group">
+                    <label class="form-label">T50 disponível <span class="text-destructive">*</span></label>
+                    @if (t50sLivres.Any())
+                    {
+                        <select class="form-select" @bind="novoT50ParaAdicionarId">
+                            @foreach (var d in t50sLivres)
+                            {
+                                <option value="@d.Id">@d.Nome (@d.EnderecoIP) — @d.DigitaisCadastradas/1000 digitais</option>
+                            }
+                        </select>
+                        <p class="text-xs text-muted">O novo T50 começa sem nenhum vínculo de pessoa — admin deve cadastrar biometrias separadamente. Use "Tornar principal" se quiser que ele receba os próximos cadastros.</p>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-muted">Todos os T50 cadastrados já estão neste ambiente. <a href="/dispositivos" class="text-primary">Cadastrar novo T50</a></p>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showAddT50 = false" disabled="@isAdicionandoT50">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleAdicionarT50" disabled="@(isAdicionandoT50 || !t50sLivres.Any() || novoT50ParaAdicionarId == 0)">
+                    @if (isAdicionandoT50) { <span class="spinner"></span><span>Vinculando…</span> } else { <span>Vincular</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showConfirmRemoverT50 != 0 && ambiente != null)
+{
+    <div class="modal-overlay">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Desvincular T50 do ambiente</h3>
+                <p>O T50 continua cadastrado no sistema — só perde o vínculo com este ambiente</p>
+            </div>
+            <div class="modal-body">
+                @{
+                    var t50ParaRemover = t50sVinculados.FirstOrDefault(d => d.Id == showConfirmRemoverT50);
+                }
+                <p>Desvincular <strong>@(t50ParaRemover?.Nome ?? "T50")</strong> deste ambiente?</p>
+                @if (t50ParaRemover != null && t50ParaRemover.Id == ambiente.DispositivoT50Id)
+                {
+                    <div class="alert alert-warning">Este é o T50 principal. Outro T50 vinculado será promovido a principal automaticamente.</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showConfirmRemoverT50 = 0">Cancelar</button>
+                <button class="btn btn-primary text-destructive" @onclick="HandleRemoverT50">Desvincular</button>
             </div>
         </div>
     </div>
@@ -337,13 +469,78 @@
     private string? errTrocarT50 = null;
     private int novoT50IdSelecionado = 0;
     private List<DispositivoT50> dispositivosDisponiveis = new();
+    // Multi-T50: lista de T50s vinculados ao ambiente + lista global de T50s
+    private List<DispositivoT50> t50sVinculados = new();
+    private List<DispositivoT50> todosT50 = new();
+    private bool showAddT50 = false;
+    private bool isAdicionandoT50 = false;
+    private string? errAddT50 = null;
+    private int novoT50ParaAdicionarId = 0;
+    private int showConfirmRemoverT50 = 0; // ID do T50 a remover (0 = modal fechado)
+
+    private void RecarregarT50s()
+    {
+        todosT50 = DispositivoRepo.ListarTodos();
+        t50sVinculados = AmbienteT50Repo.ListarT50sDoAmbiente(Id);
+    }
+
+    private void AbrirAdicionarT50()
+    {
+        errAddT50 = null;
+        RecarregarT50s();
+        var livres = todosT50.Where(d => !t50sVinculados.Any(v => v.Id == d.Id)).ToList();
+        novoT50ParaAdicionarId = livres.FirstOrDefault()?.Id ?? 0;
+        showAddT50 = true;
+    }
+
+    private async Task HandleAdicionarT50()
+    {
+        if (ambiente == null || novoT50ParaAdicionarId == 0) return;
+        isAdicionandoT50 = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            AmbienteT50Repo.Adicionar(ambiente.Id, novoT50ParaAdicionarId, ehPrincipal: false);
+            LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "AmbienteT50", ambiente.Id);
+            RecarregarT50s();
+            showAddT50 = false;
+        }
+        catch (Exception ex) { errAddT50 = ex.Message; }
+        finally { isAdicionandoT50 = false; }
+    }
+
+    private void HandleTornarPrincipal(int t50Id)
+    {
+        if (ambiente == null) return;
+        AmbienteT50Repo.DefinirPrincipal(ambiente.Id, t50Id);
+        LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "AmbienteT50", ambiente.Id);
+        // Recarrega ambiente para refletir o novo DispositivoT50Id principal
+        ambiente = AmbienteRepo.BuscarPorId(Id);
+        dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente!.DispositivoT50Id);
+        RecarregarT50s();
+    }
+
+    private void ConfirmarRemoverT50(int t50Id) => showConfirmRemoverT50 = t50Id;
+
+    private void HandleRemoverT50()
+    {
+        if (ambiente == null || showConfirmRemoverT50 == 0) return;
+        AmbienteT50Repo.Remover(ambiente.Id, showConfirmRemoverT50);
+        LogRepo.Registrar(TokenStore.AdminId, "Remocao", "AmbienteT50", ambiente.Id);
+        // Recarrega ambiente para refletir possível mudança de principal
+        ambiente = AmbienteRepo.BuscarPorId(Id);
+        dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente!.DispositivoT50Id);
+        RecarregarT50s();
+        showConfirmRemoverT50 = 0;
+    }
 
     private void AbrirTrocarT50()
     {
         errTrocarT50 = null;
-        // Recarrega lista de T50 — admin pode ter cadastrado um novo enquanto a tela estava aberta
-        dispositivosDisponiveis = DispositivoRepo.ListarTodos();
-        novoT50IdSelecionado = ambiente?.DispositivoT50Id ?? 0;
+        // Trocar agora só permite T50s já vinculados ao ambiente (swap interno)
+        RecarregarT50s();
+        novoT50IdSelecionado = t50sVinculados.FirstOrDefault(d => d.Id != ambiente!.DispositivoT50Id)?.Id ?? 0;
         showTrocarT50 = true;
     }
 
@@ -351,9 +548,10 @@
     {
         if (ambiente == null) return;
         if (novoT50IdSelecionado == 0) { errTrocarT50 = "Selecione um T50."; return; }
-        if (novoT50IdSelecionado == ambiente.DispositivoT50Id) { errTrocarT50 = "O T50 selecionado já é o atual."; return; }
+        if (novoT50IdSelecionado == ambiente.DispositivoT50Id) { errTrocarT50 = "O T50 selecionado já é o principal."; return; }
 
-        var novo = dispositivosDisponiveis.FirstOrDefault(d => d.Id == novoT50IdSelecionado);
+        var atual = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente.DispositivoT50Id);
+        var novo  = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == novoT50IdSelecionado);
         if (novo == null) { errTrocarT50 = "T50 selecionado não existe mais."; return; }
 
         isTrocandoT50 = true;
@@ -361,11 +559,23 @@
         await Task.Yield();
         try
         {
-            var antigoId = ambiente.DispositivoT50Id;
-            ambiente.DispositivoT50Id = novoT50IdSelecionado;
-            AmbienteRepo.Atualizar(ambiente);
+            // SWAP dos contadores de digitais entre o T50 atual e o novo principal.
+            // Caso 1: atual=100, novo=0 → atual=0, novo=100.
+            // Caso 2: atual=50, novo=80 → atual=80, novo=50.
+            if (atual != null)
+            {
+                var tmp = atual.DigitaisCadastradas;
+                atual.DigitaisCadastradas = novo.DigitaisCadastradas;
+                novo.DigitaisCadastradas = tmp;
+                DispositivoRepo.Atualizar(atual);
+                DispositivoRepo.Atualizar(novo);
+            }
+            // Define o novo principal (também atualiza ambiente.DispositivoT50Id internamente)
+            AmbienteT50Repo.DefinirPrincipal(ambiente.Id, novoT50IdSelecionado);
             LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", ambiente.Id);
+            ambiente = AmbienteRepo.BuscarPorId(Id);
             dispositivo = novo;
+            RecarregarT50s();
             showTrocarT50 = false;
         }
         catch (Exception ex) { errTrocarT50 = ex.Message; }
@@ -384,6 +594,7 @@
     private bool aceitouSomenteSenha = false;
     private string novaCameraNome = "";
     private string novaCameraRtsp = "";
+    private string novaCameraHls = "";
     private string novaCameraOnvif = "";
     private string novaCameraTipo = "interna";
 
@@ -394,6 +605,7 @@
         {
             tempoEspera = ambiente.TempoEsperaGravacaoSeg;
             dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente.DispositivoT50Id);
+            RecarregarT50s();
         }
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
         cameras = await CameraRepo.ListarPorAmbiente(Id);
@@ -509,6 +721,7 @@
                 Nome = novaCameraNome,
                 AmbienteId = Id,
                 UrlRTSP = novaCameraRtsp,
+                UrlHLS = string.IsNullOrWhiteSpace(novaCameraHls) ? null : novaCameraHls,
                 EnderecoONVIF = string.IsNullOrWhiteSpace(novaCameraOnvif) ? null : novaCameraOnvif,
                 Tipo = novaCameraTipo,
                 Ativa = true
@@ -517,7 +730,7 @@
             LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Camera", novaCamera.Id);
             cameras = await CameraRepo.ListarPorAmbiente(Id);
             showAddCamera = false;
-            novaCameraNome = novaCameraRtsp = novaCameraOnvif = "";
+            novaCameraNome = novaCameraRtsp = novaCameraHls = novaCameraOnvif = "";
         }
         finally { isAdicionandoCamera = false; }
     }

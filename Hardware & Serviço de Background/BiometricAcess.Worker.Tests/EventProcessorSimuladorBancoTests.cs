@@ -35,6 +35,7 @@ namespace BiometricAcess.Worker.Tests
             services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
             services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
             services.AddScoped<ICameraRepository, CameraImplemetions>();
+            services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
             _provider = services.BuildServiceProvider();
@@ -73,6 +74,15 @@ namespace BiometricAcess.Worker.Tests
                 DataCriacao = DateTime.UtcNow
             };
             db.Ambientes.Add(amb);
+            db.SaveChanges();
+            // Multi-T50: cria o vínculo na tabela N-N — o simulador agora resolve ambiente por ela
+            db.AmbientesT50.Add(new AmbienteT50
+            {
+                AmbienteId = amb.Id,
+                DispositivoT50Id = disp.Id,
+                DataVinculo = DateTime.UtcNow,
+                EhPrincipal = true
+            });
             db.SaveChanges();
             return (disp, amb);
         }

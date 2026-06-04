@@ -19,6 +19,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         public DbSet<SenhaDisponivel> SenhasDisponiveis { get; set; }
         public DbSet<CodigoDisponivel> CodigosDisponiveis { get; set; }
         public DbSet<Configuracao> Configuracoes { get; set; }
+        public DbSet<AmbienteT50> AmbientesT50 { get; set; }
 
         // Relacionamento muitos-para-muitos (se você ainda usar essa entidade)
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -26,7 +27,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
             modelBuilder.Entity<AmbientePessoa>()
                 .HasKey(ap => new { ap.AmbienteId, ap.PessoaId });
 
-  
+            // Garante que a mesma combinação ambiente+T50 não se repita
+            modelBuilder.Entity<AmbienteT50>()
+                .HasIndex(at => new { at.AmbienteId, at.DispositivoT50Id })
+                .IsUnique();
         }
     }
 }

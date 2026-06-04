@@ -3,6 +3,7 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IDispositivoT50Repository DispositivoRepo
+@inject IAmbienteT50Repository AmbienteT50Repo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 
@@ -204,6 +205,8 @@
             DataCriacao = DateTime.UtcNow
         };
         AmbienteRepo.Adicionar(ambiente);
+        // Cria vínculo na tabela N-N marcando este T50 como principal
+        AmbienteT50Repo.Adicionar(ambiente.Id, novoT50Id, ehPrincipal: true);
         LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Ambiente", ambiente.Id);
         todosAmbientes = AmbienteRepo.ListarTodos();
         showDialog = false;

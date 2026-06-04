@@ -118,6 +118,62 @@ window.carregarVideoNoElemento = async function(apiBaseUrl, tentativaId, token, 
     }
 };
 
+// -----------------------------------------------------------------------------
+// HLS player — exibe stream HLS ao vivo em um <video> existente.
+// Browsers não falam RTSP nativamente; o admin precisa rodar um conversor RTSP→HLS
+// (ex: MediaMTX que já gera HLS automaticamente em :8888) e cadastrar a URL .m3u8
+// no campo "URL HLS" da câmera. Safari toca HLS nativamente; Chrome/Firefox/Edge
+// usam hls.js (carregado no App.razor).
+// -----------------------------------------------------------------------------
+window._hlsInstances = window._hlsInstances || {};
+
+window.iniciarHls = function(videoElementId, urlHls) {
+    var video = document.getElementById(videoElementId);
+    if (!video) return false;
+
+    // Para player anterior antes de iniciar novo
+    window.pararHls(videoElementId);
+
+    // Safari/iOS tem suporte nativo a HLS
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = urlHls;
+        video.play().catch(function(){ /* autoplay bloqueado é OK — usuário pode clicar play */ });
+        return true;
+    }
+
+    // Demais browsers — usa hls.js
+    if (typeof Hls === 'undefined' || !Hls.isSupported()) {
+        console.error('hls.js não carregado ou não suportado neste browser');
+        return false;
+    }
+
+    var hls = new Hls({ lowLatencyMode: true, liveSyncDurationCount: 2 });
+    hls.loadSource(urlHls);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        video.play().catch(function(){ /* idem */ });
+    });
+    hls.on(Hls.Events.ERROR, function(event, data) {
+        console.warn('HLS error:', data.type, data.details, 'fatal=' + data.fatal);
+    });
+    window._hlsInstances[videoElementId] = hls;
+    return true;
+};
+
+window.pararHls = function(videoElementId) {
+    var video = document.getElementById(videoElementId);
+    if (video) {
+        try { video.pause(); } catch(e) {}
+        video.removeAttribute('src');
+        video.load();
+    }
+    var hls = window._hlsInstances[videoElementId];
+    if (hls) {
+        try { hls.destroy(); } catch(e) {}
+        delete window._hlsInstances[videoElementId];
+    }
+};
+
 window.liberarVideoBlob = function(videoElementId) {
     var video = document.getElementById(videoElementId);
     if (video && video.dataset.blobUrl) {

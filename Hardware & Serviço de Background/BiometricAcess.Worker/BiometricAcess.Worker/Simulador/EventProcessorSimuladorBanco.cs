@@ -26,6 +26,7 @@ namespace BiometricAcess.Worker.Simulador
             var dispositivoRepo     = scope.ServiceProvider.GetRequiredService<IDispositivoT50Repository>();
             var configRepo          = scope.ServiceProvider.GetRequiredService<IConfiguracaoRepository>();
             var ambientePessoaRepo  = scope.ServiceProvider.GetRequiredService<IAmbientePessoaRepository>();
+            var ambienteT50Repo     = scope.ServiceProvider.GetRequiredService<IAmbienteT50Repository>();
 
             // Resolve o ambiente pelo IP do dispositivo. Ambiente sem T50 vinculado NÃO recebe evento —
             // o painel agora bloqueia criação sem T50, mas a defesa em profundidade evita
@@ -39,8 +40,10 @@ namespace BiometricAcess.Worker.Simulador
                 return;
             }
 
-            var ambientes = ambienteRepo.ListarTodos();
-            var ambiente  = ambientes.FirstOrDefault(a => a.DispositivoT50Id == dispositivo.Id);
+            // Multi-T50: um T50 pode estar vinculado a múltiplos ambientes. Pega o primeiro
+            // que estiver vinculado (ehPrincipal primeiro pela ordenação do repo).
+            var ambientesDoT50 = ambienteT50Repo.ListarAmbientesDoT50(dispositivo.Id);
+            var ambiente       = ambientesDoT50.FirstOrDefault();
 
             if (ambiente == null)
             {

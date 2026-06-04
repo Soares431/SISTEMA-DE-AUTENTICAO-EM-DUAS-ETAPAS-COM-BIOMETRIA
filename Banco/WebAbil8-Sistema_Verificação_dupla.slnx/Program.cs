@@ -66,6 +66,7 @@ builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
 builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
+builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
 
 builder.Services.AddScoped<InativarUsuariosInativos2AnosJob>();
 builder.Services.AddScoped<LimparDadosExpiradosJob>();
@@ -155,6 +156,21 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
+    // Migração inline — coluna urlHLS opcional na câmera para streaming HLS no painel.
+    var cameraColsExistentes = new HashSet<string>();
+    using (var pragmaCam = conn.CreateCommand())
+    {
+        pragmaCam.CommandText = "SELECT name FROM pragma_table_info('camera')";
+        using var rdrCam = pragmaCam.ExecuteReader();
+        while (rdrCam.Read()) cameraColsExistentes.Add(rdrCam.GetString(0));
+    }
+    if (!cameraColsExistentes.Contains("urlHLS"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE camera ADD COLUMN urlHLS VARCHAR(255) NULL";
+        alterCmd.ExecuteNonQuery();
+    }
+
     // Migração inline — soft-delete de ambiente preserva histórico de tentativas.
     // Sem isto, deletar um ambiente apagaria também todo o histórico vinculado (FK CASCADE).
     var ambColsExistentes = new HashSet<string>();
@@ -175,6 +191,43 @@ using (var scope = app.Services.CreateScope())
         using var alterCmd = conn.CreateCommand();
         alterCmd.CommandText = "ALTER TABLE ambiente ADD COLUMN dataExclusao TEXT NULL";
         alterCmd.ExecuteNonQuery();
+    }
+
+    // Migração inline — tabela N-N ambienteT50 para suportar múltiplos T50 por ambiente.
+    // Backfill: cada ambiente vira uma linha com seu DispositivoT50Id atual como principal.
+    bool ambT50Existe;
+    using (var checkCmd = conn.CreateCommand())
+    {
+        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='ambienteT50'";
+        ambT50Existe = checkCmd.ExecuteScalar() != null;
+    }
+    if (!ambT50Existe)
+    {
+        using (var createCmd = conn.CreateCommand())
+        {
+            createCmd.CommandText = @"
+                CREATE TABLE ambienteT50 (
+                    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ambienteId       INTEGER NOT NULL,
+                    dispositivoT50Id INTEGER NOT NULL,
+                    dataVinculo      TEXT NOT NULL,
+                    ehPrincipal      INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(ambienteId, dispositivoT50Id),
+                    FOREIGN KEY(ambienteId)       REFERENCES ambiente(id) ON DELETE CASCADE,
+                    FOREIGN KEY(dispositivoT50Id) REFERENCES dispositivoT50(id) ON DELETE CASCADE
+                )";
+            createCmd.ExecuteNonQuery();
+        }
+        using (var backfillCmd = conn.CreateCommand())
+        {
+            backfillCmd.CommandText = @"
+                INSERT INTO ambienteT50 (ambienteId, dispositivoT50Id, dataVinculo, ehPrincipal)
+                SELECT a.id, a.dispositivoT50Id, datetime('now'), 1
+                FROM ambiente a
+                WHERE a.dispositivoT50Id IS NOT NULL AND a.dispositivoT50Id > 0
+                  AND NOT EXISTS (SELECT 1 FROM ambienteT50 at WHERE at.ambienteId = a.id)";
+            backfillCmd.ExecuteNonQuery();
+        }
     }
 
     // Migração inline — cria tabela codigoDisponivel se não existir (pool de IDs 100000-999999)

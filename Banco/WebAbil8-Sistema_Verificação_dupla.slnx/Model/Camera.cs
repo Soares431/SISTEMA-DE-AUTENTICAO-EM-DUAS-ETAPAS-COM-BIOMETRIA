@@ -27,6 +27,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [MaxLength(255)]
         public string? EnderecoONVIF { get; set; }
 
+        // URL HLS (.m3u8) opcional — usada para exibir o stream ao vivo no navegador.
+        // Browsers não falam RTSP nativamente; HLS é o formato suportado universalmente.
+        // Convenção MediaMTX: rtsp://host:8554/path → http://host:8888/path/index.m3u8
+        [Column("urlHLS", TypeName = "varchar(255)")]
+        [MaxLength(255)]
+        public string? UrlHLS { get; set; }
+
         [Required]
         [Column("tipo", TypeName = "varchar(10)")]
         [MaxLength(10)]
