@@ -36,6 +36,7 @@ namespace BiometricAcess.Worker.Tests
             services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
             services.AddScoped<ICameraRepository, CameraImplemetions>();
             services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
+            services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
             _provider = services.BuildServiceProvider();

@@ -4,6 +4,7 @@
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IDispositivoT50Repository DispositivoRepo
 @inject IAmbienteT50Repository AmbienteT50Repo
+@inject IPessoaT50Repository PessoaT50Repo
 @inject ICameraRepository CameraRepo
 @inject IPessoaRepository PessoaRepo
 @inject ITentativaAcessoRepository TentativaRepo
@@ -45,21 +46,18 @@
                 <div class="card-header card-header-row">
                     <div>
                         <div class="card-title"><Icon Name="settings" Size="20" /> Dispositivos T50 vinculados</div>
-                        <p class="card-description">@t50sVinculados.Count terminal(is) — o "principal" recebe os contadores de digitais ao cadastrar pessoas</p>
+                        <p class="card-description">@t50sVinculados.Count terminal(is) — ao adicionar um T50 ao ambiente, todas as @pessoas.Count pessoa(s) já cadastradas são copiadas pra ele (respeitando a capacidade)</p>
                     </div>
                     <div class="flex gap-2">
-                        <button class="btn btn-outline btn-sm" @onclick="AbrirAdicionarT50">
-                            <Icon Name="plus" Size="14" /> Adicionar outro T50
-                        </button>
-                        <button class="btn btn-primary btn-sm" @onclick="AbrirTrocarT50" disabled="@(!t50sVinculados.Any())">
-                            <Icon Name="settings" Size="14" /> Trocar T50 (swap)
+                        <button class="btn btn-primary btn-sm" @onclick="AbrirAdicionarT50">
+                            <Icon Name="plus" Size="14" /> Adicionar T50 ao ambiente
                         </button>
                     </div>
                 </div>
                 <div class="card-content">
                     @if (!t50sVinculados.Any())
                     {
-                        <div class="alert alert-warning">Nenhum T50 vinculado ainda. Use "Adicionar outro T50".</div>
+                        <div class="alert alert-warning">Nenhum T50 vinculado ainda. Vincule pelo menos um.</div>
                     }
                     else
                     {
@@ -68,7 +66,7 @@
                                 <tr>
                                     <th>Nome</th>
                                     <th>IP : Porta</th>
-                                    <th>Digitais</th>
+                                    <th>Digitais (deste ambiente / total no T50)</th>
                                     <th>Status</th>
                                     <th class="text-right">Ações</th>
                                 </tr>
@@ -76,18 +74,15 @@
                             <tbody>
                                 @foreach (var d in t50sVinculados)
                                 {
-                                    var ehPrincipal = (d.Id == ambiente.DispositivoT50Id);
                                     var pctRow = d.DigitaisCadastradas * 100 / 1000;
+                                    var digitaisDesteAmb = pessoasNosT50.TryGetValue(d.Id, out var qtd) ? qtd : 0;
                                     <tr>
-                                        <td class="font-medium">
-                                            @d.Nome
-                                            @if (ehPrincipal) { <span class="badge badge-success" style="margin-left:0.5rem;">Principal</span> }
-                                        </td>
+                                        <td class="font-medium">@d.Nome</td>
                                         <td class="font-mono text-sm">@d.EnderecoIP : @d.Porta</td>
                                         <td>
-                                            <div class="flex items-center gap-2">
-                                                <span class="@(pctRow >= 95 ? "text-destructive" : pctRow >= 85 ? "text-warning" : "")">@d.DigitaisCadastradas / 1000</span>
-                                            </div>
+                                            <span class="@(pctRow >= 95 ? "text-destructive" : pctRow >= 85 ? "text-warning" : "")">
+                                                @digitaisDesteAmb deste · @d.DigitaisCadastradas / 1000 no T50
+                                            </span>
                                         </td>
                                         <td>
                                             @if (!d.EstaOnline) { <span class="badge badge-destructive">Offline</span> }
@@ -95,20 +90,9 @@
                                             else { <span class="badge badge-success">Online</span> }
                                         </td>
                                         <td class="text-right">
-                                            <div class="flex gap-2 justify-end">
-                                                @if (!ehPrincipal)
-                                                {
-                                                    <button class="btn btn-ghost btn-sm" @onclick="() => HandleTornarPrincipal(d.Id)" title="Tornar este o T50 principal">
-                                                        <Icon Name="settings" Size="14" /> Tornar principal
-                                                    </button>
-                                                }
-                                                @if (t50sVinculados.Count > 1)
-                                                {
-                                                    <button class="btn btn-ghost btn-sm text-destructive" @onclick="() => ConfirmarRemoverT50(d.Id)" title="Desvincular este T50">
-                                                        <Icon Name="trash" Size="14" />
-                                                    </button>
-                                                }
-                                            </div>
+                                            <button class="btn btn-ghost btn-sm text-destructive" @onclick="() => ConfirmarRemoverT50(d.Id)" title="Desvincular este T50 do ambiente (remove as digitais que pertencem só a este ambiente)">
+                                                <Icon Name="trash" Size="14" />
+                                            </button>
                                         </td>
                                     </tr>
                                 }
@@ -117,22 +101,6 @@
                     }
                 </div>
             </div>
-
-            @if (dispositivo != null)
-            {
-                <div class="card">
-                    <div class="card-header"><div class="card-title"><Icon Name="alert-triangle" Size="20" CssClass="text-warning" /> Capacidade Biométrica do Principal (@dispositivo.Nome)</div></div>
-                    <div class="card-content space-y-sm">
-                        @{
-                            var pct = (dispositivo.DigitaisCadastradas * 100 / 1000);
-                        }
-                        <div class="flex justify-between text-sm"><span class="text-muted">Uso atual</span><span class="font-medium @(pct >= 95 ? "text-destructive" : pct >= 85 ? "text-warning" : "")">@dispositivo.DigitaisCadastradas / 1000</span></div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: @pct%; background: @(pct >= 95 ? "var(--destructive)" : pct >= 85 ? "var(--warning)" : "var(--success)");"></div></div>
-                        @if (pct >= 95) { <p class="text-sm text-destructive">Capacidade crítica! Remova templates inativos urgentemente.</p> }
-                        else if (pct >= 85) { <p class="text-sm text-muted">Acima de 85%. Considere limpar templates inativos.</p> }
-                    </div>
-                </div>
-            }
         }
         else if (activeTab == "pessoas")
         {
@@ -232,22 +200,47 @@
                             }
                         </select>
                     </div>
-                    @if (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000)
+                    @if (t50sVinculados.Any())
                     {
-                        <div class="alert alert-warning">
-                            <strong>T50 cheio (1000 digitais).</strong> Não há mais slots para nova biometria.
-                            A pessoa será adicionada em <strong>modo Somente Senha</strong> (não usará digital neste ambiente).
+                        <div class="form-group">
+                            <label class="form-label">Cadastrar biometria em quais T50? <span class="text-destructive">*</span></label>
+                            <p class="text-xs text-muted">Marque pelo menos um. Em produção, cada T50 marcado vai requerer enroll físico da digital no terminal.</p>
+                            <div class="space-y-xs" style="display:flex; flex-direction:column; gap:0.5rem; padding:0.5rem 0;">
+                                @foreach (var t50 in t50sVinculados)
+                                {
+                                    var lotado = t50.DigitaisCadastradas >= 1000;
+                                    <label class="flex items-center gap-2 text-sm" style="@(lotado ? "opacity:0.5;" : "")">
+                                        <input type="checkbox"
+                                               checked="@t50sSelecionadosParaPessoa.Contains(t50.Id)"
+                                               disabled="@lotado"
+                                               @onchange="(e) => ToggleT50ParaPessoa(t50.Id, (bool)e.Value!)" />
+                                        <span>
+                                            <strong>@t50.Nome</strong> (@t50.EnderecoIP) — @t50.DigitaisCadastradas/1000 digitais
+                                            @if (lotado) { <span class="badge badge-destructive">Cheio</span> }
+                                        </span>
+                                    </label>
+                                }
+                            </div>
+                            @if (!t50sSelecionadosParaPessoa.Any())
+                            {
+                                <p class="text-xs text-destructive">Selecione pelo menos um T50, ou marque "Somente senha" abaixo.</p>
+                            }
                         </div>
                         <label class="flex items-center gap-2 text-sm">
-                            <input type="checkbox" @bind="aceitouSomenteSenha" /> Confirmo adicionar em modo Somente Senha
+                            <input type="checkbox" @bind="aceitouSomenteSenha" />
+                            Esta pessoa será <strong>somente senha</strong> (não usar digital em nenhum T50)
                         </label>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">Ambiente sem T50 vinculado — adicione um T50 antes de cadastrar pessoas.</div>
                     }
                 }
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button>
                 <button class="btn btn-primary" @onclick="HandleAdicionarPessoa"
-                    disabled="@(isAdicionandoPessoa || pessoasDisponiveis.Count == 0 || (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000 && !aceitouSomenteSenha))">
+                    disabled="@(isAdicionandoPessoa || pessoasDisponiveis.Count == 0 || !t50sVinculados.Any() || (!aceitouSomenteSenha && !t50sSelecionadosParaPessoa.Any()))">
                     @if (isAdicionandoPessoa) { <span class="spinner"></span><span>Adicionando…</span> } else { <span>Adicionar</span> }
                 </button>
             </div>
@@ -305,91 +298,61 @@
     </div>
 }
 
-@if (showTrocarT50 && ambiente != null)
-{
-    <div class="modal-overlay">
-        <div class="modal" @onclick:stopPropagation="true">
-            <div class="modal-header">
-                <h3>Trocar T50 principal (swap)</h3>
-                <p>Faz swap dos contadores de digitais entre o T50 atual e outro já vinculado</p>
-            </div>
-            <div class="modal-body space-y-sm">
-                @if (errTrocarT50 != null) { <div class="alert alert-danger">@errTrocarT50</div> }
-                <div class="form-group">
-                    <label class="form-label">Principal atual</label>
-                    <p class="font-mono text-muted">@(dispositivo?.Nome ?? "(nenhum)") · @(dispositivo?.EnderecoIP ?? "-") · @(dispositivo?.DigitaisCadastradas ?? 0) digitais</p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Novo principal <span class="text-destructive">*</span></label>
-                    @{
-                        var trocaveis = t50sVinculados.Where(d => d.Id != ambiente.DispositivoT50Id).ToList();
-                    }
-                    @if (trocaveis.Any())
-                    {
-                        <select class="form-select" @bind="novoT50IdSelecionado">
-                            @foreach (var d in trocaveis)
-                            {
-                                <option value="@d.Id">@d.Nome (@d.EnderecoIP) — @d.DigitaisCadastradas/1000 digitais</option>
-                            }
-                        </select>
-                        <p class="text-xs text-muted">Lista apenas T50s já vinculados a este ambiente. Use "Adicionar outro T50" para vincular um novo antes.</p>
-                    }
-                    else
-                    {
-                        <p class="text-sm text-muted">Não há outros T50 vinculados a este ambiente. Adicione um primeiro.</p>
-                    }
-                </div>
-                <div class="alert alert-warning">
-                    <strong>Swap de digitais:</strong> os contadores DigitaisCadastradas dos dois T50 são trocados.
-                    Caso 1: A=100, B=0 → A=0, B=100. Caso 2: A=50, B=80 → A=80, B=50.
-                    Em produção, as biometrias físicas precisam ser re-sincronizadas com os terminais.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" @onclick="() => showTrocarT50 = false" disabled="@isTrocandoT50">Cancelar</button>
-                <button class="btn btn-primary" @onclick="HandleTrocarT50" disabled="@(isTrocandoT50 || !trocaveis.Any() || novoT50IdSelecionado == 0 || novoT50IdSelecionado == ambiente.DispositivoT50Id)">
-                    @if (isTrocandoT50) { <span class="spinner"></span><span>Trocando…</span> } else { <span>Confirmar swap</span> }
-                </button>
-            </div>
-        </div>
-    </div>
-}
-
 @if (showAddT50 && ambiente != null)
 {
     <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h3>Adicionar outro T50</h3>
-                <p>Vincula um terminal adicional a este ambiente</p>
+                <h3>Adicionar T50 ao ambiente</h3>
+                <p>Vincula um T50 e copia as @pessoas.Count pessoa(s) deste ambiente para ele</p>
             </div>
             <div class="modal-body space-y-sm">
                 @if (errAddT50 != null) { <div class="alert alert-danger">@errAddT50</div> }
                 @{
                     var t50sLivres = todosT50.Where(d => !t50sVinculados.Any(v => v.Id == d.Id)).ToList();
+                    var t50Sel = t50sLivres.FirstOrDefault(d => d.Id == novoT50ParaAdicionarId);
+                    var pessoasACopiar = pessoas.Count;
+                    var capacidadeRestante = t50Sel != null ? (1000 - t50Sel.DigitaisCadastradas) : 0;
+                    var cabeNoT50 = t50Sel != null && pessoasACopiar <= capacidadeRestante;
                 }
                 <div class="form-group">
-                    <label class="form-label">T50 disponível <span class="text-destructive">*</span></label>
+                    <label class="form-label">T50 a vincular <span class="text-destructive">*</span></label>
                     @if (t50sLivres.Any())
                     {
                         <select class="form-select" @bind="novoT50ParaAdicionarId">
+                            <option value="0">Selecione...</option>
                             @foreach (var d in t50sLivres)
                             {
-                                <option value="@d.Id">@d.Nome (@d.EnderecoIP) — @d.DigitaisCadastradas/1000 digitais</option>
+                                <option value="@d.Id">@d.Nome (@d.EnderecoIP) — @d.DigitaisCadastradas/1000 digitais ocupados</option>
                             }
                         </select>
-                        <p class="text-xs text-muted">O novo T50 começa sem nenhum vínculo de pessoa — admin deve cadastrar biometrias separadamente. Use "Tornar principal" se quiser que ele receba os próximos cadastros.</p>
                     }
                     else
                     {
                         <p class="text-sm text-muted">Todos os T50 cadastrados já estão neste ambiente. <a href="/dispositivos" class="text-primary">Cadastrar novo T50</a></p>
                     }
                 </div>
+                @if (t50Sel != null)
+                {
+                    <div class="alert @(cabeNoT50 ? "alert-success" : "alert-danger")">
+                        <strong>Pré-validação de capacidade:</strong><br />
+                        - Pessoas neste ambiente a copiar: <strong>@pessoasACopiar</strong><br />
+                        - Capacidade restante em <strong>@t50Sel.Nome</strong>: <strong>@capacidadeRestante</strong> de 1000<br />
+                        @if (cabeNoT50)
+                        {
+                            <span>OK — após vinculação, o T50 terá <strong>@(t50Sel.DigitaisCadastradas + pessoasACopiar) / 1000</strong> digitais.</span>
+                        }
+                        else
+                        {
+                            <span>BLOQUEADO — faltam <strong>@(pessoasACopiar - capacidadeRestante)</strong> slots no T50 destino. Remova templates inativos ou escolha outro T50.</span>
+                        }
+                    </div>
+                }
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showAddT50 = false" disabled="@isAdicionandoT50">Cancelar</button>
-                <button class="btn btn-primary" @onclick="HandleAdicionarT50" disabled="@(isAdicionandoT50 || !t50sLivres.Any() || novoT50ParaAdicionarId == 0)">
-                    @if (isAdicionandoT50) { <span class="spinner"></span><span>Vinculando…</span> } else { <span>Vincular</span> }
+                <button class="btn btn-primary" @onclick="HandleAdicionarT50" disabled="@(isAdicionandoT50 || t50Sel == null || !cabeNoT50)">
+                    @if (isAdicionandoT50) { <span class="spinner"></span><span>Copiando digitais…</span> } else { <span>Vincular e copiar</span> }
                 </button>
             </div>
         </div>
@@ -464,24 +427,29 @@
     private bool isSalvandoConfig = false;
     private bool isAdicionandoCamera = false;
     private bool isAdicionandoPessoa = false;
-    private bool showTrocarT50 = false;
-    private bool isTrocandoT50 = false;
-    private string? errTrocarT50 = null;
-    private int novoT50IdSelecionado = 0;
-    private List<DispositivoT50> dispositivosDisponiveis = new();
     // Multi-T50: lista de T50s vinculados ao ambiente + lista global de T50s
     private List<DispositivoT50> t50sVinculados = new();
     private List<DispositivoT50> todosT50 = new();
+    // Mapa T50.Id → quantas pessoas DESTE ambiente estão cadastradas nele
+    private Dictionary<int, int> pessoasNosT50 = new();
     private bool showAddT50 = false;
     private bool isAdicionandoT50 = false;
     private string? errAddT50 = null;
     private int novoT50ParaAdicionarId = 0;
     private int showConfirmRemoverT50 = 0; // ID do T50 a remover (0 = modal fechado)
+    // T50s marcados pelo admin no modal "Adicionar Pessoa"
+    private HashSet<int> t50sSelecionadosParaPessoa = new();
 
     private void RecarregarT50s()
     {
         todosT50 = DispositivoRepo.ListarTodos();
         t50sVinculados = AmbienteT50Repo.ListarT50sDoAmbiente(Id);
+        // Para cada T50 do ambiente, conta quantas pessoas deste ambiente estão cadastradas nele
+        var pessoasDoAmb = pessoas.Select(p => p.Id).ToHashSet();
+        pessoasNosT50 = t50sVinculados.ToDictionary(
+            t => t.Id,
+            t => PessoaT50Repo.ListarPessoasDoT50(t.Id).Count(p => pessoasDoAmb.Contains(p.Id))
+        );
     }
 
     private void AbrirAdicionarT50()
@@ -501,24 +469,16 @@
         await Task.Yield();
         try
         {
+            // O repo agora copia as pessoas do ambiente e valida capacidade
             AmbienteT50Repo.Adicionar(ambiente.Id, novoT50ParaAdicionarId, ehPrincipal: false);
             LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "AmbienteT50", ambiente.Id);
+            ambiente = AmbienteRepo.BuscarPorId(Id);
+            dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente!.DispositivoT50Id);
             RecarregarT50s();
             showAddT50 = false;
         }
         catch (Exception ex) { errAddT50 = ex.Message; }
         finally { isAdicionandoT50 = false; }
-    }
-
-    private void HandleTornarPrincipal(int t50Id)
-    {
-        if (ambiente == null) return;
-        AmbienteT50Repo.DefinirPrincipal(ambiente.Id, t50Id);
-        LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "AmbienteT50", ambiente.Id);
-        // Recarrega ambiente para refletir o novo DispositivoT50Id principal
-        ambiente = AmbienteRepo.BuscarPorId(Id);
-        dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente!.DispositivoT50Id);
-        RecarregarT50s();
     }
 
     private void ConfirmarRemoverT50(int t50Id) => showConfirmRemoverT50 = t50Id;
@@ -528,59 +488,18 @@
         if (ambiente == null || showConfirmRemoverT50 == 0) return;
         AmbienteT50Repo.Remover(ambiente.Id, showConfirmRemoverT50);
         LogRepo.Registrar(TokenStore.AdminId, "Remocao", "AmbienteT50", ambiente.Id);
-        // Recarrega ambiente para refletir possível mudança de principal
         ambiente = AmbienteRepo.BuscarPorId(Id);
         dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente!.DispositivoT50Id);
         RecarregarT50s();
         showConfirmRemoverT50 = 0;
     }
 
-    private void AbrirTrocarT50()
+    private void ToggleT50ParaPessoa(int t50Id, bool marcar)
     {
-        errTrocarT50 = null;
-        // Trocar agora só permite T50s já vinculados ao ambiente (swap interno)
-        RecarregarT50s();
-        novoT50IdSelecionado = t50sVinculados.FirstOrDefault(d => d.Id != ambiente!.DispositivoT50Id)?.Id ?? 0;
-        showTrocarT50 = true;
+        if (marcar) t50sSelecionadosParaPessoa.Add(t50Id);
+        else t50sSelecionadosParaPessoa.Remove(t50Id);
     }
 
-    private async Task HandleTrocarT50()
-    {
-        if (ambiente == null) return;
-        if (novoT50IdSelecionado == 0) { errTrocarT50 = "Selecione um T50."; return; }
-        if (novoT50IdSelecionado == ambiente.DispositivoT50Id) { errTrocarT50 = "O T50 selecionado já é o principal."; return; }
-
-        var atual = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente.DispositivoT50Id);
-        var novo  = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == novoT50IdSelecionado);
-        if (novo == null) { errTrocarT50 = "T50 selecionado não existe mais."; return; }
-
-        isTrocandoT50 = true;
-        StateHasChanged();
-        await Task.Yield();
-        try
-        {
-            // SWAP dos contadores de digitais entre o T50 atual e o novo principal.
-            // Caso 1: atual=100, novo=0 → atual=0, novo=100.
-            // Caso 2: atual=50, novo=80 → atual=80, novo=50.
-            if (atual != null)
-            {
-                var tmp = atual.DigitaisCadastradas;
-                atual.DigitaisCadastradas = novo.DigitaisCadastradas;
-                novo.DigitaisCadastradas = tmp;
-                DispositivoRepo.Atualizar(atual);
-                DispositivoRepo.Atualizar(novo);
-            }
-            // Define o novo principal (também atualiza ambiente.DispositivoT50Id internamente)
-            AmbienteT50Repo.DefinirPrincipal(ambiente.Id, novoT50IdSelecionado);
-            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", ambiente.Id);
-            ambiente = AmbienteRepo.BuscarPorId(Id);
-            dispositivo = novo;
-            RecarregarT50s();
-            showTrocarT50 = false;
-        }
-        catch (Exception ex) { errTrocarT50 = ex.Message; }
-        finally { isTrocandoT50 = false; }
-    }
     private string nomeConfirmacaoExcluir = "";
     private string? erroExcluir = null;
     private long pessoaIdParaRemover = 0;
@@ -622,6 +541,13 @@
     private async Task AbrirModalAdicionarPessoa()
     {
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
+        RecarregarT50s();
+        // Pré-seleciona todos os T50 não-cheios como conveniência (admin pode desmarcar)
+        t50sSelecionadosParaPessoa = t50sVinculados
+            .Where(t => t.DigitaisCadastradas < 1000)
+            .Select(t => t.Id)
+            .ToHashSet();
+        aceitouSomenteSenha = false;
         showAddPessoa = true;
     }
 
@@ -640,70 +566,98 @@
 
     private async Task HandleRemoverPessoa(long pessoaId)
     {
+        // Antes de remover do ambiente, descobre quais T50s a pessoa só usa por causa DESTE ambiente.
+        // Em outros ambientes que usam o mesmo T50, a digital deve permanecer.
+        var ambientesDaPessoaAntes = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId).Select(a => a.Id).ToList();
+        var outrosAmbientes = ambientesDaPessoaAntes.Where(aid => aid != Id).ToList();
+        var t50sEmOutrosAmbientes = outrosAmbientes
+            .SelectMany(aid => AmbienteT50Repo.ListarT50sDoAmbiente(aid).Select(t => t.Id))
+            .ToHashSet();
+
         AmbientePessoaRepo.RemoverPessoa(Id, pessoaId);
         LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoaId);
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
-        // Inativa a pessoa se ficou sem nenhum ambiente (bug #8)
+
+        // Para cada T50 vinculado a este ambiente: se a pessoa não está em outro ambiente que usa esse T50,
+        // remove a biometria dela desse T50 (decrementa contador).
+        foreach (var t50 in t50sVinculados)
+        {
+            if (!t50sEmOutrosAmbientes.Contains(t50.Id))
+            {
+                PessoaT50Repo.Remover(pessoaId, t50.Id);
+            }
+        }
+
+        // Inativa a pessoa se ficou sem nenhum ambiente
         var ambientesDaPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId);
         if (ambientesDaPessoa.Count == 0)
             await PessoaRepo.AlterarStatus(pessoaId, false);
-        // Decrementa o contador de digitais do dispositivo
-        if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
-        {
-            dispositivo.DigitaisCadastradas--;
-            DispositivoRepo.Atualizar(dispositivo);
-        }
+
+        RecarregarT50s();
     }
 
     private async Task HandleAdicionarPessoa()
     {
         if (pessoaSelecionadaId == 0) return;
-        var t50Cheio = dispositivo != null && dispositivo.DigitaisCadastradas >= 1000;
-        if (t50Cheio && !aceitouSomenteSenha) return;
+        // Validação: precisa ter selecionado T50s OU marcado somente-senha
+        if (!aceitouSomenteSenha && !t50sSelecionadosParaPessoa.Any()) return;
+        // Validação: T50s selecionados precisam ter capacidade
+        if (!aceitouSomenteSenha)
+        {
+            foreach (var t50Id in t50sSelecionadosParaPessoa)
+            {
+                var t = t50sVinculados.FirstOrDefault(x => x.Id == t50Id);
+                if (t != null && t.DigitaisCadastradas >= 1000) return;
+            }
+        }
 
         isAdicionandoPessoa = true;
         StateHasChanged();
         await Task.Yield();
         try
         {
-        AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
-        await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
-        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
+            // Vincula pessoa ao ambiente
+            AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
+            await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
+            LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
 
-        var pessoaAdd = await PessoaRepo.BuscarPorId(pessoaSelecionadaId);
+            var pessoaAdd = await PessoaRepo.BuscarPorId(pessoaSelecionadaId);
 
-        // doc_tecnica §5.2 passo 3: T50 cheio → força modo somente_senha na pessoa.
-        // Não incrementa o contador de digitais (não vai cadastrar biometria neste T50).
-        if (t50Cheio)
-        {
-            if (pessoaAdd != null && pessoaAdd.modoAcesso != "somente_senha")
+            if (aceitouSomenteSenha)
             {
-                pessoaAdd.modoAcesso = "somente_senha";
-                await PessoaRepo.Atualizar(pessoaAdd);
+                // Modo somente senha — não cadastra digital em nenhum T50
+                if (pessoaAdd != null && pessoaAdd.modoAcesso != "somente_senha")
+                {
+                    pessoaAdd.modoAcesso = "somente_senha";
+                    await PessoaRepo.Atualizar(pessoaAdd);
+                }
             }
-        }
-        else if (dispositivo != null)
-        {
-            dispositivo.DigitaisCadastradas++;
-            DispositivoRepo.Atualizar(dispositivo);
-
-            // doc_tecnica §5.9: Reativação — se há templateBackup, restaura biometria
-            // (em produção o upload pro T50 acontece via Anviz SDK no Worker; aqui marcamos no banco).
-            if (pessoaAdd != null
-                && pessoaAdd.modoAcesso == "digital_e_senha"
-                && pessoaAdd.templateBackup != null
-                && pessoaAdd.templateBackup.Length > 0
-                && pessoaAdd.biometriaCadastrada == null)
+            else
             {
-                await PessoaRepo.MarcarBiometriaCadastrada(pessoaAdd.Id);
-                LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoaAdd.Id);
-            }
-        }
+                // Cadastra digital em cada T50 selecionado (incrementa contador de cada um)
+                foreach (var t50Id in t50sSelecionadosParaPessoa)
+                {
+                    PessoaT50Repo.Adicionar(pessoaSelecionadaId, t50Id);
+                }
 
-        pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
-        AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
-        showAddPessoa = false;
-        aceitouSomenteSenha = false;
+                // Marca biometriaCadastrada se houver templateBackup (reativação)
+                if (pessoaAdd != null
+                    && pessoaAdd.modoAcesso == "digital_e_senha"
+                    && pessoaAdd.templateBackup != null
+                    && pessoaAdd.templateBackup.Length > 0
+                    && pessoaAdd.biometriaCadastrada == null)
+                {
+                    await PessoaRepo.MarcarBiometriaCadastrada(pessoaAdd.Id);
+                    LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoaAdd.Id);
+                }
+            }
+
+            pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
+            RecarregarT50s();
+            AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
+            showAddPessoa = false;
+            aceitouSomenteSenha = false;
+            t50sSelecionadosParaPessoa = new HashSet<int>();
         }
         finally { isAdicionandoPessoa = false; }
     }

@@ -67,6 +67,7 @@ builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
 builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
 builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
+builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
 
 builder.Services.AddScoped<InativarUsuariosInativos2AnosJob>();
 builder.Services.AddScoped<LimparDadosExpiradosJob>();
@@ -218,16 +219,72 @@ using (var scope = app.Services.CreateScope())
                 )";
             createCmd.ExecuteNonQuery();
         }
-        using (var backfillCmd = conn.CreateCommand())
-        {
-            backfillCmd.CommandText = @"
-                INSERT INTO ambienteT50 (ambienteId, dispositivoT50Id, dataVinculo, ehPrincipal)
-                SELECT a.id, a.dispositivoT50Id, datetime('now'), 1
-                FROM ambiente a
-                WHERE a.dispositivoT50Id IS NOT NULL AND a.dispositivoT50Id > 0
-                  AND NOT EXISTS (SELECT 1 FROM ambienteT50 at WHERE at.ambienteId = a.id)";
-            backfillCmd.ExecuteNonQuery();
-        }
+    }
+
+    // Backfill defensivo: roda SEMPRE (não só na criação da tabela). Cobre o caso de
+    // ambientes pré-existentes que não foram migrados na primeira execução depois do refactor.
+    // É idempotente — o WHERE NOT EXISTS evita duplicação.
+    using (var backfillCmd = conn.CreateCommand())
+    {
+        backfillCmd.CommandText = @"
+            INSERT INTO ambienteT50 (ambienteId, dispositivoT50Id, dataVinculo, ehPrincipal)
+            SELECT a.id, a.dispositivoT50Id, datetime('now'), 1
+            FROM ambiente a
+            WHERE a.dispositivoT50Id IS NOT NULL AND a.dispositivoT50Id > 0
+              AND NOT EXISTS (SELECT 1 FROM ambienteT50 at WHERE at.ambienteId = a.id AND at.dispositivoT50Id = a.dispositivoT50Id)";
+        backfillCmd.ExecuteNonQuery();
+    }
+
+    // Migração inline — tabela pessoaT50 (qual pessoa está cadastrada em qual T50).
+    // Permite múltiplos T50 por ambiente onde admin escolhe em quais a pessoa fica.
+    bool pessoaT50Existe;
+    using (var checkCmd = conn.CreateCommand())
+    {
+        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='pessoaT50'";
+        pessoaT50Existe = checkCmd.ExecuteScalar() != null;
+    }
+    if (!pessoaT50Existe)
+    {
+        using var createCmd = conn.CreateCommand();
+        createCmd.CommandText = @"
+            CREATE TABLE pessoaT50 (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                pessoaId         INTEGER NOT NULL,
+                dispositivoT50Id INTEGER NOT NULL,
+                dataCadastro     TEXT NOT NULL,
+                UNIQUE(pessoaId, dispositivoT50Id),
+                FOREIGN KEY(pessoaId)         REFERENCES pessoa(id) ON DELETE CASCADE,
+                FOREIGN KEY(dispositivoT50Id) REFERENCES dispositivoT50(id) ON DELETE CASCADE
+            )";
+        createCmd.ExecuteNonQuery();
+    }
+
+    // Backfill defensivo da pessoaT50 — para cada (pessoa, ambiente) em ambientePessoa,
+    // cadastra a pessoa nos T50s desse ambiente. Idempotente via WHERE NOT EXISTS.
+    using (var backfillP = conn.CreateCommand())
+    {
+        backfillP.CommandText = @"
+            INSERT INTO pessoaT50 (pessoaId, dispositivoT50Id, dataCadastro)
+            SELECT DISTINCT ap.pessoaId, at.dispositivoT50Id, datetime('now')
+            FROM ambientePessoa ap
+            INNER JOIN ambienteT50 at ON at.ambienteId = ap.ambienteId
+            WHERE NOT EXISTS (
+                SELECT 1 FROM pessoaT50 pt
+                WHERE pt.pessoaId = ap.pessoaId AND pt.dispositivoT50Id = at.dispositivoT50Id
+            )";
+        backfillP.ExecuteNonQuery();
+    }
+
+    // Re-sincroniza dispositivoT50.DigitaisCadastradas com a contagem real de pessoaT50.
+    // Importante após backfill para o contador ficar consistente.
+    using (var sync = conn.CreateCommand())
+    {
+        sync.CommandText = @"
+            UPDATE dispositivoT50
+            SET digitaisCadastradas = (
+                SELECT COUNT(*) FROM pessoaT50 pt WHERE pt.dispositivoT50Id = dispositivoT50.id
+            )";
+        sync.ExecuteNonQuery();
     }
 
     // Migração inline — cria tabela codigoDisponivel se não existir (pool de IDs 100000-999999)

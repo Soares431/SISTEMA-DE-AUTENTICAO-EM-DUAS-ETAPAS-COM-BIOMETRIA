@@ -27,6 +27,7 @@ namespace BiometricAcess.Worker.Simulador
             var configRepo          = scope.ServiceProvider.GetRequiredService<IConfiguracaoRepository>();
             var ambientePessoaRepo  = scope.ServiceProvider.GetRequiredService<IAmbientePessoaRepository>();
             var ambienteT50Repo     = scope.ServiceProvider.GetRequiredService<IAmbienteT50Repository>();
+            var pessoaT50Repo       = scope.ServiceProvider.GetRequiredService<IPessoaT50Repository>();
 
             // Resolve o ambiente pelo IP do dispositivo. Ambiente sem T50 vinculado NÃO recebe evento —
             // o painel agora bloqueia criação sem T50, mas a defesa em profundidade evita
@@ -40,10 +41,19 @@ namespace BiometricAcess.Worker.Simulador
                 return;
             }
 
-            // Multi-T50: um T50 pode estar vinculado a múltiplos ambientes. Pega o primeiro
-            // que estiver vinculado (ehPrincipal primeiro pela ordenação do repo).
+            // Multi-T50: um T50 pode estar vinculado a múltiplos ambientes. Pega o primeiro vinculado.
+            // FALLBACK: se a tabela ambienteT50 estiver vazia (migração incompleta), usa
+            // Ambiente.DispositivoT50Id como antes — assim o simulador nunca para por falta de dados.
             var ambientesDoT50 = ambienteT50Repo.ListarAmbientesDoT50(dispositivo.Id);
             var ambiente       = ambientesDoT50.FirstOrDefault();
+            if (ambiente == null)
+            {
+                ambiente = ambienteRepo.ListarTodos().FirstOrDefault(a => a.DispositivoT50Id == dispositivo.Id);
+                if (ambiente != null)
+                {
+                    Console.WriteLine($"[SimuladorBanco] AVISO: usando fallback Ambiente.DispositivoT50Id (tabela ambienteT50 vazia para T50 {dispositivo.Id}).");
+                }
+            }
 
             if (ambiente == null)
             {
@@ -80,6 +90,13 @@ namespace BiometricAcess.Worker.Simulador
             {
                 acessoLiberado = false;
                 motivoNegacao  = "sem_permissao";
+            }
+            else if (!pessoaT50Repo.EstaCadastrada(pessoa.Id, dispositivo.Id))
+            {
+                // Pessoa tem acesso ao ambiente mas a biometria dela não foi cadastrada NESTE T50 específico.
+                // Acontece quando o ambiente tem múltiplos T50 e admin escolheu não cadastrar a digital em todos.
+                acessoLiberado = false;
+                motivoNegacao  = "biometria_nao_cadastrada_neste_t50";
             }
             else
             {

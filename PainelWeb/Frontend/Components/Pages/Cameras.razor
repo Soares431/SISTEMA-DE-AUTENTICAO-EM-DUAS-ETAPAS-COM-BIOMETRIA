@@ -40,16 +40,27 @@
         @foreach (var cam in Filtered)
         {
             <div class="card" style="overflow: hidden;">
-                <div class="camera-preview">
-                    @if (cam.Ativa)
+                <div class="camera-preview" style="position:relative; aspect-ratio:16/9; background:#000;">
+                    @if (cam.Ativa && !string.IsNullOrEmpty(cam.UrlHLS))
                     {
-                        <div class="camera-overlay"></div>
-                        <Icon Name="camera" Size="64" CssClass="text-muted" />
-                        <button class="btn btn-icon" style="position: absolute; bottom: 0.75rem; right: 0.75rem; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);" @onclick="() => OpenLiveView(cam)"><Icon Name="maximize" Size="16" CssClass="text-foreground" /></button>
+                        @* Player HLS pequeno autoplay mute como preview no card.
+                           IDs únicos por câmera para que vários cards possam tocar em paralelo. *@
+                        <video id="@($"camPreview_{cam.Id}")"
+                               style="width:100%; height:100%; object-fit:cover; display:block;"
+                               muted autoplay playsinline></video>
+                        <button class="btn btn-icon" style="position: absolute; bottom: 0.75rem; right: 0.75rem; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);" @onclick="() => OpenLiveView(cam)" title="Ampliar"><Icon Name="maximize" Size="16" CssClass="text-foreground" /></button>
+                    }
+                    else if (cam.Ativa)
+                    {
+                        <div class="flex-col items-center gap-2" style="display: flex; justify-content:center; align-items:center; height:100%; flex-direction:column;">
+                            <Icon Name="camera" Size="64" CssClass="text-muted" />
+                            <span class="text-sm text-muted">URL HLS não configurada</span>
+                        </div>
+                        <button class="btn btn-icon" style="position: absolute; bottom: 0.75rem; right: 0.75rem; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);" @onclick="() => OpenLiveView(cam)"><Icon Name="maximize" Size="16" CssClass="text-foreground" /></button>
                     }
                     else
                     {
-                        <div class="flex-col items-center gap-2" style="display: flex;"><Icon Name="wifi-off" Size="48" CssClass="text-muted" /><span class="text-sm text-muted">Inativa</span></div>
+                        <div class="flex-col items-center gap-2" style="display: flex; justify-content:center; align-items:center; height:100%; flex-direction:column;"><Icon Name="wifi-off" Size="48" CssClass="text-muted" /><span class="text-sm text-muted">Inativa</span></div>
                     }
                 </div>
                 <div class="card-content" style="padding-top: 1rem;">
@@ -248,23 +259,39 @@
         liveCamera = null;
     }
 
+    private HashSet<int> previewsAtivos = new();
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Quando o modal abre e a câmera tem URL HLS, dispara o player.
-        // hlsAtivo evita reinicializar a cada re-render do componente.
+        // Quando o modal abre e a câmera tem URL HLS, dispara o player ampliado.
         if (liveCamera != null && !string.IsNullOrEmpty(liveCamera.UrlHLS) && !hlsAtivo)
         {
             hlsAtivo = true;
             await JS.InvokeVoidAsync("iniciarHls", "liveVideo", liveCamera.UrlHLS);
         }
+        // Dispara HLS pequeno em todos os cards de câmeras que têm URL HLS e ainda não rodam.
+        // Cada card tem ID camPreview_{id} — verificado/inicializado individualmente.
+        foreach (var cam in Filtered)
+        {
+            if (cam.Ativa && !string.IsNullOrEmpty(cam.UrlHLS) && !previewsAtivos.Contains(cam.Id))
+            {
+                previewsAtivos.Add(cam.Id);
+                try { await JS.InvokeVoidAsync("iniciarHls", $"camPreview_{cam.Id}", cam.UrlHLS); }
+                catch { previewsAtivos.Remove(cam.Id); }
+            }
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
-        // Garante que o stream HLS é parado quando o usuário sai da página.
+        // Garante que o stream HLS (player ampliado + previews dos cards) é parado quando o usuário sai.
         if (hlsAtivo)
         {
             try { await JS.InvokeVoidAsync("pararHls", "liveVideo"); } catch { }
+        }
+        foreach (var id in previewsAtivos.ToList())
+        {
+            try { await JS.InvokeVoidAsync("pararHls", $"camPreview_{id}"); } catch { }
         }
     }
 

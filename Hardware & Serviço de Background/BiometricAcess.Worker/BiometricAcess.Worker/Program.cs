@@ -33,6 +33,7 @@ builder.Services.AddScoped<IConfiguracaoRepository, ConfiguracaoImplemetions>();
 builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
+builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
 
 // ═══════════════════════════════════════════════════════════════
 // Serviços compartilhados
