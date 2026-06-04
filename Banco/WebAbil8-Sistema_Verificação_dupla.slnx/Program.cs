@@ -259,14 +259,23 @@ using (var scope = app.Services.CreateScope())
         createCmd.ExecuteNonQuery();
     }
 
-    // Backfill defensivo da pessoaT50 — para cada (pessoa, ambiente) em ambientePessoa,
+    // Backfill defensivo da pessoaT50 — para cada (pessoa, ambiente) em ambiente_pessoa,
     // cadastra a pessoa nos T50s desse ambiente. Idempotente via WHERE NOT EXISTS.
-    using (var backfillP = conn.CreateCommand())
+    // Só roda se ambiente_pessoa existir (não é o caso em DB recém-criado pelo EnsureCreated
+    // se não houver Pessoa registrada — proteção defensiva).
+    bool ambPessoaExiste;
+    using (var checkAP = conn.CreateCommand())
     {
+        checkAP.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='ambiente_pessoa'";
+        ambPessoaExiste = checkAP.ExecuteScalar() != null;
+    }
+    if (ambPessoaExiste)
+    {
+        using var backfillP = conn.CreateCommand();
         backfillP.CommandText = @"
             INSERT INTO pessoaT50 (pessoaId, dispositivoT50Id, dataCadastro)
             SELECT DISTINCT ap.pessoaId, at.dispositivoT50Id, datetime('now')
-            FROM ambientePessoa ap
+            FROM ambiente_pessoa ap
             INNER JOIN ambienteT50 at ON at.ambienteId = ap.ambienteId
             WHERE NOT EXISTS (
                 SELECT 1 FROM pessoaT50 pt
@@ -277,8 +286,15 @@ using (var scope = app.Services.CreateScope())
 
     // Re-sincroniza dispositivoT50.DigitaisCadastradas com a contagem real de pessoaT50.
     // Importante após backfill para o contador ficar consistente.
-    using (var sync = conn.CreateCommand())
+    bool dispExiste;
+    using (var checkD = conn.CreateCommand())
     {
+        checkD.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='dispositivoT50'";
+        dispExiste = checkD.ExecuteScalar() != null;
+    }
+    if (dispExiste)
+    {
+        using var sync = conn.CreateCommand();
         sync.CommandText = @"
             UPDATE dispositivoT50
             SET digitaisCadastradas = (
