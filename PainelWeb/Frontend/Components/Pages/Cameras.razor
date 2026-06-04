@@ -75,6 +75,7 @@
                     </div>
                     <div class="flex items-center gap-2 mt-4 pt-4 border-t">
                         <button class="btn btn-outline btn-sm flex-1" disabled="@(!cam.Ativa)" @onclick="() => OpenLiveView(cam)"><Icon Name="play" Size="16" /> Ao Vivo</button>
+                        <a href="/historico?ambienteId=@cam.AmbienteId&gravacao=com" class="btn btn-outline btn-sm flex-1" title="Ver gravações deste ambiente"><Icon Name="video" Size="16" /> Gravações</a>
                         <button class="btn btn-ghost btn-icon" title="Editar" @onclick="() => AbrirEdicao(cam)"><Icon Name="pencil" Size="16" /></button>
                         <button class="btn btn-ghost btn-icon" title="@(cam.Ativa ? "Desativar" : "Ativar")" @onclick="() => HandleToggleAtiva(cam)"><Icon Name="@(cam.Ativa ? "power" : "power-off")" Size="16" /></button>
                         <button class="btn btn-ghost btn-icon text-destructive" @onclick="() => ConfirmarRemover(cam.Id)"><Icon Name="trash" Size="16" /></button>

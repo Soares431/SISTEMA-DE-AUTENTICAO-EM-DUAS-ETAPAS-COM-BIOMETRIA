@@ -20,6 +20,16 @@ var dbPath = Path.Combine(builder.Environment.ContentRootPath, "banco.db");
 builder.Configuration["SQLiteConnection:SQLiteConnectionString"] = $"Data Source={dbPath}";
 Console.WriteLine($"[INT1 DB] {dbPath}");
 
+// Pasta de gravações compartilhada entre Int1 e Worker — fica na RAIZ do repo
+// para que ambos os processos resolvam o mesmo caminho absoluto.
+// O Worker (Int2) grava aqui via FFmpeg; o Int1 lê via /api/gravacoes/{id}.
+// Sem isso, cada processo usaria "cameras/" relativo ao seu próprio diretório.
+var repoRoot = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", ".."));
+var cameraBase = Environment.GetEnvironmentVariable("CAMERA_BASE_PATH")
+    ?? Path.Combine(repoRoot, "gravacoes");
+Environment.SetEnvironmentVariable("CAMERA_BASE_PATH", cameraBase);
+Console.WriteLine($"[INT1 GRAVACOES] {cameraBase}");
+
 // Add services to the container.
 
 // Scoped é usado para criar uma nova instância do serviço para cada solicitação HTTP. Isso é útil para serviços que possuem estado ou que precisam ser isolados por solicitação, como um serviço de pessoa neste caso  

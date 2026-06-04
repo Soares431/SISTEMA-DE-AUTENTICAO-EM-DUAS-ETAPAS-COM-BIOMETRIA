@@ -15,7 +15,10 @@ public class CameraService
     {
         _logRepo = logRepo;
         _cameraRepo = cameraRepo;
-        _basePath = basePath;
+        // Sempre resolver para absoluto — assim o path salvo em TentativaAcesso.GravacaoPath
+        // é resolvível pelo Int1 (que roda de outro diretório) sem ambiguidade.
+        _basePath = Path.GetFullPath(basePath);
+        Directory.CreateDirectory(_basePath);
         _ffmpegPath = string.IsNullOrWhiteSpace(ffmpegPath) ? "ffmpeg" : ffmpegPath;
         _ffmpegStartTimeoutSeg = 5;
     }

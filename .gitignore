@@ -508,3 +508,4 @@ InfraestruturaBloco1/obj/project.nuget.cache
 
 # Gravações de câmera geradas em runtime pelo CameraService — não commitar
 **/cameras/ambiente_*/
+gravacoes/

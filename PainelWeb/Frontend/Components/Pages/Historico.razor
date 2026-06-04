@@ -188,6 +188,8 @@
             ambFilter = amb.ToString();
         if (qs.TryGetValue("status", out var st) && !string.IsNullOrEmpty(st))
             statusFilter = st.ToString();
+        if (qs.TryGetValue("gravacao", out var gv) && !string.IsNullOrEmpty(gv))
+            gravacaoFilter = gv.ToString();
     }
 
     private IEnumerable<TentativaAcesso> Filtered => todasTentativas.Where(h =>

@@ -21,6 +21,15 @@ var dbPath = Path.GetFullPath(
     "Banco", "WebAbil8-Sistema_Verificação_dupla.slnx", "banco.db"));
 Console.WriteLine($"[INT2 DB] {dbPath}");
 
+// Pasta de gravações: mesma do Int1 — raiz do repo / "gravacoes".
+// Sem isso, o Worker salvaria em BiometricAcess.Worker/cameras/ e o Int1
+// procuraria em Banco/.../cameras/ — paths divergentes, API não encontra.
+var repoRoot = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".."));
+var cameraBase = Environment.GetEnvironmentVariable("CAMERA_BASE_PATH")
+    ?? Path.Combine(repoRoot, "gravacoes");
+Environment.SetEnvironmentVariable("CAMERA_BASE_PATH", cameraBase);
+Console.WriteLine($"[INT2 GRAVACOES] {cameraBase}");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
@@ -42,7 +51,8 @@ builder.Services.AddScoped<CameraService>(sp =>
     new CameraService(
         sp.GetRequiredService<ILogAdminRepository>(),
         sp.GetRequiredService<ICameraRepository>(),
-        Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "cameras",
+        // Já resolvido para absoluto acima (compartilhado Int1↔Int2)
+        Environment.GetEnvironmentVariable("CAMERA_BASE_PATH") ?? "gravacoes",
         Environment.GetEnvironmentVariable("FFMPEG_PATH")
     ));
 
