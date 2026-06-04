@@ -58,6 +58,19 @@ else
     private bool isDarkTheme = true;
     private bool verificado = false;
 
+    // Roda ANTES do primeiro render. Quando o usuário navega entre páginas usando enhanced
+    // navigation, o circuito (e portanto o ITokenStore Scoped) é preservado. Se já estamos
+    // autenticados aqui, marcamos verificado=true imediatamente — assim o @Body renderiza
+    // no primeiro frame ao invés de mostrar a tela azul (overlay enquanto OnAfterRender
+    // espera o JS interop). Esse era exatamente o bug dos "links que levavam à tela azul".
+    protected override void OnInitialized()
+    {
+        if (TokenStore.EstaAutenticado)
+        {
+            verificado = true;
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
