@@ -56,12 +56,20 @@ public class CameraService
             using var proc = Process.Start(psi);
             if (proc == null) return null;
 
-            // Espera até duracaoSeg + 5s de margem (conexão RTSP demora)
-            bool exited = proc.WaitForExit((duracaoSeg + 10) * 1000);
+            // Espera até duracaoSeg + 30s de margem (RTSP demora a estabilizar + reencode + flush).
+            // Margem antiga de 10s era pouco — FFmpeg pode passar facilmente disso reencodando.
+            bool exited = proc.WaitForExit((duracaoSeg + 30) * 1000);
             if (!exited)
             {
                 try { proc.Kill(true); } catch { }
-                Console.WriteLine($"[CameraService] FFmpeg excedeu timeout no ambiente {ambienteId}");
+                Console.WriteLine($"[CameraService] FFmpeg excedeu timeout no ambiente {ambienteId}, verificando se gerou arquivo parcial...");
+                // Mesmo com timeout, o FFmpeg pode ter gravado a maior parte do trecho.
+                // Se o arquivo existe e tem tamanho mínimo, considera bem-sucedido.
+                if (File.Exists(fullPath) && new FileInfo(fullPath).Length >= 1024)
+                {
+                    Console.WriteLine($"[CameraService] Arquivo parcial aproveitado: {fullPath} ({new FileInfo(fullPath).Length} bytes)");
+                    return fullPath;
+                }
                 return null;
             }
 
@@ -69,6 +77,12 @@ public class CameraService
             {
                 var stderr = await proc.StandardError.ReadToEndAsync();
                 Console.WriteLine($"[CameraService] FFmpeg exit {proc.ExitCode} no ambiente {ambienteId}: {stderr.Substring(0, Math.Min(stderr.Length, 500))}");
+                // Mesmo com exit non-zero, FFmpeg pode ter gerado um arquivo válido (warnings).
+                if (File.Exists(fullPath) && new FileInfo(fullPath).Length >= 1024)
+                {
+                    Console.WriteLine($"[CameraService] Arquivo válido apesar do exit non-zero: {fullPath}");
+                    return fullPath;
+                }
                 return null;
             }
 
@@ -78,6 +92,7 @@ public class CameraService
                 return null;
             }
 
+            Console.WriteLine($"[CameraService] Gravação concluída: {fullPath} ({new FileInfo(fullPath).Length / 1024} KB)");
             return fullPath;
         }
         catch (Exception ex)

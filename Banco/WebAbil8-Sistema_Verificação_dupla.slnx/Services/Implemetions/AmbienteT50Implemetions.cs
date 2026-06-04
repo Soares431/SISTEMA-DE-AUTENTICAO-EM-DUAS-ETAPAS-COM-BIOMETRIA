@@ -143,11 +143,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<Ambiente> ListarAmbientesDoT50(int t50Id)
         {
+            // Filtra ambientes soft-deletados — eles continuam no banco apenas para
+            // preservar referência em tentativas históricas, não devem aparecer em UI operacional.
             return _context.AmbientesT50
                 .Where(at => at.DispositivoT50Id == t50Id)
                 .Include(at => at.Ambiente)
                 .Select(at => at.Ambiente!)
-                .Where(a => a != null)
+                .Where(a => a != null && !a.Excluido)
                 .ToList();
         }
 
