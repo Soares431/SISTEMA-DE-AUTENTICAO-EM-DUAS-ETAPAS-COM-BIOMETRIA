@@ -12,10 +12,20 @@
             <h1 class="text-2xl font-bold">Ambientes</h1>
             <p class="text-muted">Gerencie os ambientes e dispositivos T50</p>
         </div>
-        <button class="btn btn-primary" @onclick="() => showDialog = true">
+        <button class="btn btn-primary" @onclick="AbrirDialog">
             <Icon Name="plus" Size="16" /> Novo Ambiente
         </button>
     </div>
+
+    @if (!dispositivos.Any())
+    {
+        <div class="alert alert-warning">
+            <Icon Name="alert-triangle" Size="16" />
+            Nenhum dispositivo T50 cadastrado. Cadastre um T50 antes de criar ambientes —
+            todo ambiente precisa estar vinculado a um terminal físico.
+            <a href="/dispositivos" class="btn btn-outline btn-sm" style="margin-left: 0.5rem;">Ir para Dispositivos T50</a>
+        </div>
+    }
 
     <div class="flex gap-4" style="flex-wrap: wrap;">
         <div class="input-icon-wrapper flex-1" style="min-width: 200px;">
@@ -93,13 +103,13 @@
 
 @if (showDialog)
 {
-    <div class="modal-overlay" @onclick="() => showDialog = false">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Criar Novo Ambiente</h3><p>Adicione um novo ambiente ao sistema de controle de acesso</p></div>
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome do Ambiente</label><input class="form-input" maxlength="80" placeholder="Ex: Sala de Reuniões" @bind="novoNome" @bind:event="oninput" /></div>
                 <div class="form-group">
-                    <label class="form-label">Dispositivo T50</label>
+                    <label class="form-label">Dispositivo T50 <span class="text-destructive">*</span></label>
                     @if (dispositivos.Any())
                     {
                         <select class="form-select" @bind="novoT50Id">
@@ -108,16 +118,21 @@
                                 <option value="@d.Id">@d.Nome (@d.EnderecoIP)</option>
                             }
                         </select>
+                        <p class="text-xs text-muted">Todo ambiente deve estar vinculado a um T50 físico.</p>
                     }
                     else
                     {
-                        <p class="text-sm text-muted">Nenhum dispositivo T50 cadastrado.</p>
+                        <div class="alert alert-danger">
+                            Nenhum dispositivo T50 cadastrado. Cadastre um T50 antes de criar ambientes.
+                            <a href="/dispositivos" class="btn btn-outline btn-sm" style="margin-left: 0.5rem;">Cadastrar T50</a>
+                        </div>
                     }
                 </div>
+                @if (erroDialog != null) { <div class="alert alert-danger">@erroDialog</div> }
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showDialog = false">Cancelar</button>
-                <button class="btn btn-primary" @onclick="HandleCriar">Criar Ambiente</button>
+                <button class="btn btn-primary" @onclick="HandleCriar" disabled="@(!dispositivos.Any())">Criar Ambiente</button>
             </div>
         </div>
     </div>
@@ -130,8 +145,18 @@
     private bool showDialog = false;
     private string novoNome = "";
     private int novoT50Id = 0;
+    private string? erroDialog = null;
     private List<Ambiente> todosAmbientes = new();
     private List<DispositivoT50> dispositivos = new();
+
+    private void AbrirDialog()
+    {
+        erroDialog = null;
+        // Re-carrega dispositivos pra refletir se admin acabou de cadastrar um T50
+        dispositivos = DispositivoRepo.ListarTodos();
+        if (dispositivos.Any() && novoT50Id == 0) novoT50Id = dispositivos.First().Id;
+        showDialog = true;
+    }
 
     protected override void OnInitialized()
     {
@@ -165,7 +190,12 @@
 
     private void HandleCriar()
     {
-        if (string.IsNullOrWhiteSpace(novoNome)) return;
+        erroDialog = null;
+        if (string.IsNullOrWhiteSpace(novoNome)) { erroDialog = "Informe o nome do ambiente."; return; }
+        if (!dispositivos.Any())                 { erroDialog = "Cadastre um T50 antes de criar ambientes."; return; }
+        if (novoT50Id <= 0)                      { erroDialog = "Selecione um dispositivo T50."; return; }
+        if (!dispositivos.Any(d => d.Id == novoT50Id)) { erroDialog = "T50 selecionado não existe mais."; return; }
+
         var ambiente = new Ambiente
         {
             Nome = novoNome,

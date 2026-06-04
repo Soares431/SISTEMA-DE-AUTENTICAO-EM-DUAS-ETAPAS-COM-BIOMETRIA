@@ -97,11 +97,20 @@ else
         }
     }
 
-    // Classe auxiliar para desserializar o objeto retornado por authStorage.load()
+    // Classe auxiliar para desserializar o objeto retornado por authStorage.load().
+    // JsonPropertyName explícito porque System.Text.Json é case-sensitive por padrão
+    // e o JS retorna camelCase. Sem isso a desserialização vira tudo vazio em silêncio
+    // e o guard cai no else → NavigateTo("/login") com o circuit num estado intermediário,
+    // o que deixa o MainLayout em "verificado=false" (tela azul).
     private class StoredAuth
     {
+        [System.Text.Json.Serialization.JsonPropertyName("token")]
         public string Token { get; set; } = "";
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminId")]
         public int AdminId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("nome")]
         public string Nome { get; set; } = "";
     }
 

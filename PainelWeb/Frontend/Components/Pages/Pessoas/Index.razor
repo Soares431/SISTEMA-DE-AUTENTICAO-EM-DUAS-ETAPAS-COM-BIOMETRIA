@@ -82,7 +82,7 @@
 
 @if (showDialog)
 {
-    <div class="modal-overlay" @onclick="FecharDialog">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Cadastrar Nova Pessoa</h3><p>Adicione uma nova pessoa ao sistema de controle de acesso</p></div>
             <div class="modal-body space-y-sm">
@@ -96,16 +96,22 @@
                 @if (senhaMostrada != null)
                 {
                     <div class="alert alert-success">
-                        <strong>Pessoa cadastrada!</strong> Anote as informações abaixo:<br />
-                        <div style="margin-top: 0.5rem;">
-                            <span class="text-muted text-sm">ID do usuário (T50):</span><br />
-                            <span style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@pessoaCadastradaCodigo</span>
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong>Pessoa cadastrada!</strong> Anote as informações abaixo:
                         </div>
-                        <div style="margin-top: 0.5rem;">
-                            <span class="text-muted text-sm">Senha provisória:</span><br />
-                            <span style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@senhaMostrada</span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
+                            <div>
+                                <div class="text-muted text-sm">ID do usuário (T50):</div>
+                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@pessoaCadastradaCodigo</div>
+                            </div>
+                            <div>
+                                <div class="text-muted text-sm">Senha provisória:</div>
+                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@senhaMostrada</div>
+                            </div>
                         </div>
-                        <small>@(pessoaCadastradaModo == "digital_e_senha" ? "O usuário deverá cadastrar a digital no primeiro acesso." : "O usuário poderá acessar utilizando ID e senha.")</small>
+                        <div style="padding-top: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); font-size: 0.85rem;">
+                            @(pessoaCadastradaModo == "digital_e_senha" ? "O usuário deverá cadastrar a digital no primeiro acesso." : "O usuário poderá acessar utilizando ID e senha.")
+                        </div>
                     </div>
                 }
                 else if (erroDialog != null)
@@ -117,30 +123,38 @@
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label class="form-label">Nome Completo <span class="text-destructive">*</span></label>
-                            <input class="form-input" placeholder="Nome completo" maxlength="100"
+                            <input class="form-input @(errNome != null ? "form-input-error" : "")" placeholder="Nome completo" maxlength="100"
                                    onkeyup="window.maskTextoSeguro(this, 100)"
-                                   @bind="novoNome" @bind:event="oninput" />
+                                   @bind="novoNome" @bind:event="oninput"
+                                   @onblur="ValidarNome" />
+                            @if (errNome != null) { <p class="text-xs text-destructive">@errNome</p> }
                         </div>
                         <div class="form-group">
                             <label class="form-label">Email <span class="text-destructive">*</span></label>
-                            <input class="form-input" type="email" placeholder="email@empresa.com" maxlength="150"
-                                   @bind="novoEmail" @bind:event="oninput" />
+                            <input class="form-input @(errEmail != null ? "form-input-error" : "")" type="email" placeholder="email@empresa.com" maxlength="150"
+                                   @bind="novoEmail" @bind:event="oninput"
+                                   @onblur="ValidarEmail" />
+                            @if (errEmail != null) { <p class="text-xs text-destructive">@errEmail</p> }
                         </div>
                     </div>
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label class="form-label">CPF <span class="text-destructive">*</span></label>
-                            <input class="form-input" placeholder="000.000.000-00" maxlength="14"
+                            <input class="form-input @(errCpf != null ? "form-input-error" : "")" placeholder="000.000.000-00" maxlength="14"
                                    inputmode="numeric"
                                    onkeyup="window.maskCpf(this)"
-                                   @bind="novoCpf" @bind:event="oninput" />
-                            <p class="text-xs text-muted">Formato: 000.000.000-00</p>
+                                   @bind="novoCpf" @bind:event="oninput"
+                                   @onblur="ValidarCpf" />
+                            @if (errCpf != null) { <p class="text-xs text-destructive">@errCpf</p> }
+                            else { <p class="text-xs text-muted">Formato: 000.000.000-00</p> }
                         </div>
                         <div class="form-group">
                             <label class="form-label">Cargo <span class="text-destructive">*</span></label>
-                            <input class="form-input" placeholder="Cargo" maxlength="100"
+                            <input class="form-input @(errCargo != null ? "form-input-error" : "")" placeholder="Cargo" maxlength="100"
                                    onkeyup="window.maskTextoSeguro(this, 100)"
-                                   @bind="novoCargo" @bind:event="oninput" />
+                                   @bind="novoCargo" @bind:event="oninput"
+                                   @onblur="ValidarCargo" />
+                            @if (errCargo != null) { <p class="text-xs text-destructive">@errCargo</p> }
                         </div>
                     </div>
                     <div class="form-group">
@@ -198,6 +212,57 @@
     private string? erroDialog = null;
     private bool isCadastrando = false;
 
+    // Mensagens de erro por campo (validação inline ao perder foco)
+    private string? errNome = null;
+    private string? errEmail = null;
+    private string? errCpf = null;
+    private string? errCargo = null;
+
+    private void ValidarNome()
+    {
+        var n = (novoNome ?? "").Trim();
+        if (string.IsNullOrEmpty(n)) errNome = "Nome é obrigatório.";
+        else if (n.Length < 3) errNome = "Nome muito curto.";
+        else if (n.Length > 100) errNome = "Nome excede 100 caracteres.";
+        else errNome = null;
+    }
+
+    private void ValidarCargo()
+    {
+        var c = (novoCargo ?? "").Trim();
+        if (string.IsNullOrEmpty(c)) errCargo = "Cargo é obrigatório.";
+        else if (c.Length > 100) errCargo = "Cargo excede 100 caracteres.";
+        else errCargo = null;
+    }
+
+    private void ValidarEmail()
+    {
+        var e = (novoEmail ?? "").Trim();
+        if (string.IsNullOrEmpty(e)) { errEmail = "Email é obrigatório."; return; }
+        if (!FormatHelper.EmailValido(e)) { errEmail = "Email inválido."; return; }
+        // Duplicidade — busca local na lista já carregada (case-insensitive)
+        if (todasPessoas.Any(p => string.Equals(p.Email, e, StringComparison.OrdinalIgnoreCase)))
+        {
+            errEmail = "Já existe uma pessoa cadastrada com este email.";
+            return;
+        }
+        errEmail = null;
+    }
+
+    private void ValidarCpf()
+    {
+        var c = (novoCpf ?? "").Trim();
+        if (string.IsNullOrEmpty(c)) { errCpf = "CPF é obrigatório."; return; }
+        if (!FormatHelper.CpfValido(c)) { errCpf = "CPF inválido — verifique os dígitos."; return; }
+        var digitos = FormatHelper.SoDigitos(c);
+        if (todasPessoas.Any(p => FormatHelper.SoDigitos(p.Cpf) == digitos))
+        {
+            errCpf = "Já existe uma pessoa cadastrada com este CPF.";
+            return;
+        }
+        errCpf = null;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         todasPessoas = await PessoaRepo.ListarTodos();
@@ -237,12 +302,25 @@
         erroDialog = null;
         novoNome = novoEmail = novoCpf = novoCargo = "";
         novoModoAcesso = "digital_e_senha";
+        errNome = errEmail = errCpf = errCargo = null;
     }
 
     private async Task HandleCadastrar()
     {
         if (string.IsNullOrWhiteSpace(novoNome) || string.IsNullOrWhiteSpace(novoEmail) ||
             string.IsNullOrWhiteSpace(novoCpf) || string.IsNullOrWhiteSpace(novoCargo)) return;
+
+        // Roda toda a bateria de validações inline antes de bloquear o envio.
+        // Isto cobre o caso do usuário ter clicado em "Cadastrar" sem nunca ter perdido foco em algum campo.
+        ValidarNome();
+        ValidarEmail();
+        ValidarCpf();
+        ValidarCargo();
+        if (errNome != null || errEmail != null || errCpf != null || errCargo != null)
+        {
+            erroDialog = null; // erros já visíveis abaixo dos campos
+            return;
+        }
 
         isCadastrando = true;
         erroDialog = null;

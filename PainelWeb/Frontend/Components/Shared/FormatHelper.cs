@@ -61,4 +61,20 @@ public static class FormatHelper
         var d = SoDigitos(telefone);
         return d.Length == 10 || d.Length == 11;
     }
+
+    // IPv4 válido: 4 octetos 0-255 separados por ponto. Rejeita zeros à esquerda inválidos ("01") e octetos vazios.
+    public static bool IpValido(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return false;
+        var partes = ip.Split('.');
+        if (partes.Length != 4) return false;
+        foreach (var p in partes)
+        {
+            if (p.Length == 0 || p.Length > 3) return false;
+            if (!p.All(char.IsDigit)) return false;
+            if (!int.TryParse(p, out var oct)) return false;
+            if (oct < 0 || oct > 255) return false;
+        }
+        return true;
+    }
 }

@@ -78,7 +78,7 @@
 
 @if (showConfirmRemover)
 {
-    <div class="modal-overlay" @onclick="() => showConfirmRemover = false">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <h3>Remover Câmera</h3>
@@ -119,7 +119,7 @@
 
 @if (showCreate)
 {
-    <div class="modal-overlay" @onclick="() => showCreate = false">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Cadastrar Nova Câmera</h3><p>Adicione uma nova câmera ao sistema de monitoramento</p></div>
             <div class="modal-body space-y-sm">
@@ -150,7 +150,7 @@
 
 @if (editandoCamera != null)
 {
-    <div class="modal-overlay" @onclick="() => editandoCamera = null">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Editar Câmera</h3><p>Atualize os dados da câmera</p></div>
             <div class="modal-body space-y-sm">

@@ -27,17 +27,24 @@ namespace BiometricAcess.Worker.Simulador
             var configRepo          = scope.ServiceProvider.GetRequiredService<IConfiguracaoRepository>();
             var ambientePessoaRepo  = scope.ServiceProvider.GetRequiredService<IAmbientePessoaRepository>();
 
-            // Resolve o ambiente pelo IP do dispositivo; cai no primeiro disponível como fallback
+            // Resolve o ambiente pelo IP do dispositivo. Ambiente sem T50 vinculado NÃO recebe evento —
+            // o painel agora bloqueia criação sem T50, mas a defesa em profundidade evita
+            // que um T50 deletado deixe o ambiente em estado inconsistente.
             var dispositivos = dispositivoRepo.ListarTodos();
             var dispositivo  = dispositivos.FirstOrDefault(d => d.EnderecoIP == evento.IpDispositivo);
-            var ambientes    = ambienteRepo.ListarTodos();
-            var ambiente     = dispositivo != null
-                ? ambientes.FirstOrDefault(a => a.DispositivoT50Id == dispositivo.Id)
-                : ambientes.FirstOrDefault();
+
+            if (dispositivo == null)
+            {
+                Console.WriteLine($"[SimuladorBanco] Nenhum T50 cadastrado com IP {evento.IpDispositivo} — evento ignorado.");
+                return;
+            }
+
+            var ambientes = ambienteRepo.ListarTodos();
+            var ambiente  = ambientes.FirstOrDefault(a => a.DispositivoT50Id == dispositivo.Id);
 
             if (ambiente == null)
             {
-                Console.WriteLine("[SimuladorBanco] Nenhum ambiente encontrado. Cadastre um ambiente no painel antes de usar o simulador com banco.");
+                Console.WriteLine($"[SimuladorBanco] T50 '{dispositivo.Nome}' ({dispositivo.EnderecoIP}) não está vinculado a nenhum ambiente — evento ignorado.");
                 return;
             }
 

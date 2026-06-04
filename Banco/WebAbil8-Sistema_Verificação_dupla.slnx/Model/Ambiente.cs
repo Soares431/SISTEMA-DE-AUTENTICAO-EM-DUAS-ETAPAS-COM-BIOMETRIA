@@ -24,5 +24,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 
         [Column("dataCriacao")]
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
+
+        // Soft-delete: ambiente excluído continua no banco para preservar histórico de tentativas.
+        // Limpeza física ocorre no job de retenção, junto com as tentativas vinculadas.
+        [Column("excluido")]
+        public bool Excluido { get; set; } = false;
+
+        [Column("dataExclusao")]
+        public DateTime? DataExclusao { get; set; }
     }
 }

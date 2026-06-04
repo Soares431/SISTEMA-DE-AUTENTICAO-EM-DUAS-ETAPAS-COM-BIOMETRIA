@@ -35,6 +35,18 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
             _logger.LogInformation("{count} logs expirados removidos.", logsExpirados.Count);
 
             _context.SaveChanges();
+
+            // Purga física de ambientes soft-deletados que já não têm tentativas vivas.
+            // Mantém o histórico do Histórico até o último registro expirar.
+            var ambientesPurgar = _context.Ambientes
+                .Where(a => a.Excluido && !_context.TentativasAcesso.Any(t => t.AmbienteId == a.Id))
+                .ToList();
+            if (ambientesPurgar.Any())
+            {
+                _context.Ambientes.RemoveRange(ambientesPurgar);
+                _context.SaveChanges();
+                _logger.LogInformation("{count} ambientes excluídos purgados (sem histórico vivo).", ambientesPurgar.Count);
+            }
         }
     }
 }

@@ -155,6 +155,28 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
+    // Migração inline — soft-delete de ambiente preserva histórico de tentativas.
+    // Sem isto, deletar um ambiente apagaria também todo o histórico vinculado (FK CASCADE).
+    var ambColsExistentes = new HashSet<string>();
+    using (var pragmaAmb = conn.CreateCommand())
+    {
+        pragmaAmb.CommandText = "SELECT name FROM pragma_table_info('ambiente')";
+        using var rdrAmb = pragmaAmb.ExecuteReader();
+        while (rdrAmb.Read()) ambColsExistentes.Add(rdrAmb.GetString(0));
+    }
+    if (!ambColsExistentes.Contains("excluido"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE ambiente ADD COLUMN excluido INTEGER NOT NULL DEFAULT 0";
+        alterCmd.ExecuteNonQuery();
+    }
+    if (!ambColsExistentes.Contains("dataExclusao"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE ambiente ADD COLUMN dataExclusao TEXT NULL";
+        alterCmd.ExecuteNonQuery();
+    }
+
     // Migração inline — cria tabela codigoDisponivel se não existir (pool de IDs 100000-999999)
     bool codigoTabelaExiste;
     using (var checkCmd = conn.CreateCommand())

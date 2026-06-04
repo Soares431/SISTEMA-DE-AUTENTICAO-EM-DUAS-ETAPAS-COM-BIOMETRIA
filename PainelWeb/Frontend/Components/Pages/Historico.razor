@@ -177,7 +177,9 @@
             .OrderByDescending(t => t.DataHora)
             .Take(500)
             .ToList();
-        ambientes = AmbienteRepo.ListarTodos();
+        // Inclui ambientes excluídos — tentativas antigas referenciam o ambiente original
+        // mesmo após exclusão (soft-delete preserva o nome no Histórico).
+        ambientes = AmbienteRepo.ListarTodosIncluindoExcluidos();
 
         // Pré-aplica filtros vindos pela URL (ex: /historico?ambienteId=3 ao chegar do "Ver no Histórico")
         var uri = new Uri(Nav.Uri);

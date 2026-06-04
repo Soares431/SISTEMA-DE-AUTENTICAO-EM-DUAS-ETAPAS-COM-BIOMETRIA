@@ -70,9 +70,27 @@
             <div class="card-header card-header-row">
                 <div>
                     <div class="card-title">Acessos por Hora</div>
-                    <p class="card-description">Todos os horários — 00h a 23h · atualiza a cada 30s</p>
+                    <p class="card-description">
+                        @if (IsHoje)
+                        {
+                            <span>Todos os horários — 00h a 23h · atualiza a cada 30s</span>
+                        }
+                        else
+                        {
+                            <span>Histórico de @dataGrafico.ToString("dd/MM/yyyy") · auto-refresh pausado</span>
+                        }
+                    </p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+                    @* Picker de data: permite visualizar gráficos de dias anteriores *@
+                    <input type="date" class="form-input" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;"
+                           max="@DateTime.Now.ToString("yyyy-MM-dd")"
+                           value="@dataGrafico.ToString("yyyy-MM-dd")"
+                           @onchange="HandleDataChanged" />
+                    @if (!IsHoje)
+                    {
+                        <button class="btn btn-outline btn-sm" @onclick="VoltarParaHoje" title="Voltar para hoje">Hoje</button>
+                    }
                     @* Relógio ao vivo — atualizado por JS a cada 1s, sem re-render do Blazor *@
                     <span id="dashboard-clock" class="text-xs text-muted" style="font-variant-numeric: tabular-nums; min-width: 7ch;"></span>
                     @if (_ultimaAtualizacao != default)
@@ -105,14 +123,14 @@
                     var iconBg = offline ? "icon-bg-destructive" : "icon-bg-warning";
                     var badgeClass = offline ? "badge-destructive" : "badge-warning";
                     var badgeText = offline ? "Offline" : "Capacidade";
-                    <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--muted) 30%, transparent);">
-                        <div class="icon-bg @iconBg"><Icon Name="@(offline ? "wifi-off" : "building")" Size="16" /></div>
-                        <div style="flex: 1;">
-                            <div class="flex items-center gap-2">
-                                <span class="font-medium">@disp.Nome</span>
-                                <span class="badge @badgeClass">@badgeText</span>
+                    <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--muted) 30%, transparent); overflow: hidden;">
+                        <div class="icon-bg @iconBg" style="flex-shrink: 0;"><Icon Name="@(offline ? "wifi-off" : "building")" Size="16" /></div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+                                <span class="font-medium" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">@disp.Nome</span>
+                                <span class="badge @badgeClass" style="flex-shrink: 0;">@badgeText</span>
                             </div>
-                            <p class="text-sm text-muted">IP: @disp.EnderecoIP @(offline && disp.UltimaConexao.HasValue ? $"· última conexão {DateHelper.Local(disp.UltimaConexao.Value):dd/MM HH:mm}" : "")</p>
+                            <p class="text-sm text-muted" style="overflow-wrap: anywhere;">IP: @disp.EnderecoIP @(offline && disp.UltimaConexao.HasValue ? $"· última conexão {DateHelper.Local(disp.UltimaConexao.Value):dd/MM HH:mm}" : "")</p>
                         </div>
                     </div>
                 }
@@ -125,7 +143,7 @@
         <div class="card-header card-header-row">
             <div>
                 <div class="card-title"><Icon Name="x-circle" CssClass="text-destructive" /> Últimos Acessos Negados</div>
-                <p class="card-description">Tentativas de acesso negadas hoje</p>
+                <p class="card-description">Tentativas de acesso negadas @(IsHoje ? "hoje" : "em " + dataGrafico.ToString("dd/MM/yyyy"))</p>
             </div>
             <a href="/historico" class="btn btn-outline btn-sm">Ver todos</a>
         </div>
@@ -184,6 +202,25 @@
     private bool _carregando = false;
     private bool _chartInicializado = false;
 
+    // Data selecionada pelo picker — default hoje, permite ver dias anteriores
+    private DateTime dataGrafico = DateHelper.Local(DateTime.UtcNow).Date;
+    private bool IsHoje => dataGrafico.Date == DateHelper.Local(DateTime.UtcNow).Date;
+
+    private async Task HandleDataChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var nova))
+        {
+            dataGrafico = nova.Date;
+            await HandleRefresh();
+        }
+    }
+
+    private async Task VoltarParaHoje()
+    {
+        dataGrafico = DateHelper.Local(DateTime.UtcNow).Date;
+        await HandleRefresh();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await CarregarDados();
@@ -196,29 +233,28 @@
         permitidosPorHora = new int[24];
         negadosPorHora    = new int[24];
 
-        // "Hoje" no horário local do servidor (não UTC).
-        // DateTime.UtcNow.Date em Brasília às 22:30 já seria "amanhã" UTC — incorreto.
-        var hojeLocal = DateHelper.Local(DateTime.UtcNow).Date;
-        // Converte meia-noite local → UTC para filtrar no banco (armazena em UTC)
-        var hojeUtcInicio = DateTime.SpecifyKind(hojeLocal, DateTimeKind.Local).ToUniversalTime();
-        var hojeUtcFim    = hojeUtcInicio.AddDays(1);
+        // Data selecionada no picker (default = hoje local).
+        // Converte meia-noite local → UTC para filtrar no banco (armazena em UTC).
+        var diaLocal     = dataGrafico.Date;
+        var diaUtcInicio = DateTime.SpecifyKind(diaLocal, DateTimeKind.Local).ToUniversalTime();
+        var diaUtcFim    = diaUtcInicio.AddDays(1);
 
-        var tentativasHoje = TentativaRepo.ListarComFiltros(null, null, null, hojeUtcInicio, hojeUtcFim);
-        totalPermitidos = tentativasHoje.Count(t => t.AcessoLiberado);
-        totalNegados    = tentativasHoje.Count(t => !t.AcessoLiberado);
+        var tentativasDia = TentativaRepo.ListarComFiltros(null, null, null, diaUtcInicio, diaUtcFim);
+        totalPermitidos = tentativasDia.Count(t => t.AcessoLiberado);
+        totalNegados    = tentativasDia.Count(t => !t.AcessoLiberado);
 
         // Agrupa por hora LOCAL para o gráfico.
         // Atenção: SQLite retorna Kind=Unspecified — usar DateHelper.Local() para garantir
         // conversão correta de UTC → local (t.DataHora.ToLocalTime() não converte no Windows
         // quando Kind=Unspecified, pois o runtime assume que já é horário local).
-        foreach (var t in tentativasHoje)
+        foreach (var t in tentativasDia)
         {
             var hora = DateHelper.Local(t.DataHora).Hour;
             if (t.AcessoLiberado) permitidosPorHora[hora]++;
             else negadosPorHora[hora]++;
         }
 
-        ultimosNegados = TentativaRepo.ListarComFiltros(null, null, false, hojeUtcInicio, hojeUtcFim)
+        ultimosNegados = TentativaRepo.ListarComFiltros(null, null, false, diaUtcInicio, diaUtcFim)
             .OrderByDescending(t => t.DataHora)
             .Take(5)
             .ToList();
@@ -270,9 +306,11 @@
             await JS.InvokeVoidAsync("startDashboardClock", "dashboard-clock");
 
             // Dispara auto-refresh a cada 30 segundos:
-            // recarrega dados do banco e atualiza o gráfico sem recriar o canvas (sem flash)
+            // recarrega dados do banco e atualiza o gráfico sem recriar o canvas (sem flash).
+            // Auto-refresh é pulado quando o usuário está vendo um dia anterior (IsHoje = false).
             _refreshTimer = new System.Threading.Timer(async _ =>
             {
+                if (!IsHoje) return;
                 await InvokeAsync(async () =>
                 {
                     await CarregarDados();

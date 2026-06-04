@@ -84,7 +84,7 @@
 
 @if (showDialog)
 {
-    <div class="modal-overlay" @onclick="FecharDialog">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Cadastrar Novo T50</h3><p>Adicione um terminal Anviz T50 ao sistema</p></div>
             <div class="modal-body space-y-sm">
@@ -95,8 +95,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Endereço IP</label>
-                    <input class="form-input" maxlength="15" placeholder="192.168.0.218" @bind="novoIP" @bind:event="oninput" />
-                    <p class="text-sm text-muted">IP do T50 na rede local</p>
+                    <input class="form-input" maxlength="15" placeholder="192.168.0.218"
+                           inputmode="numeric"
+                           onkeyup="window.maskIp(this)"
+                           @bind="novoIP" @bind:event="oninput" />
+                    <p class="text-sm text-muted">IP do T50 na rede local (formato 0-255.0-255.0-255.0-255)</p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Porta TCP</label>
@@ -152,6 +155,7 @@
         erroDialog = null;
         if (string.IsNullOrWhiteSpace(novoNome)) { erroDialog = "Informe o nome do dispositivo."; return; }
         if (string.IsNullOrWhiteSpace(novoIP)) { erroDialog = "Informe o endereço IP."; return; }
+        if (!FormatHelper.IpValido(novoIP)) { erroDialog = "Endereço IP inválido — use o formato 192.168.0.218 (cada octeto 0-255)."; return; }
         if (novaPorta < 1 || novaPorta > 65535) { erroDialog = "Porta inválida (1 a 65535)."; return; }
 
         // Bloqueia IP duplicado para evitar polling em dispositivo errado

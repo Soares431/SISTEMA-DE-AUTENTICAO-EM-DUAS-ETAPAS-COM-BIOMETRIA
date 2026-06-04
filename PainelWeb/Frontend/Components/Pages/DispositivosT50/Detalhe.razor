@@ -75,7 +75,7 @@
                     {
                         <div class="space-y-sm">
                             <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" maxlength="50" @bind="editNome" @bind:event="oninput" /></div>
-                            <div class="form-group"><label class="form-label">Endereço IP *</label><input class="form-input" maxlength="15" @bind="editIP" @bind:event="oninput" /></div>
+                            <div class="form-group"><label class="form-label">Endereço IP *</label><input class="form-input" maxlength="15" inputmode="numeric" onkeyup="window.maskIp(this)" @bind="editIP" @bind:event="oninput" /></div>
                             <div class="form-group"><label class="form-label">Porta TCP *</label><input type="number" class="form-input" min="1" max="65535" @bind="editPorta" /></div>
                             <div class="flex gap-2 mt-4">
                                 <button class="btn btn-primary" @onclick="HandleSalvarEdicao" disabled="@isSalvando">@(isSalvando ? "Salvando..." : "Salvar")</button>
@@ -151,7 +151,7 @@
 
 @if (showConfirmExcluir && dispositivo != null)
 {
-    <div class="modal-overlay" @onclick="() => { showConfirmExcluir = false; nomeConfirmacao = string.Empty; }">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <h3>Excluir Dispositivo T50</h3>
@@ -218,6 +218,7 @@
         erro = null;
         if (string.IsNullOrWhiteSpace(editNome)) { erro = "Nome é obrigatório."; return; }
         if (string.IsNullOrWhiteSpace(editIP)) { erro = "Endereço IP é obrigatório."; return; }
+        if (!FormatHelper.IpValido(editIP)) { erro = "Endereço IP inválido — use o formato 192.168.0.218 (cada octeto 0-255)."; return; }
         if (editPorta < 1 || editPorta > 65535) { erro = "Porta inválida (1 a 65535)."; return; }
 
         // Bloqueia IP duplicado (exceto o próprio dispositivo)

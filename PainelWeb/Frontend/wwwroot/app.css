@@ -222,6 +222,9 @@ body {
 }
 .form-input::placeholder { color: var(--muted-foreground); }
 .form-input:focus, .form-select:focus { border-color: var(--ring); }
+/* Estado de erro — usado pela validação inline ao perder foco */
+.form-input-error { border-color: var(--destructive) !important; }
+.form-input-error:focus { border-color: var(--destructive) !important; }
 .form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.375rem; color: var(--foreground); }
 .form-group { display: grid; gap: 0.375rem; }
 .input-icon-wrapper { position: relative; }

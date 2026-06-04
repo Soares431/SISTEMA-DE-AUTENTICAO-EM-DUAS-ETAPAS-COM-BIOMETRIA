@@ -186,6 +186,14 @@ window.maskTextoSeguro = function(el, max) {
     el.value = (el.value || '').replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '').slice(0, max || 100);
 };
 
+// IP: 999.999.999.999 — bloqueia letras/símbolos, permite dígitos e pontos,
+// máx 4 octetos de 3 dígitos cada. Aceita "1.168.0.1" e "192.168.0.218" igual.
+window.maskIp = function(el) {
+    var raw   = (el.value || '').replace(/[^\d.]/g, '').replace(/\.+/g, '.');
+    var parts = raw.split('.').slice(0, 4).map(function(p) { return p.slice(0, 3); });
+    el.value  = parts.join('.');
+};
+
 window.downloadCsv = function(filename, csvContent) {
     var blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     var url  = URL.createObjectURL(blob);

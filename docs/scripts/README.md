@@ -43,11 +43,26 @@ VALUES ('login_aqui', '$2a$10$...', ...);
 
 ### 2.2 Executar o INSERT no banco
 
-Abra o banco com **DB Browser for SQLite** (ou `sqlite3` no terminal):
+Use uma das duas ferramentas abaixo:
+
+#### Opção A — DBeaver (recomendado)
+
+1. Abra o DBeaver. Conexão SQLite → aponte para `Banco/WebAbil8-Sistema_Verificação_dupla.slnx/banco.db`.
+2. Clique em "SQL Editor" (Ctrl+Enter abre uma nova aba SQL).
+3. Cole o INSERT (modelo abaixo).
+4. Selecione a linha do INSERT e pressione **Ctrl+Enter** para executar.
+5. **IMPORTANTE:** pressione **Ctrl+Shift+C** para fazer commit da transação — sem isto, o INSERT continua só na transação local e o Int1 não vê o novo admin. (Alternativamente: clique no botão de commit na barra de transações ou ative auto-commit em Connection View → ☑ Auto-commit).
+
+> Sintoma comum: "Inseri o admin mas o login dele não funciona." Quase sempre é falta de commit no DBeaver.
+
+#### Opção B — DB Browser for SQLite (mais simples)
 
 1. Arquivo → Abrir → `Banco/WebAbil8-Sistema_Verificação_dupla.slnx/banco.db`
 2. Aba "Executar SQL"
-3. Cole o INSERT trocando os campos pelos dados reais do admin:
+3. Cole o INSERT, clique em "Executar" (ou F5)
+4. **Salve as alterações** (Ctrl+S) — sem isso a alteração fica só em memória
+
+#### Modelo do INSERT
 
 ```sql
 INSERT INTO administrador (login, senhaHash, nomeCompleto, cpf, email, cargo, telefone, dataCriacao)
@@ -63,10 +78,7 @@ VALUES (
 );
 ```
 
-4. Clique em "Executar" (ou F5)
-5. **Salve as alterações** no menu (Ctrl+S) — sem isso a alteração fica só em memória
-
-> O Int1 **não precisa ser reiniciado**. O próximo login do novo admin já funciona.
+> O Int1 **não precisa ser reiniciado**. O próximo login do novo admin já funciona — desde que o commit tenha sido feito.
 
 ---
 
@@ -86,7 +98,8 @@ SET senhaHash = '$2a$10$novo-hash-aqui...'
 WHERE login = 'capitao.silva';
 ```
 
-Salvar (Ctrl+S). Pronto.
+No DBeaver: **Ctrl+Shift+C** para commitar.
+No DB Browser: **Ctrl+S** para salvar.
 
 ---
 

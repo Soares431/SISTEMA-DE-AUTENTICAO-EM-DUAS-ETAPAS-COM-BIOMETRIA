@@ -128,7 +128,9 @@
                 <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravação</div><p class="card-description">Tempo em segundos que o sistema aguarda após uma tentativa de acesso para salvar a gravação</p></div>
                 <div class="card-content space-y-sm">
                     <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="30" max="120" /><span class="text-muted">segundos</span></div>
-                    <button class="btn btn-primary" @onclick="HandleSalvarConfig">Salvar Configurações</button>
+                    <button class="btn btn-primary" @onclick="HandleSalvarConfig" disabled="@isSalvandoConfig">
+                        @if (isSalvandoConfig) { <span class="spinner"></span><span>Salvando…</span> } else { <span>Salvar Configurações</span> }
+                    </button>
                 </div>
             </div>
 
@@ -149,7 +151,7 @@
 
 @if (showAddPessoa)
 {
-    <div class="modal-overlay" @onclick="() => showAddPessoa = false">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Adicionar Pessoa</h3><p>Selecione uma pessoa para conceder acesso a este ambiente</p></div>
             <div class="modal-body">
@@ -183,8 +185,8 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button>
                 <button class="btn btn-primary" @onclick="HandleAdicionarPessoa"
-                    disabled="@(pessoasDisponiveis.Count == 0 || (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000 && !aceitouSomenteSenha))">
-                    Adicionar
+                    disabled="@(isAdicionandoPessoa || pessoasDisponiveis.Count == 0 || (dispositivo != null && dispositivo.DigitaisCadastradas >= 1000 && !aceitouSomenteSenha))">
+                    @if (isAdicionandoPessoa) { <span class="spinner"></span><span>Adicionando…</span> } else { <span>Adicionar</span> }
                 </button>
             </div>
         </div>
@@ -193,7 +195,7 @@
 
 @if (showConfirmRemoverPessoa)
 {
-    <div class="modal-overlay" @onclick="() => showConfirmRemoverPessoa = false">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <h3>Remover Pessoa do Ambiente</h3>
@@ -212,7 +214,7 @@
 
 @if (showAddCamera)
 {
-    <div class="modal-overlay" @onclick="() => showAddCamera = false">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header"><h3>Adicionar Câmera</h3><p>Configure uma nova câmera para este ambiente</p></div>
             <div class="modal-body space-y-sm">
@@ -227,14 +229,19 @@
                     </select>
                 </div>
             </div>
-            <div class="modal-footer"><button class="btn btn-outline" @onclick="() => showAddCamera = false">Cancelar</button><button class="btn btn-primary" @onclick="HandleAdicionarCamera">Adicionar</button></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => showAddCamera = false" disabled="@isAdicionandoCamera">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleAdicionarCamera" disabled="@isAdicionandoCamera">
+                    @if (isAdicionandoCamera) { <span class="spinner"></span><span>Adicionando…</span> } else { <span>Adicionar</span> }
+                </button>
+            </div>
         </div>
     </div>
 }
 
 @if (showConfirmExcluir && ambiente != null)
 {
-    <div class="modal-overlay" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">
+    <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <h3>Excluir Ambiente Permanentemente</h3>
@@ -271,6 +278,9 @@
     private bool showConfirmRemoverPessoa = false;
     private bool showConfirmExcluir = false;
     private bool isExcluindo = false;
+    private bool isSalvandoConfig = false;
+    private bool isAdicionandoCamera = false;
+    private bool isAdicionandoPessoa = false;
     private string nomeConfirmacaoExcluir = "";
     private string? erroExcluir = null;
     private long pessoaIdParaRemover = 0;
@@ -349,6 +359,11 @@
         var t50Cheio = dispositivo != null && dispositivo.DigitaisCadastradas >= 1000;
         if (t50Cheio && !aceitouSomenteSenha) return;
 
+        isAdicionandoPessoa = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
         AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
         await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
         LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
@@ -387,33 +402,49 @@
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
         showAddPessoa = false;
         aceitouSomenteSenha = false;
+        }
+        finally { isAdicionandoPessoa = false; }
     }
 
     private async Task HandleAdicionarCamera()
     {
         if (string.IsNullOrWhiteSpace(novaCameraNome)) return;
-        var novaCamera = new WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera
+        isAdicionandoCamera = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
         {
-            Nome = novaCameraNome,
-            AmbienteId = Id,
-            UrlRTSP = novaCameraRtsp,
-            EnderecoONVIF = string.IsNullOrWhiteSpace(novaCameraOnvif) ? null : novaCameraOnvif,
-            Tipo = novaCameraTipo,
-            Ativa = true
-        };
-        await CameraRepo.Adicionar(novaCamera);
-        LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Camera", novaCamera.Id);
-        cameras = await CameraRepo.ListarPorAmbiente(Id);
-        showAddCamera = false;
-        novaCameraNome = novaCameraRtsp = novaCameraOnvif = "";
+            var novaCamera = new WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera
+            {
+                Nome = novaCameraNome,
+                AmbienteId = Id,
+                UrlRTSP = novaCameraRtsp,
+                EnderecoONVIF = string.IsNullOrWhiteSpace(novaCameraOnvif) ? null : novaCameraOnvif,
+                Tipo = novaCameraTipo,
+                Ativa = true
+            };
+            await CameraRepo.Adicionar(novaCamera);
+            LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Camera", novaCamera.Id);
+            cameras = await CameraRepo.ListarPorAmbiente(Id);
+            showAddCamera = false;
+            novaCameraNome = novaCameraRtsp = novaCameraOnvif = "";
+        }
+        finally { isAdicionandoCamera = false; }
     }
 
-    private void HandleSalvarConfig()
+    private async Task HandleSalvarConfig()
     {
         if (ambiente == null) return;
-        ambiente.TempoEsperaGravacaoSeg = Math.Clamp(tempoEspera, 30, 120);
-        AmbienteRepo.Atualizar(ambiente);
-        LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", Id);
+        isSalvandoConfig = true;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            ambiente.TempoEsperaGravacaoSeg = Math.Clamp(tempoEspera, 30, 120);
+            AmbienteRepo.Atualizar(ambiente);
+            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", Id);
+        }
+        finally { isSalvandoConfig = false; }
     }
 
     private async Task HandleConfirmarExcluir()
