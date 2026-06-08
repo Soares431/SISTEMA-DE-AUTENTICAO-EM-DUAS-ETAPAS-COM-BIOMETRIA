@@ -120,6 +120,32 @@ using (var scope = host.Services.CreateScope())
         Console.WriteLine("  → Defina FFMPEG_PATH apontando para o ffmpeg.exe, ou");
         Console.WriteLine("    coloque a pasta bin do FFmpeg no PATH do sistema.");
     }
+
+    // Avisa sobre RTSP/MediaMTX para URLs localhost — causa #1 de "gravações virando dummy"
+    // quando o teste do user usa webcam local servida por MediaMTX e o servidor não está rodando.
+    try
+    {
+        var cameraRepo = scope.ServiceProvider.GetRequiredService<ICameraRepository>();
+        var todasCams = await cameraRepo.ListarComFiltros(null, true);
+        var camsLocal = todasCams.Where(c => !string.IsNullOrWhiteSpace(c.UrlRTSP)
+                                          && (c.UrlRTSP.Contains("localhost") || c.UrlRTSP.Contains("127.0.0.1")))
+                                 .ToList();
+        if (camsLocal.Count > 0)
+        {
+            Console.WriteLine("  ───────────────────────────────────────────────────────────");
+            Console.WriteLine($"  Câmeras com URL localhost detectadas: {camsLocal.Count}");
+            foreach (var c in camsLocal)
+                Console.WriteLine($"    • {c.Nome}: {c.UrlRTSP}");
+            Console.WriteLine("  ATENÇÃO: gravações reais só funcionam se houver um servidor");
+            Console.WriteLine("  RTSP local (ex: MediaMTX) escutando essa porta. Sem ele, todas");
+            Console.WriteLine("  as gravações virarão vídeo dummy (pattern bar).");
+            Console.WriteLine("  Suba o MediaMTX antes pra capturar a webcam de verdade.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"  (Falha ao listar câmeras para diagnóstico: {ex.Message})");
+    }
     Console.WriteLine("═══════════════════════════════════════════════════════════════");
     Console.WriteLine("");
 }

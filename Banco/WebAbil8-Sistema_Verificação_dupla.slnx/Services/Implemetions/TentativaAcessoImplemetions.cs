@@ -97,5 +97,16 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             _context.TentativasAcesso.Remove(existing);
             _context.SaveChanges();
         }
+
+        // Update direto via SQL. O caminho via tracking (Find + SetValues) estava virando no-op
+        // quando o EventProcessor mantinha a entity tracked durante todo o Processar — o EF
+        // reconciliava current=tentativa contra snapshot e o UPDATE não saía.
+        // Retorna número de linhas afetadas para o caller verificar.
+        public int AtualizarGravacaoPath(int tentativaId, string gravacaoPath)
+        {
+            return _context.Database.ExecuteSqlRaw(
+                "UPDATE tentativaAcesso SET gravacaoPath = {0} WHERE id = {1}",
+                gravacaoPath, tentativaId);
+        }
     }
 }

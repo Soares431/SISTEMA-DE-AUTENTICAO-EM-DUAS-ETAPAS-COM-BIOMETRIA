@@ -124,6 +124,7 @@ namespace BiometricAcess.Worker.Simulador
 
             // doc_tecnica §5.11 — TODA tentativa (liberada ou negada) gera gravação,
             // porque o objetivo é registrar ATIVIDADE no ambiente, não só sucessos.
+            // O CameraService SEMPRE retorna um path (gera dummy se RTSP falhar ou não houver câmera).
             var cameraService = scope.ServiceProvider.GetService<CameraService>();
             if (cameraService == null)
             {
@@ -131,28 +132,23 @@ namespace BiometricAcess.Worker.Simulador
             }
             else
             {
-                var cameraRepo = scope.ServiceProvider.GetRequiredService<ICameraRepository>();
-                var cams = await cameraRepo.ListarPorAmbiente(ambiente.Id);
-                var camRtsp = cams.FirstOrDefault(c => c.Ativa && !string.IsNullOrWhiteSpace(c.UrlRTSP));
-                if (camRtsp == null)
+                Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) para tentativa #{tentativa.Id} ambiente {ambiente.Nome}");
+                var gravacaoPath = await cameraService.GravarTrechoRTSP(
+                    ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
+
+                if (string.IsNullOrEmpty(gravacaoPath))
                 {
-                    Console.WriteLine($"[SimuladorBanco] Ambiente {ambiente.Nome} não tem câmera ativa com UrlRTSP cadastrada — sem gravação.");
+                    Console.WriteLine($"[SimuladorBanco] ERRO INESPERADO: CameraService retornou null. Tentativa #{tentativa.Id} ficará sem gravação.");
                 }
                 else
                 {
-                    Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) — câmera '{camRtsp.Nome}' em {camRtsp.UrlRTSP}");
-                    var gravacaoPath = await cameraService.GravarTrechoRTSP(
-                        ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
-                    if (gravacaoPath != null)
-                    {
-                        tentativa.GravacaoPath = gravacaoPath;
-                        tentativaRepo.Atualizar(tentativa);
-                        Console.WriteLine($"[SimuladorBanco] Gravação associada — {gravacaoPath}");
-                    }
+                    // UPDATE SQL direto — Atualizar via tracking estava virando no-op por causa
+                    // de a entity ser a mesma instância tracked pelo scope.
+                    int linhas = tentativaRepo.AtualizarGravacaoPath(tentativa.Id, gravacaoPath);
+                    if (linhas > 0)
+                        Console.WriteLine($"[SimuladorBanco] Gravação associada à tentativa #{tentativa.Id} — {gravacaoPath}");
                     else
-                    {
-                        Console.WriteLine($"[SimuladorBanco] Gravação FALHOU — verifique se a URL RTSP '{camRtsp.UrlRTSP}' está acessível.");
-                    }
+                        Console.WriteLine($"[SimuladorBanco] FALHA ao persistir GravacaoPath (UPDATE afetou 0 linhas) — tentativa #{tentativa.Id}");
                 }
             }
         }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Sockets;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
 namespace InfraestruturaBloco1.Services;
@@ -41,7 +42,19 @@ public class CameraService
         // Câmera ausente: gera dummy imediato e retorna.
         if (camera == null)
         {
+            Console.WriteLine($"[CameraService] Ambiente {ambienteId} sem câmera ativa — gerando dummy.");
             return await GerarDummyVideo(fullPath, "SEM CAMERA CONFIGURADA", ambienteId, timestamp);
+        }
+
+        // Teste TCP rápido antes do FFmpeg. Se o host:porta da URL RTSP não responder em 2s,
+        // não vale a pena esperar 5s do -stimeout + 30s do WaitForExit. Vai direto pro dummy
+        // com motivo claro ("RTSP OFFLINE") — admin vê na hora que precisa subir o MediaMTX
+        // ou checar a câmera real, sem ter que vasculhar log do FFmpeg.
+        if (!await RtspHostAcessivel(camera.UrlRTSP, 2000))
+        {
+            Console.WriteLine($"[CameraService] RTSP inacessível em {camera.UrlRTSP} — host:porta não responde. Gerando dummy.");
+            Console.WriteLine($"[CameraService]   Dica: se a URL é localhost:8554, suba o MediaMTX. Se é IP de câmera, verifique rede/credencial.");
+            return await GerarDummyVideo(fullPath, $"RTSP OFFLINE - {camera.UrlRTSP}", ambienteId, timestamp);
         }
 
         var psi = new ProcessStartInfo
@@ -165,6 +178,26 @@ public class CameraService
         if (camera == null || string.IsNullOrEmpty(camera.UrlRTSP))
             return null;
         return camera.UrlRTSP;
+    }
+
+    // Parser leve de rtsp://[user:pass@]host[:porta][/path] → host + porta efetiva.
+    // Tenta abrir conexão TCP com timeout — se falhar, não vale chamar FFmpeg.
+    private static async Task<bool> RtspHostAcessivel(string urlRtsp, int timeoutMs)
+    {
+        try
+        {
+            if (!Uri.TryCreate(urlRtsp, UriKind.Absolute, out var uri))
+                return false;
+            int porta = uri.Port > 0 ? uri.Port : 554;
+            using var tcp = new TcpClient();
+            var connectTask = tcp.ConnectAsync(uri.Host, porta);
+            var completed = await Task.WhenAny(connectTask, Task.Delay(timeoutMs));
+            return completed == connectTask && tcp.Connected;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // Valida que o FFmpeg está disponível. Roda uma vez no startup.
