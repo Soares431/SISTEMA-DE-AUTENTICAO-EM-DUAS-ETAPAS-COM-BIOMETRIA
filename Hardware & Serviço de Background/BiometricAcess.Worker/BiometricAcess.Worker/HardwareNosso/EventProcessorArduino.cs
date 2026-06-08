@@ -38,7 +38,7 @@ public class EventProcessorArduino : IEventProcessor
         _configuracaoRepository = configuracaoRepository;
         _arduinoService = arduinoService;
         _scopeFactory = scopeFactory;
-        _aesKey = configuration["AesKey"] ?? "5cta-aes-key-senha-segura-32char";
+        _aesKey = AesHelper.ResolverChave(configuration);
     }
 
     public async Task Processar(EventoAcesso evento)

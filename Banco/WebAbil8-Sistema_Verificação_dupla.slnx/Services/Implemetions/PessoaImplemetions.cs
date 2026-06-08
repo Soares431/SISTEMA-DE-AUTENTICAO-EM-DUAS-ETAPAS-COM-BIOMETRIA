@@ -14,7 +14,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             public PessoaImplemetions(AppDbContext context, IConfiguration configuration)
             {
                 _context = context;
-                _aesKey = configuration["AesKey"] ?? "5cta-aes-key-senha-segura-32char";
+                _aesKey = AesHelper.ResolverChave(configuration);
             }
 
             public async Task<Pessoa> Adicionar(Pessoa pessoa)
@@ -22,6 +22,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 var cpfExistente = await _context.Pessoas.AnyAsync(p => p.Cpf == pessoa.Cpf);
                 if (cpfExistente)
                     throw new InvalidOperationException("CPF já cadastrado.");
+
+                // §5.1/§6.3 doc técnica: Senha não pode ser igual ao ID — vetor de adivinhação trivial.
+                // Validação na camada de serviço (a doc também exige no DB, mas como SenhaClear é
+                // criptografada na hora seguinte, a constraint UNIQUE não ajuda — validamos aqui).
+                if (!string.IsNullOrEmpty(pessoa.senhaClear) && !string.IsNullOrEmpty(pessoa.CodigoUsuario)
+                    && pessoa.senhaClear == pessoa.CodigoUsuario)
+                    throw new InvalidOperationException("A senha não pode ser igual ao ID da pessoa.");
 
                 // Criptografa senhaClear com AES antes de persistir (bug #4)
                 if (!string.IsNullOrEmpty(pessoa.senhaClear))
@@ -103,6 +110,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             {
                 var pessoa = await _context.Pessoas.FindAsync(pessoaId);
                 if (pessoa == null) throw new ArgumentNullException("Usuário inexistente.");
+
+                // §5.1/§6.3 doc técnica: Senha não pode ser igual ao ID, mesmo em troca de senha.
+                if (!string.IsNullOrEmpty(novaSenhaClear) && !string.IsNullOrEmpty(pessoa.CodigoUsuario)
+                    && novaSenhaClear == pessoa.CodigoUsuario)
+                    throw new InvalidOperationException("A senha não pode ser igual ao ID da pessoa.");
+
                 pessoa.senhaClear = AesHelper.Encrypt(novaSenhaClear, _aesKey);
                 pessoa.senhaHash = novoSenhaHash;
                 await _context.SaveChangesAsync();

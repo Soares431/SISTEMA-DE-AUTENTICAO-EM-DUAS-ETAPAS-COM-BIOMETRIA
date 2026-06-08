@@ -168,8 +168,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             string senhaPlain;
             try
             {
-                var aesKey = _config["AesKey"] ?? "5cta-aes-key-senha-segura-32char";
-                senhaPlain = AesHelper.Decrypt(pessoa.senhaClear, aesKey);
+                senhaPlain = AesHelper.Decrypt(pessoa.senhaClear, AesHelper.ResolverChave(_config));
             }
             catch (Exception ex)
             {

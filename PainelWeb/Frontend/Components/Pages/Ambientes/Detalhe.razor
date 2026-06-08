@@ -5,6 +5,7 @@
 @inject IDispositivoT50Repository DispositivoRepo
 @inject IAmbienteT50Repository AmbienteT50Repo
 @inject IPessoaT50Repository PessoaT50Repo
+@inject IT50PendenciaRepository T50PendenciaRepo
 @inject ICameraRepository CameraRepo
 @inject IPessoaRepository PessoaRepo
 @inject ITentativaAcessoRepository TentativaRepo
@@ -23,6 +24,9 @@
         <div class="flex items-center gap-4">
             <a href="/ambientes" class="btn btn-ghost btn-icon"><Icon Name="arrow-left" Size="20" /></a>
             <div class="flex-1"><h1 class="text-2xl font-bold">@ambiente.Nome</h1><p class="text-muted">Criado em @DateHelper.Local(ambiente.DataCriacao).ToString("dd/MM/yyyy")</p></div>
+            <button class="btn btn-outline btn-sm" @onclick="ExportarRelatorioAmbiente" title="Relatório PDF (pessoas, câmeras, entradas)">
+                <Icon Name="file-text" Size="14" /> Relatório PDF
+            </button>
             @if (dispositivo != null && dispositivo.DigitaisCadastradas >= 950)
             {
                 <span class="badge badge-warning"><Icon Name="alert-triangle" Size="12" /> Alerta</span>
@@ -561,6 +565,7 @@
             if (!t50sEmOutrosAmbientes.Contains(t50.Id))
             {
                 PessoaT50Repo.Remover(pessoaId, t50.Id);
+                T50PendenciaRepo.Enfileirar("remover", pessoaId, t50.Id);
             }
         }
 
@@ -611,9 +616,11 @@
             else
             {
                 // Cadastra digital em cada T50 selecionado (incrementa contador de cada um)
+                // e enfileira pendência pro Worker cadastrar no hardware via SDK (§5.2 doc técnica).
                 foreach (var t50Id in t50sSelecionadosParaPessoa)
                 {
                     PessoaT50Repo.Adicionar(pessoaSelecionadaId, t50Id);
+                    T50PendenciaRepo.Enfileirar("adicionar", pessoaSelecionadaId, t50Id);
                 }
 
                 // Marca biometriaCadastrada se houver templateBackup (reativação)
@@ -727,6 +734,15 @@
             erroExcluir = ex.Message;
             isExcluindo = false;
         }
+    }
+
+    private async Task ExportarRelatorioAmbiente()
+    {
+        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
+        await JS.InvokeVoidAsync("baixarPdf",
+            $"{apiUrl}api/export/relatorio-ambiente.pdf?ambienteId={Id}",
+            TokenStore.Token,
+            $"relatorio_ambiente_{Id}.pdf");
     }
 
 }

@@ -229,7 +229,7 @@ void lerTeclado() {
 
       // Valida senha
       if (senhaDigitada != String(pessoas[pessoaAtualIdx].senha)) {
-        exibirMensagem("Acesso Negado!", "senha_incorreta");
+        exibirMensagem("Acesso Negado!", "senha_invalida");
         delay(2000);
         idDigitado = "";
         senhaDigitada = "";

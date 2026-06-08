@@ -68,6 +68,7 @@ builder.Services.AddScoped<IStatusService, StatusServiceImplemetions>();
 builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
 builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
 builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
+builder.Services.AddScoped<IT50PendenciaRepository, T50PendenciaImplemetions>();
 
 builder.Services.AddScoped<InativarUsuariosInativos2AnosJob>();
 builder.Services.AddScoped<LimparDadosExpiradosJob>();
@@ -331,6 +332,32 @@ using (var scope = app.Services.CreateScope())
                 SELECT COUNT(*) FROM pessoaT50 pt WHERE pt.dispositivoT50Id = dispositivoT50.id
             )";
         sync.ExecuteNonQuery();
+    }
+
+    // Migração inline — fila de pendências T50 (frontend enfileira, Worker consome via SDK).
+    // §5.2 doc técnica: ao adicionar pessoa a um T50, o sistema cadastra no hardware.
+    bool t50PendenciaExiste;
+    using (var checkCmd = conn.CreateCommand())
+    {
+        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='t50Pendencia'";
+        t50PendenciaExiste = checkCmd.ExecuteScalar() != null;
+    }
+    if (!t50PendenciaExiste)
+    {
+        using var createCmd = conn.CreateCommand();
+        createCmd.CommandText = @"
+            CREATE TABLE t50Pendencia (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                acao                 VARCHAR(20) NOT NULL,
+                pessoaId             INTEGER NOT NULL,
+                dispositivoT50Id     INTEGER NOT NULL,
+                criadoEm             TEXT NOT NULL,
+                sincronizadoEm       TEXT NULL,
+                sincronizado         INTEGER NOT NULL DEFAULT 0,
+                tentativasFalhas     INTEGER NOT NULL DEFAULT 0,
+                erroUltimaTentativa  VARCHAR(500) NULL
+            )";
+        createCmd.ExecuteNonQuery();
     }
 
     // Migração inline — cria tabela codigoDisponivel se não existir (pool de IDs 100000-999999)

@@ -41,6 +41,7 @@ builder.Services.AddScoped<ICodigoRepository, CodigoImplemetions>();
 builder.Services.AddScoped<IAdministradorRepository, AdministradorImplemetions>();
 builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
 builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
+builder.Services.AddScoped<IT50PendenciaRepository, T50PendenciaImplemetions>();
 
 // HttpClient para chamar API do Int1 (autenticação JWT)
 // Em desenvolvimento: bypassa validação de certificado SSL (certificado dev auto-assinado)

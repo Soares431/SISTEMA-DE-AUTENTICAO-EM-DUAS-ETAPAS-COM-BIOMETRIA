@@ -35,6 +35,7 @@ builder.Services.AddScoped<ILogAdminRepository, LogAdminImplemetions>();
 builder.Services.AddScoped<ICameraRepository, CameraImplemetions>();
 builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
 builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
+builder.Services.AddScoped<IT50PendenciaRepository, T50PendenciaImplemetions>();
 
 // CameraService — consumido pelos EventProcessors reais (Arduino + T50M) via IServiceScopeFactory
 // para associar gravações ONVIF a tentativas de acesso liberado (§5.11 doc técnica).
@@ -84,6 +85,10 @@ builder.Services.AddHostedService<Worker>();
 
 // Sincroniza hora do T50M com o servidor diariamente (no-op no simulador).
 builder.Services.AddHostedService<TimeSyncWorker>();
+
+// Consome a fila T50Pendencia (cadastros/remoções enfileiradas pelo Frontend) e executa
+// via Anviz SDK no hardware. §5.2 doc técnica.
+builder.Services.AddHostedService<SincronizadorT50Worker>();
 
 var host = builder.Build();
 

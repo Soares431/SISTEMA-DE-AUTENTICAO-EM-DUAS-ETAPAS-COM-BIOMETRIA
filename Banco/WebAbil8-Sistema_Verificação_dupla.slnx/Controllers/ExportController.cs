@@ -180,6 +180,106 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return PdfFile("Administradores", cabecalhos, linhas, "admins.pdf");
         }
 
+        // GET /api/export/relatorio-ambiente.pdf?ambienteId=X&de=Y&ate=Z
+        // §6.2 doc técnica: relatório completo do ambiente — pessoas com acesso, câmeras
+        // e entradas do período selecionado, em PDF.
+        [HttpGet("relatorio-ambiente.pdf")]
+        public async Task<IActionResult> RelatorioAmbientePdf(
+            [FromQuery] int ambienteId,
+            [FromQuery] DateTime? de,
+            [FromQuery] DateTime? ate,
+            [FromServices] ICameraRepository cameraRepo)
+        {
+            var ambiente = _ambienteRepo.BuscarPorId(ambienteId);
+            if (ambiente == null) return NotFound("Ambiente não encontrado.");
+
+            var pessoasAcesso = _ambientePessoaRepo.ListarPessoasDoAmbiente(ambienteId);
+            var cameras = await cameraRepo.ListarPorAmbiente(ambienteId);
+
+            var tentativas = _tentativaRepo.ListarComFiltros(null, ambienteId, null, de, ate)
+                .OrderByDescending(t => t.DataHora)
+                .Take(500)
+                .ToList();
+
+            var periodo = (de.HasValue || ate.HasValue)
+                ? $"{(de?.ToString("dd/MM/yyyy") ?? "início")} – {(ate?.ToString("dd/MM/yyyy") ?? "hoje")}"
+                : "todo o histórico";
+
+            var bytes = Document.Create(c => c.Page(p =>
+            {
+                p.Margin(25);
+
+                p.Header().Column(h =>
+                {
+                    h.Item().Text($"Relatório do Ambiente — {ambiente.Nome}").FontSize(18).Bold();
+                    h.Item().Text($"Período: {periodo}").FontSize(10);
+                });
+
+                p.Content().Column(col =>
+                {
+                    col.Spacing(15);
+
+                    col.Item().Text($"Pessoas com Acesso ({pessoasAcesso.Count})").FontSize(13).Bold();
+                    if (pessoasAcesso.Count == 0)
+                        col.Item().Text("Sem pessoas com acesso a este ambiente.").FontSize(9).Italic();
+                    else
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.RelativeColumn(); cd.RelativeColumn(); cd.RelativeColumn(); });
+                            t.Header(h => { h.Cell().Text("Nome").Bold(); h.Cell().Text("CPF").Bold(); h.Cell().Text("Cargo").Bold(); h.Cell().Text("Status").Bold(); });
+                            foreach (var pe in pessoasAcesso)
+                            {
+                                t.Cell().Text(pe.Nome ?? "-").FontSize(9);
+                                t.Cell().Text(FormatarCpf(pe.Cpf)).FontSize(9);
+                                t.Cell().Text(pe.Cargo ?? "-").FontSize(9);
+                                t.Cell().Text(pe.Status ?? "-").FontSize(9);
+                            }
+                        });
+
+                    col.Item().Text($"Câmeras ({cameras.Count})").FontSize(13).Bold();
+                    if (cameras.Count == 0)
+                        col.Item().Text("Sem câmeras vinculadas.").FontSize(9).Italic();
+                    else
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.RelativeColumn(); cd.RelativeColumn(); });
+                            t.Header(h => { h.Cell().Text("Nome").Bold(); h.Cell().Text("Tipo").Bold(); h.Cell().Text("Ativa").Bold(); });
+                            foreach (var cam in cameras)
+                            {
+                                t.Cell().Text(cam.Nome ?? "-").FontSize(9);
+                                t.Cell().Text(cam.Tipo ?? "-").FontSize(9);
+                                t.Cell().Text(cam.Ativa ? "Sim" : "Não").FontSize(9);
+                            }
+                        });
+
+                    col.Item().Text($"Entradas no Período ({tentativas.Count})").FontSize(13).Bold();
+                    if (tentativas.Count == 0)
+                        col.Item().Text("Sem entradas registradas no período.").FontSize(9).Italic();
+                    else
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(cd => { cd.RelativeColumn(); cd.RelativeColumn(2); cd.RelativeColumn(); cd.RelativeColumn(); });
+                            t.Header(h => { h.Cell().Text("Data/Hora").Bold(); h.Cell().Text("Pessoa").Bold(); h.Cell().Text("Status").Bold(); h.Cell().Text("Motivo").Bold(); });
+                            foreach (var te in tentativas)
+                            {
+                                t.Cell().Text(te.DataHora.ToLocalTime().ToString("dd/MM/yyyy HH:mm")).FontSize(8);
+                                t.Cell().Text(te.Pessoa?.Nome ?? (te.PessoaId.HasValue ? $"ID {te.PessoaId}" : "Desconhecido")).FontSize(8);
+                                t.Cell().Text(te.AcessoLiberado ? "Permitido" : "Negado").FontSize(8);
+                                t.Cell().Text(te.MotivoNegacao ?? "-").FontSize(8);
+                            }
+                        });
+                });
+
+                p.Footer().AlignRight().Text(x =>
+                {
+                    x.Span("Gerado em ").FontSize(8);
+                    x.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(8);
+                });
+            })).GeneratePdf();
+
+            return File(bytes, "application/pdf", $"relatorio_ambiente_{ambienteId}.pdf");
+        }
+
         private static string FormatarCpf(string? cpf)
         {
             if (string.IsNullOrWhiteSpace(cpf)) return "-";

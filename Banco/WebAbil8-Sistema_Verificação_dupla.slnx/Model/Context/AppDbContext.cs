@@ -21,6 +21,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         public DbSet<Configuracao> Configuracoes { get; set; }
         public DbSet<AmbienteT50> AmbientesT50 { get; set; }
         public DbSet<PessoaT50> PessoasT50 { get; set; }
+        public DbSet<T50Pendencia> T50Pendencias { get; set; }
 
         // Relacionamento muitos-para-muitos (se você ainda usar essa entidade)
         protected override void OnModelCreating(ModelBuilder modelBuilder)
