@@ -51,15 +51,19 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
 
         [Fact]
-        public void Remover_DeveRemoverAmbiente()
+        public void Remover_DeveMarcarComoExcluido()
         {
+            // Remover faz soft-delete (Excluido=true) para preservar FK das tentativas.
+            // A purga física fica a cargo do LimparDadosExpiradosJob.
             using var db = CriarContexto();
             var repo = new AmbienteImplementions(db);
             var ambiente = CriarAmbiente("Sala de Servidores");
             repo.Adicionar(ambiente);
             repo.Remover(ambiente.Id);
             var resultado = repo.BuscarPorId(ambiente.Id);
-            Assert.Null(resultado);
+            Assert.NotNull(resultado);
+            Assert.True(resultado.Excluido);
+            Assert.NotNull(resultado.DataExclusao);
         }
 
         [Fact]

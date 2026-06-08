@@ -2,6 +2,7 @@ using BiometricAcess.Worker.HardwareNosso;
 using BiometricAcess.Worker.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
@@ -68,6 +69,10 @@ namespace BiometricAcess.Worker.Tests
             db.SaveChanges();
 
             var arduino = new FakeArduinoService();
+            // O fire-and-forget de gravação ONVIF é assíncrono e não bloqueia o fluxo testado;
+            // basta um scope factory que devolva algum scope válido (cria um provider mínimo).
+            var sp = new ServiceCollection().BuildServiceProvider();
+            var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
             var processor = new EventProcessorArduino(
                 new PessoaImplemetions(db, CriarConfiguration()),
                 new AmbientePessoaImplemetions(db),
@@ -76,7 +81,8 @@ namespace BiometricAcess.Worker.Tests
                 new TentativaAcessoImplemetions(db),
                 new ConfiguracaoImplemetions(db),
                 arduino,
-                CriarConfiguration()
+                CriarConfiguration(),
+                scopeFactory
             );
             return (processor, arduino, db, amb, disp);
         }
