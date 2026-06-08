@@ -154,8 +154,11 @@
                 <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" maxlength="80" placeholder="Ex: Recepção - Entrada" @bind="novoNome" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">URL RTSP <span class="text-destructive">*</span></label>
-                    <input class="form-input" maxlength="255" placeholder="rtsp://localhost:8554/webcam" @bind="novoRtsp" @bind:event="oninput" />
-                    <p class="text-xs text-muted">Teste local (MediaMTX+webcam): <code>rtsp://localhost:8554/webcam</code>. Em produção: <code>rtsp://usuario:senha@ip-da-camera:554/stream</code></p>
+                    <input class="form-input" maxlength="255" placeholder="dshow://Integrated Camera" @bind="novoRtsp" @bind:event="oninput" />
+                    <p class="text-xs text-muted">
+                        Webcam local: <code>dshow://Integrated Camera</code> (nome conforme <code>ffmpeg -list_devices true -f dshow -i dummy</code>).<br />
+                        Câmera IP: <code>rtsp://usuario:senha@ip-da-camera:554/stream</code>.
+                    </p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, para feed ao vivo no painel)</span></label>

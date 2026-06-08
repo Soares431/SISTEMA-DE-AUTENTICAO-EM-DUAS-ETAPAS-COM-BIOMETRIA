@@ -56,31 +56,46 @@ public class CameraService
             return await GerarDummyVideo(fullPath, "SEM CAMERA CONFIGURADA", ambienteId, timestamp);
         }
 
-        // Teste TCP rápido antes do FFmpeg. Se o host:porta da URL RTSP não responder em 2s,
-        // não vale a pena esperar 5s do -stimeout + 30s do WaitForExit. Vai direto pro dummy
-        // com motivo claro ("RTSP OFFLINE") — admin vê na hora que precisa subir o MediaMTX
-        // ou checar a câmera real, sem ter que vasculhar log do FFmpeg.
-        if (!await RtspHostAcessivel(camera.UrlRTSP, 2000))
+        // URL "dshow://Nome do dispositivo" → captura direto via DirectShow (webcam local).
+        // Elimina dependência de servidor RTSP externo (MediaMTX). Funciona em qualquer
+        // PC Windows com FFmpeg full build, listando devices com:
+        //   ffmpeg -list_devices true -f dshow -i dummy
+        // Ex: cadastra a câmera com UrlRTSP = "dshow://Integrated Camera"
+        bool ehDshow = camera.UrlRTSP.StartsWith("dshow://", StringComparison.OrdinalIgnoreCase);
+        string ffArgs;
+        if (ehDshow)
         {
-            Console.WriteLine($"[CameraService] RTSP inacessível em {camera.UrlRTSP} — host:porta não responde. Gerando dummy.");
-            Console.WriteLine($"[CameraService]   Dica: se a URL é localhost:8554, suba o MediaMTX. Se é IP de câmera, verifique rede/credencial.");
-            return await GerarDummyVideo(fullPath, $"RTSP OFFLINE - {camera.UrlRTSP}", ambienteId, timestamp);
+            var deviceName = camera.UrlRTSP.Substring("dshow://".Length).Trim();
+            Console.WriteLine($"[CameraService] Capturando webcam DirectShow: \"{deviceName}\"");
+            ffArgs = $"-f dshow -i video=\"{deviceName}\" -t {duracaoSeg} " +
+                     $"-c:v libx264 -preset veryfast -crf 28 -an -pix_fmt yuv420p " +
+                     $"-movflags +faststart -y \"{fullPath}\"";
+        }
+        else
+        {
+            // Teste TCP rápido antes do FFmpeg. Se o host:porta da URL RTSP não responder em 2s,
+            // não vale a pena esperar 5s do -stimeout + 30s do WaitForExit. Vai direto pro dummy.
+            if (!await RtspHostAcessivel(camera.UrlRTSP, 2000))
+            {
+                Console.WriteLine($"[CameraService] RTSP inacessível em {camera.UrlRTSP} — host:porta não responde. Gerando dummy.");
+                Console.WriteLine($"[CameraService]   Dica: pra capturar webcam local, use UrlRTSP = \"dshow://Integrated Camera\".");
+                return await GerarDummyVideo(fullPath, $"RTSP OFFLINE - {camera.UrlRTSP}", ambienteId, timestamp);
+            }
+
+            // -rtsp_transport tcp: mais confiável que UDP em redes restritas (5º CTA)
+            // -stimeout 5000000: 5s timeout de conexão RTSP
+            // -c:v libx264 -preset veryfast -an: reencode sem áudio (compat HTML5)
+            // -movflags +faststart: permite playback enquanto baixa
+            // -y: sobrescreve se já existir
+            ffArgs = $"-rtsp_transport tcp -stimeout 5000000 -i \"{camera.UrlRTSP}\" -t {duracaoSeg} " +
+                     $"-c:v libx264 -preset veryfast -crf 28 -an -movflags +faststart " +
+                     $"-y \"{fullPath}\"";
         }
 
         var psi = new ProcessStartInfo
         {
             FileName = _ffmpegPath,
-            // -rtsp_transport tcp: mais confiável que UDP em redes restritas (5º CTA)
-            // -stimeout 5000000: 5s timeout de conexão RTSP — sem isso, URL inacessível
-            //   ficava travada esperando até o WaitForExit estourar (90s)
-            // -t: duração máxima
-            // -c:v libx264 -preset veryfast -c:a aac: reencode pra garantir compat. HTML5
-            //   -an: sem áudio (várias câmeras IP não têm mic, evita warning de codec)
-            // -movflags +faststart: permite playback enquanto baixa
-            // -y: sobrescreve se já existir
-            Arguments = $"-rtsp_transport tcp -stimeout 5000000 -i \"{camera.UrlRTSP}\" -t {duracaoSeg} " +
-                        $"-c:v libx264 -preset veryfast -crf 28 -an -movflags +faststart " +
-                        $"-y \"{fullPath}\"",
+            Arguments = ffArgs,
             UseShellExecute = false,
             RedirectStandardError = true,
             CreateNoWindow = true

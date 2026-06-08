@@ -144,13 +144,24 @@ namespace BiometricAcess.Worker.Simulador
                 }
                 else
                 {
-                    // UPDATE SQL direto — Atualizar via tracking estava virando no-op por causa
-                    // de a entity ser a mesma instância tracked pelo scope.
-                    int linhas = tentativaRepo.AtualizarGravacaoPath(tentativa.Id, gravacaoPath);
-                    if (linhas > 0)
-                        Console.WriteLine($"[SimuladorBanco] Gravação associada à tentativa #{tentativa.Id} — {gravacaoPath}");
-                    else
-                        Console.WriteLine($"[SimuladorBanco] FALHA ao persistir GravacaoPath (UPDATE afetou 0 linhas) — tentativa #{tentativa.Id}");
+                    // UPDATE via SqliteConnection separada (bypass total do EF Core).
+                    // try/catch explícito para capturar QUALQUER falha — antes podia estar
+                    // engolindo silenciosamente e por isso 193 de 196 tentativas ficavam sem path.
+                    try
+                    {
+                        int linhas = tentativaRepo.AtualizarGravacaoPath(tentativa.Id, gravacaoPath);
+                        if (linhas > 0)
+                            Console.WriteLine($"[SimuladorBanco] ✓ GravacaoPath salvo (#{tentativa.Id}) — {gravacaoPath}");
+                        else
+                            Console.WriteLine($"[SimuladorBanco] ✗ UPDATE 0 linhas — tentativa #{tentativa.Id} não encontrada no banco?!");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[SimuladorBanco] ✗ EXCEPTION ao persistir GravacaoPath para tentativa #{tentativa.Id}:");
+                        Console.WriteLine($"    {ex.GetType().Name}: {ex.Message}");
+                        if (ex.InnerException != null)
+                            Console.WriteLine($"    Inner: {ex.InnerException.Message}");
+                    }
                 }
             }
         }

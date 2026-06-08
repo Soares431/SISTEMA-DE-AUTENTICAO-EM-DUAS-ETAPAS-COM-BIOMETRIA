@@ -1,4 +1,5 @@
 ﻿// TentativaAcessoImplemetions.cs
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
@@ -98,15 +99,30 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             _context.SaveChanges();
         }
 
-        // Update direto via SQL. O caminho via tracking (Find + SetValues) estava virando no-op
-        // quando o EventProcessor mantinha a entity tracked durante todo o Processar — o EF
-        // reconciliava current=tentativa contra snapshot e o UPDATE não saía.
-        // Retorna número de linhas afetadas para o caller verificar.
+        // Update direto via SqliteConnection separada. Tentamos antes via Find+SetValues
+        // (no-op por causa do tracking) e ExecuteSqlRaw do EF Core (também não persistia
+        // por algum motivo — provavelmente o DbContext do scope ainda mantém o snapshot
+        // antigo e algo na escrita não chega ao SQLite).
+        //
+        // Abrir uma conexão NOVA garante:
+        //   1. Bypass total do change tracker do EF
+        //   2. Commit imediato (SqliteConnection padrão = autocommit)
+        //   3. Visibilidade imediata pra outros leitores (incluindo a API Int1)
+        //
+        // Se der exception, propaga para o caller logar — antes ficava silencioso.
         public int AtualizarGravacaoPath(int tentativaId, string gravacaoPath)
         {
-            return _context.Database.ExecuteSqlRaw(
-                "UPDATE tentativaAcesso SET gravacaoPath = {0} WHERE id = {1}",
-                gravacaoPath, tentativaId);
+            var connString = _context.Database.GetConnectionString();
+            if (string.IsNullOrWhiteSpace(connString))
+                throw new InvalidOperationException("ConnectionString não disponível no DbContext.");
+
+            using var conn = new SqliteConnection(connString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE tentativaAcesso SET gravacaoPath = $path WHERE id = $id";
+            cmd.Parameters.AddWithValue("$path", gravacaoPath);
+            cmd.Parameters.AddWithValue("$id", tentativaId);
+            return cmd.ExecuteNonQuery();
         }
     }
 }
