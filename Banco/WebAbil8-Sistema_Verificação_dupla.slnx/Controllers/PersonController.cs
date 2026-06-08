@@ -65,28 +65,43 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
         public async Task<IActionResult> Post([FromBody] Pessoa person)
         {
             _logger.LogInformation("Create new Person: {name}", person.Nome);
-            var createdPerson = await _pessoaRepository.Adicionar(person);
-            if (createdPerson == null)
+            try
             {
-                _logger.LogError("Failed to create person");
-                return NotFound();
+                var createdPerson = await _pessoaRepository.Adicionar(person);
+                if (createdPerson == null)
+                {
+                    _logger.LogError("Failed to create person");
+                    return NotFound();
+                }
+                _logger.LogDebug("Person created successfully: {name}", createdPerson.Nome);
+                return Ok(createdPerson);
             }
-            _logger.LogDebug("Person created successfully: {name}", createdPerson.Nome);
-            return Ok(createdPerson);
+            catch (InvalidOperationException ex)
+            {
+                // Validações da camada de serviço (CPF duplicado, Senha == ID, etc).
+                return BadRequest(new { erro = ex.Message });
+            }
         }
 
         [HttpPut]
         public async Task<IActionResult> Put([FromBody] Pessoa person)
         {
             _logger.LogInformation("Update Person with ID {id}", person.Id);
-            var updatedPerson = await _pessoaRepository.Atualizar(person);
-            if (updatedPerson == null)
+            try
             {
-                _logger.LogError("Failed to update person with ID {id}", person.Id);
-                return NotFound();
+                var updatedPerson = await _pessoaRepository.Atualizar(person);
+                if (updatedPerson == null)
+                {
+                    _logger.LogError("Failed to update person with ID {id}", person.Id);
+                    return NotFound();
+                }
+                _logger.LogDebug("Person updated successfully: {name}", updatedPerson.Nome);
+                return Ok(updatedPerson);
             }
-            _logger.LogDebug("Person updated successfully: {name}", updatedPerson.Nome);
-            return Ok(updatedPerson);
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { erro = ex.Message });
+            }
         }
 
         // DELETE /api/person/{id}
