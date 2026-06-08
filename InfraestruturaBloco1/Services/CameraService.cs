@@ -24,6 +24,37 @@ public class CameraService
         _ffmpegStartTimeoutSeg = 5;
     }
 
+    // Calcula o path absoluto onde o MP4 SERÁ gerado, sem disparar FFmpeg ainda.
+    // Permite o EventProcessor inserir a tentativa no banco JÁ com GravacaoPath preenchido,
+    // antes de a gravação efetivamente terminar. Se FFmpeg falhar depois, o path fica
+    // apontando pra um arquivo inexistente — o cleanup do Int1 zera esses casos.
+    public string PrepararPath(int ambienteId, DateTime timestamp)
+    {
+        string ambientePath = Path.Combine(_basePath, $"ambiente_{ambienteId}");
+        Directory.CreateDirectory(ambientePath);
+        string sufixoUnico = Guid.NewGuid().ToString("N").Substring(0, 8);
+        string filename = $"acesso_{timestamp.ToLocalTime():yyyyMMdd_HHmmss}_{sufixoUnico}.mp4";
+        return Path.Combine(ambientePath, filename);
+    }
+
+    // Dispara FFmpeg em background (fire-and-forget) pra escrever no path predefinido.
+    // Retorna imediatamente — não espera os 60s de gravação. Logs internos do CameraService
+    // dizem se deu certo ou caiu em dummy.
+    public void GravarEmBackground(int ambienteId, string fullPath, int duracaoSeg, DateTime timestamp)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ExecutarGravacao(ambienteId, fullPath, duracaoSeg, timestamp);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CameraService] BG exception ambiente {ambienteId}: {ex.Message}");
+            }
+        });
+    }
+
     // Dispara FFmpeg para capturar `duracaoSeg` do stream RTSP da câmera do ambiente.
     // Salva como ambiente_{id}/acesso_{tentativaId:D6}_{yyyyMMddHHmmss}.mp4 e retorna o path absoluto.
     // SEMPRE retorna um path: se RTSP falhar, gera um vídeo dummy com texto explicativo
@@ -35,19 +66,14 @@ public class CameraService
     // tentativaId = 0 mantém compatibilidade com chamadores antigos (apenas timestamp).
     public async Task<string?> GravarTrechoRTSP(int ambienteId, DateTime timestamp, int duracaoSeg = 30, int tentativaId = 0)
     {
+        var fullPath = PrepararPath(ambienteId, timestamp);
+        return await ExecutarGravacao(ambienteId, fullPath, duracaoSeg, timestamp);
+    }
+
+    private async Task<string?> ExecutarGravacao(int ambienteId, string fullPath, int duracaoSeg, DateTime timestamp)
+    {
         var cameras = await _cameraRepo.ListarPorAmbiente(ambienteId);
         var camera = cameras.FirstOrDefault(c => c.Ativa && !string.IsNullOrWhiteSpace(c.UrlRTSP));
-
-        string ambientePath = Path.Combine(_basePath, $"ambiente_{ambienteId}");
-        Directory.CreateDirectory(ambientePath);
-
-        // Se tentativaId não foi passado (chamador antigo), usa só timestamp + ticks
-        // para evitar colisão entre chamadas simultâneas.
-        string sufixoUnico = tentativaId > 0
-            ? $"_{tentativaId:D6}"
-            : $"_{timestamp.Ticks % 1000000:D6}";
-        string filename = $"acesso_{timestamp.ToLocalTime():yyyyMMdd_HHmmss}{sufixoUnico}.mp4";
-        string fullPath = Path.Combine(ambientePath, filename);
 
         // Câmera ausente: gera dummy imediato e retorna.
         if (camera == null)

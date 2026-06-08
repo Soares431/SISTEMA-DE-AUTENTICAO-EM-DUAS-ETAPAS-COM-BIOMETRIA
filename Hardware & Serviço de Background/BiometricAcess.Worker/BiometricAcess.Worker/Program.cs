@@ -30,6 +30,24 @@ var cameraBase = Environment.GetEnvironmentVariable("CAMERA_BASE_PATH")
 Environment.SetEnvironmentVariable("CAMERA_BASE_PATH", cameraBase);
 Console.WriteLine($"[INT2 GRAVACOES] {cameraBase}");
 
+// Log do Worker em arquivo — script `iniciar.ps1` roda Worker com -WindowStyle Hidden,
+// então admin não vê stdout. Espelha tudo pra gravacoes/worker.log pra poder debugar
+// depois (e mandar arquivo se algo der errado).
+try
+{
+    Directory.CreateDirectory(cameraBase);
+    var logPath = Path.Combine(cameraBase, "worker.log");
+    var fs = new FileStream(logPath, FileMode.Append, FileAccess.Write, FileShare.Read);
+    var sw = new StreamWriter(fs) { AutoFlush = true };
+    var origOut = Console.Out;
+    Console.SetOut(new MultiWriter(origOut, sw));
+    Console.WriteLine($"\n=== Worker iniciou em {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[INT2] Falha ao abrir log file: {ex.Message}");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
@@ -151,3 +169,17 @@ using (var scope = host.Services.CreateScope())
 }
 
 host.Run();
+
+// TextWriter que escreve em DOIS destinos simultaneamente — usado pra duplicar
+// stdout do Console pra um arquivo de log (Worker roda Hidden, sem janela visível).
+public class MultiWriter : System.IO.TextWriter
+{
+    private readonly System.IO.TextWriter _a;
+    private readonly System.IO.TextWriter _b;
+    public MultiWriter(System.IO.TextWriter a, System.IO.TextWriter b) { _a = a; _b = b; }
+    public override System.Text.Encoding Encoding => _a.Encoding;
+    public override void Write(char value) { _a.Write(value); _b.Write(value); }
+    public override void Write(string? value) { _a.Write(value); _b.Write(value); }
+    public override void WriteLine(string? value) { _a.WriteLine(value); _b.WriteLine(value); }
+    public override void Flush() { _a.Flush(); _b.Flush(); }
+}

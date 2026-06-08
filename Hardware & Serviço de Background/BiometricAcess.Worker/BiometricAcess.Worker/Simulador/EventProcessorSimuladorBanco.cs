@@ -107,6 +107,28 @@ namespace BiometricAcess.Worker.Simulador
                 await pessoaRepo.AtualizarUltimoAcesso(pessoa.Id);
             }
 
+            // FIRE-AND-FORGET:
+            // 1. Pré-calcula o path do arquivo (sem gravar ainda)
+            // 2. INSERE tentativa NO BANCO já com GravacaoPath
+            // 3. Dispara FFmpeg em background — não bloqueia
+            //
+            // Resultado: tentativa aparece no /historico INSTANTANEAMENTE com botão "Ver",
+            // e o vídeo fica disponível ~60s depois. Se Worker morrer antes do FFmpeg
+            // terminar, cleanup do Int1 (próximo startup) zera GravacaoPath de arquivos
+            // que não existem.
+            string? gravacaoPath = null;
+            var cameraService = scope.ServiceProvider.GetService<CameraService>();
+            if (cameraService == null)
+            {
+                Console.WriteLine($"[SimuladorBanco] AVISO: CameraService não registrado no DI — gravação pulada");
+            }
+            else
+            {
+                gravacaoPath = cameraService.PrepararPath(ambiente.Id, evento.DataHora);
+                cameraService.GravarEmBackground(ambiente.Id, gravacaoPath, ambiente.TempoEsperaGravacaoSeg, evento.DataHora);
+                Console.WriteLine($"[SimuladorBanco] FFmpeg disparado em BG — arquivo será: {gravacaoPath}");
+            }
+
             var tentativa = new TentativaAcesso
             {
                 PessoaId        = pessoa?.Id,
@@ -115,55 +137,13 @@ namespace BiometricAcess.Worker.Simulador
                 AcessoLiberado  = acessoLiberado,
                 MotivoNegacao   = motivoNegacao,
                 TipoVerificacao = evento.TipoVerificacao,
-                DataExpiracao   = DateTime.UtcNow.AddDays(retencaoDias)
+                DataExpiracao   = DateTime.UtcNow.AddDays(retencaoDias),
+                GravacaoPath    = gravacaoPath
             };
 
             tentativaRepo.Adicionar(tentativa);
 
-            Console.WriteLine($"[SimuladorBanco] Pessoa {evento.PessoaID} | {(acessoLiberado ? "LIBERADO" : $"NEGADO — {motivoNegacao}")} | Ambiente: {ambiente.Nome}");
-
-            // doc_tecnica §5.11 — TODA tentativa (liberada ou negada) gera gravação,
-            // porque o objetivo é registrar ATIVIDADE no ambiente, não só sucessos.
-            // O CameraService SEMPRE retorna um path (gera dummy se RTSP falhar ou não houver câmera).
-            var cameraService = scope.ServiceProvider.GetService<CameraService>();
-            if (cameraService == null)
-            {
-                Console.WriteLine($"[SimuladorBanco] AVISO: CameraService não registrado no DI — gravação pulada");
-            }
-            else
-            {
-                Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) para tentativa #{tentativa.Id} ambiente {ambiente.Nome}");
-                // tentativa.Id entra no nome do arquivo para garantir unicidade — antes
-                // 3 eventos no mesmo segundo colidiam no mesmo filename.
-                var gravacaoPath = await cameraService.GravarTrechoRTSP(
-                    ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg, tentativa.Id);
-
-                if (string.IsNullOrEmpty(gravacaoPath))
-                {
-                    Console.WriteLine($"[SimuladorBanco] ERRO INESPERADO: CameraService retornou null. Tentativa #{tentativa.Id} ficará sem gravação.");
-                }
-                else
-                {
-                    // UPDATE via SqliteConnection separada (bypass total do EF Core).
-                    // try/catch explícito para capturar QUALQUER falha — antes podia estar
-                    // engolindo silenciosamente e por isso 193 de 196 tentativas ficavam sem path.
-                    try
-                    {
-                        int linhas = tentativaRepo.AtualizarGravacaoPath(tentativa.Id, gravacaoPath);
-                        if (linhas > 0)
-                            Console.WriteLine($"[SimuladorBanco] ✓ GravacaoPath salvo (#{tentativa.Id}) — {gravacaoPath}");
-                        else
-                            Console.WriteLine($"[SimuladorBanco] ✗ UPDATE 0 linhas — tentativa #{tentativa.Id} não encontrada no banco?!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[SimuladorBanco] ✗ EXCEPTION ao persistir GravacaoPath para tentativa #{tentativa.Id}:");
-                        Console.WriteLine($"    {ex.GetType().Name}: {ex.Message}");
-                        if (ex.InnerException != null)
-                            Console.WriteLine($"    Inner: {ex.InnerException.Message}");
-                    }
-                }
-            }
+            Console.WriteLine($"[SimuladorBanco] Pessoa {evento.PessoaID} | {(acessoLiberado ? "LIBERADO" : $"NEGADO — {motivoNegacao}")} | Ambiente: {ambiente.Nome} | Tentativa #{tentativa.Id} | Gravacao: {(gravacaoPath != null ? "✓ agendada" : "✗")}");
         }
     }
 }

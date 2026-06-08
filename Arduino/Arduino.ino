@@ -22,6 +22,36 @@ char keys[ROWS][COLS] = {
 
 byte rowPins[ROWS] = {2, 3, 4, 5};
 byte colPins[COLS] = {6, 7, 8, 9};
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 

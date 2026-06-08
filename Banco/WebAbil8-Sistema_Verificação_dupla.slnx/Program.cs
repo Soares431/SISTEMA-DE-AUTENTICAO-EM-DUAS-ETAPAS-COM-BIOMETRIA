@@ -274,11 +274,16 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Limpa gravacaoPath de tentativas cujo arquivo MP4 não existe mais em disco.
-    // Importante depois de mudar a pasta padrão (cameras/ → gravacoes/): paths antigos
-    // viraram broken links no histórico. Sem isto, o botão "Ver" mostra erro.
+    // Só limpa tentativas com mais de 10 minutos — fluxo fire-and-forget do Worker
+    // grava arquivo ~60s DEPOIS de inserir a tentativa com path. Se cleanup for muito
+    // agressivo, apaga o path antes do Worker terminar de escrever.
     using (var listTentativas = conn.CreateCommand())
     {
-        listTentativas.CommandText = "SELECT id, gravacaoPath FROM tentativaAcesso WHERE gravacaoPath IS NOT NULL AND gravacaoPath != ''";
+        listTentativas.CommandText = @"
+            SELECT id, gravacaoPath
+            FROM tentativaAcesso
+            WHERE gravacaoPath IS NOT NULL AND gravacaoPath != ''
+              AND dataHora < datetime('now', '-10 minutes')";
         var paraLimpar = new List<int>();
         using (var rdr = listTentativas.ExecuteReader())
         {
