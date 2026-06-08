@@ -133,8 +133,10 @@ namespace BiometricAcess.Worker.Simulador
             else
             {
                 Console.WriteLine($"[SimuladorBanco] Iniciando gravação ({ambiente.TempoEsperaGravacaoSeg}s) para tentativa #{tentativa.Id} ambiente {ambiente.Nome}");
+                // tentativa.Id entra no nome do arquivo para garantir unicidade — antes
+                // 3 eventos no mesmo segundo colidiam no mesmo filename.
                 var gravacaoPath = await cameraService.GravarTrechoRTSP(
-                    ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
+                    ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg, tentativa.Id);
 
                 if (string.IsNullOrEmpty(gravacaoPath))
                 {

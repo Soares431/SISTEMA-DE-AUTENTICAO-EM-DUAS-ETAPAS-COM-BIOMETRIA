@@ -25,10 +25,15 @@ public class CameraService
     }
 
     // Dispara FFmpeg para capturar `duracaoSeg` do stream RTSP da câmera do ambiente.
-    // Salva como ambiente_{id}/acesso_{yyyyMMddHHmmss}.mp4 e retorna o path absoluto.
+    // Salva como ambiente_{id}/acesso_{tentativaId:D6}_{yyyyMMddHHmmss}.mp4 e retorna o path absoluto.
     // SEMPRE retorna um path: se RTSP falhar, gera um vídeo dummy com texto explicativo
     // pra UI nunca ficar sem gravação. O admin vê na thumbnail/playback que algo deu errado.
-    public async Task<string?> GravarTrechoRTSP(int ambienteId, DateTime timestamp, int duracaoSeg = 30)
+    //
+    // tentativaId entra no nome do arquivo pra garantir unicidade: 3 eventos no mesmo
+    // segundo geravam mesmo filename, FFmpeg sobrescrevia (-y) e 3 tentativas no banco
+    // apontavam pro MESMO MP4. Com tentativaId no nome, cada tentativa tem seu arquivo.
+    // tentativaId = 0 mantém compatibilidade com chamadores antigos (apenas timestamp).
+    public async Task<string?> GravarTrechoRTSP(int ambienteId, DateTime timestamp, int duracaoSeg = 30, int tentativaId = 0)
     {
         var cameras = await _cameraRepo.ListarPorAmbiente(ambienteId);
         var camera = cameras.FirstOrDefault(c => c.Ativa && !string.IsNullOrWhiteSpace(c.UrlRTSP));
@@ -36,7 +41,12 @@ public class CameraService
         string ambientePath = Path.Combine(_basePath, $"ambiente_{ambienteId}");
         Directory.CreateDirectory(ambientePath);
 
-        string filename = $"acesso_{timestamp.ToLocalTime():yyyyMMdd_HHmmss}.mp4";
+        // Se tentativaId não foi passado (chamador antigo), usa só timestamp + ticks
+        // para evitar colisão entre chamadas simultâneas.
+        string sufixoUnico = tentativaId > 0
+            ? $"_{tentativaId:D6}"
+            : $"_{timestamp.Ticks % 1000000:D6}";
+        string filename = $"acesso_{timestamp.ToLocalTime():yyyyMMdd_HHmmss}{sufixoUnico}.mp4";
         string fullPath = Path.Combine(ambientePath, filename);
 
         // Câmera ausente: gera dummy imediato e retorna.
@@ -127,9 +137,11 @@ public class CameraService
     }
 
     // Gera um vídeo dummy de 5s como fallback quando RTSP falha ou câmera não está configurada.
-    // Usa pattern bar (testsrc) — não usa drawtext porque o build comum do FFmpeg pra Windows
-    // (gyan.dev) vem sem libfontconfig habilitada e o filtro drawtext falha silenciosamente.
-    // Sem texto visual: a UI mostra o motivo via metadata da tentativa (motivoNegacao, etc).
+    // Usa testsrc2 (tem contador de tempo incrustado nas frames) — não usa drawtext porque
+    // o build comum do FFmpeg pra Windows (gyan.dev) vem sem libfontconfig habilitada e
+    // drawtext falha silenciosamente.
+    // O nome do arquivo (acesso_{tentativaId}_{timestamp}.mp4) identifica univocamente
+    // a tentativa, então o admin não precisa do motivo no vídeo — vê pelo /historico.
     private async Task<string?> GerarDummyVideo(string fullPath, string motivo, int ambienteId, DateTime timestamp)
     {
         Console.WriteLine($"[CameraService] Gerando dummy ({motivo}) para ambiente {ambienteId}...");
@@ -137,7 +149,7 @@ public class CameraService
         var psi = new ProcessStartInfo
         {
             FileName = _ffmpegPath,
-            Arguments = $"-f lavfi -i \"testsrc=duration=5:size=640x480:rate=25\" " +
+            Arguments = $"-f lavfi -i \"testsrc2=duration=5:size=640x480:rate=25\" " +
                         $"-c:v libx264 -preset veryfast -crf 28 -pix_fmt yuv420p -movflags +faststart -y \"{fullPath}\"",
             UseShellExecute = false,
             RedirectStandardError = true,

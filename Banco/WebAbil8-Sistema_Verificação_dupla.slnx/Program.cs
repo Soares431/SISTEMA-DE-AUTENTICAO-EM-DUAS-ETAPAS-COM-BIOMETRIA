@@ -298,6 +298,54 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    // Inverso: apaga arquivos MP4 em disco que não estão referenciados por nenhuma tentativa.
+    // Cenário: bug histórico salvava o MP4 mas falhava ao gravar GravacaoPath — arquivos
+    // ficavam órfãos consumindo disco. Só apaga se o mtime do arquivo for > 30 minutos,
+    // evitando race com Worker que está gravando agora.
+    try
+    {
+        if (Directory.Exists(cameraBase))
+        {
+            var pathsReferenciados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using var listRefs = conn.CreateCommand();
+            listRefs.CommandText = "SELECT gravacaoPath FROM tentativaAcesso WHERE gravacaoPath IS NOT NULL AND gravacaoPath != ''";
+            using (var rdr = listRefs.ExecuteReader())
+            {
+                while (rdr.Read())
+                {
+                    try { pathsReferenciados.Add(Path.GetFullPath(rdr.GetString(0))); } catch { }
+                }
+            }
+
+            int apagados = 0;
+            long bytesLiberados = 0;
+            var corteIdade = DateTime.UtcNow.AddMinutes(-30);
+            foreach (var mp4 in Directory.EnumerateFiles(cameraBase, "*.mp4", SearchOption.AllDirectories))
+            {
+                var info = new FileInfo(mp4);
+                if (info.LastWriteTimeUtc >= corteIdade) continue; // muito recente — Worker pode estar escrevendo
+                if (pathsReferenciados.Contains(info.FullName)) continue; // referenciado, mantém
+
+                try
+                {
+                    bytesLiberados += info.Length;
+                    File.Delete(mp4);
+                    apagados++;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[INT1 CLEANUP] Falha apagar órfão {mp4}: {ex.Message}");
+                }
+            }
+            if (apagados > 0)
+                Console.WriteLine($"[INT1 CLEANUP] {apagados} MP4 órfãos apagados do disco ({bytesLiberados / 1024} KB liberados).");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[INT1 CLEANUP] Erro varredura MP4 órfãos: {ex.Message}");
+    }
+
     // Migração inline — tabela pessoaT50 (qual pessoa está cadastrada em qual T50).
     // Permite múltiplos T50 por ambiente onde admin escolhe em quais a pessoa fica.
     bool pessoaT50Existe;
