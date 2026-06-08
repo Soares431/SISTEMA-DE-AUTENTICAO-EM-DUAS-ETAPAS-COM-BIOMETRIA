@@ -26,13 +26,7 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<AesService>();
 builder.Services.AddScoped<AuditService>();
-builder.Services.AddScoped<CameraService>(provider =>
-    new CameraService(
-        provider.GetRequiredService<ILogAdminRepository>(),
-        provider.GetRequiredService<ICameraRepository>(),
-        builder.Configuration["CameraBasePath"] ?? "C:\\gravacoes",
-        Environment.GetEnvironmentVariable("FFMPEG_PATH")
-    ));
+builder.Services.AddScoped<CameraService>();
 // Serviços do Bloco 4 — Relatórios
 builder.Services.AddScoped<ExportService>();
 

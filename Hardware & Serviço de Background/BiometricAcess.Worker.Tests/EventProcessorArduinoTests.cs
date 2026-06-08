@@ -11,7 +11,6 @@ using Xunit;
 namespace BiometricAcess.Worker.Tests
 {
     // Cobre os 4 bugs corrigidos do EventProcessorArduino + fluxos básicos.
-    // Não usa CameraService (passa null) — HW-16 vira no-op no teste, suficiente para validar o resto.
     public class EventProcessorArduinoTests
     {
         // Fake do IAnvizArduinoService que captura as notificações para asserção.
@@ -77,8 +76,7 @@ namespace BiometricAcess.Worker.Tests
                 new TentativaAcessoImplemetions(db),
                 new ConfiguracaoImplemetions(db),
                 arduino,
-                CriarConfiguration(),
-                cameraService: null
+                CriarConfiguration()
             );
             return (processor, arduino, db, amb, disp);
         }

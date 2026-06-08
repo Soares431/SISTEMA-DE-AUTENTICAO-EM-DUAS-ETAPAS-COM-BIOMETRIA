@@ -20,16 +20,6 @@ var dbPath = Path.Combine(builder.Environment.ContentRootPath, "banco.db");
 builder.Configuration["SQLiteConnection:SQLiteConnectionString"] = $"Data Source={dbPath}";
 Console.WriteLine($"[INT1 DB] {dbPath}");
 
-// Pasta de gravações compartilhada entre Int1 e Worker — fica na RAIZ do repo
-// para que ambos os processos resolvam o mesmo caminho absoluto.
-// O Worker (Int2) grava aqui via FFmpeg; o Int1 lê via /api/gravacoes/{id}.
-// Sem isso, cada processo usaria "cameras/" relativo ao seu próprio diretório.
-var repoRoot = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", ".."));
-var cameraBase = Environment.GetEnvironmentVariable("CAMERA_BASE_PATH")
-    ?? Path.Combine(repoRoot, "gravacoes");
-Environment.SetEnvironmentVariable("CAMERA_BASE_PATH", cameraBase);
-Console.WriteLine($"[INT1 GRAVACOES] {cameraBase}");
-
 // Add services to the container.
 
 // Scoped é usado para criar uma nova instância do serviço para cada solicitação HTTP. Isso é útil para serviços que possuem estado ou que precisam ser isolados por solicitação, como um serviço de pessoa neste caso  
@@ -273,83 +263,7 @@ using (var scope = app.Services.CreateScope())
         softDeleteOrfaos.ExecuteNonQuery();
     }
 
-    // Limpa gravacaoPath de tentativas cujo arquivo MP4 não existe mais em disco.
-    // Só limpa tentativas com mais de 10 minutos — fluxo fire-and-forget do Worker
-    // grava arquivo ~60s DEPOIS de inserir a tentativa com path. Se cleanup for muito
-    // agressivo, apaga o path antes do Worker terminar de escrever.
-    using (var listTentativas = conn.CreateCommand())
-    {
-        listTentativas.CommandText = @"
-            SELECT id, gravacaoPath
-            FROM tentativaAcesso
-            WHERE gravacaoPath IS NOT NULL AND gravacaoPath != ''
-              AND dataHora < datetime('now', '-10 minutes')";
-        var paraLimpar = new List<int>();
-        using (var rdr = listTentativas.ExecuteReader())
-        {
-            while (rdr.Read())
-            {
-                var id = rdr.GetInt32(0);
-                var path = rdr.GetString(1);
-                if (!File.Exists(path)) paraLimpar.Add(id);
-            }
-        }
-        if (paraLimpar.Count > 0)
-        {
-            using var clean = conn.CreateCommand();
-            clean.CommandText = $"UPDATE tentativaAcesso SET gravacaoPath = NULL WHERE id IN ({string.Join(",", paraLimpar)})";
-            clean.ExecuteNonQuery();
-            Console.WriteLine($"[INT1 CLEANUP] {paraLimpar.Count} gravacaoPath órfãos limpos (arquivos não existem).");
-        }
-    }
-
-    // Inverso: apaga arquivos MP4 em disco que não estão referenciados por nenhuma tentativa.
-    // Cenário: bug histórico salvava o MP4 mas falhava ao gravar GravacaoPath — arquivos
-    // ficavam órfãos consumindo disco. Só apaga se o mtime do arquivo for > 30 minutos,
-    // evitando race com Worker que está gravando agora.
-    try
-    {
-        if (Directory.Exists(cameraBase))
-        {
-            var pathsReferenciados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            using var listRefs = conn.CreateCommand();
-            listRefs.CommandText = "SELECT gravacaoPath FROM tentativaAcesso WHERE gravacaoPath IS NOT NULL AND gravacaoPath != ''";
-            using (var rdr = listRefs.ExecuteReader())
-            {
-                while (rdr.Read())
-                {
-                    try { pathsReferenciados.Add(Path.GetFullPath(rdr.GetString(0))); } catch { }
-                }
-            }
-
-            int apagados = 0;
-            long bytesLiberados = 0;
-            var corteIdade = DateTime.UtcNow.AddMinutes(-30);
-            foreach (var mp4 in Directory.EnumerateFiles(cameraBase, "*.mp4", SearchOption.AllDirectories))
-            {
-                var info = new FileInfo(mp4);
-                if (info.LastWriteTimeUtc >= corteIdade) continue; // muito recente — Worker pode estar escrevendo
-                if (pathsReferenciados.Contains(info.FullName)) continue; // referenciado, mantém
-
-                try
-                {
-                    bytesLiberados += info.Length;
-                    File.Delete(mp4);
-                    apagados++;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[INT1 CLEANUP] Falha apagar órfão {mp4}: {ex.Message}");
-                }
-            }
-            if (apagados > 0)
-                Console.WriteLine($"[INT1 CLEANUP] {apagados} MP4 órfãos apagados do disco ({bytesLiberados / 1024} KB liberados).");
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[INT1 CLEANUP] Erro varredura MP4 órfãos: {ex.Message}");
-    }
+    // (cleanup de gravações removido — feature de gravação foi descontinuada)
 
     // Migração inline — tabela pessoaT50 (qual pessoa está cadastrada em qual T50).
     // Permite múltiplos T50 por ambiente onde admin escolhe em quais a pessoa fica.

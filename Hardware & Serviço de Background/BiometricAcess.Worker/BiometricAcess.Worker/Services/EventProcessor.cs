@@ -1,7 +1,7 @@
 using BiometricAcess.Worker.Models;
+using InfraestruturaBloco1.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
-using InfraestruturaBloco1.Services;
 
 namespace BiometricAcess.Worker.Services
 {
@@ -14,7 +14,7 @@ namespace BiometricAcess.Worker.Services
         private readonly ITentativaAcessoRepository _tentativaRepository;
         private readonly IConfiguracaoRepository _configuracaoRepository;
         private readonly IAnvizService _anvizService;
-        private readonly CameraService _cameraService;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public EventProcessor(
             IPessoaRepository pessoaRepository,
@@ -24,7 +24,7 @@ namespace BiometricAcess.Worker.Services
             ITentativaAcessoRepository tentativaRepository,
             IConfiguracaoRepository configuracaoRepository,
             IAnvizService anvizService,
-            CameraService cameraService)
+            IServiceScopeFactory scopeFactory)
         {
             _pessoaRepository = pessoaRepository;
             _ambientePessoaRepository = ambientePessoaRepository;
@@ -33,7 +33,7 @@ namespace BiometricAcess.Worker.Services
             _tentativaRepository = tentativaRepository;
             _configuracaoRepository = configuracaoRepository;
             _anvizService = anvizService;
-            _cameraService = cameraService;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task Processar(EventoAcesso evento)
@@ -83,7 +83,7 @@ namespace BiometricAcess.Worker.Services
                 && pessoa.modoAcesso == "digital_e_senha"
                 && pessoa.biometriaCadastrada == null)
             {
-                await FluxoPrimeiroAcesso(evento, pessoa, ambiente.Id);
+                await FluxoPrimeiroAcesso(evento, pessoa, ambiente);
                 return;
             }
 
@@ -96,7 +96,7 @@ namespace BiometricAcess.Worker.Services
                 .FirstOrDefault(d => d.EnderecoIP == ip);
         }
 
-        private async Task FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, int ambienteId)
+        private async Task FluxoPrimeiroAcesso(EventoAcesso evento, Pessoa pessoa, Ambiente ambiente)
         {
             Console.WriteLine($"Primeiro acesso — Pessoa: {pessoa.Id} ({pessoa.CodigoUsuario}) | Iniciando captura de digital...");
 
@@ -114,7 +114,8 @@ namespace BiometricAcess.Worker.Services
             }
 
             await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
-            await RegistrarTentativa(evento, pessoa, ambienteId, true, null);
+            var tentativa = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
+            AgendarGravacaoOnvif(tentativa.Id, ambiente);
         }
 
         private async Task FluxoAcessoNormal(EventoAcesso evento, Pessoa pessoa, Ambiente ambiente)
@@ -123,16 +124,30 @@ namespace BiometricAcess.Worker.Services
             await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
 
             var tentativa = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
+            AgendarGravacaoOnvif(tentativa.Id, ambiente);
+        }
 
-            // HW-16 — aguarda gravação da câmera; I5: usa TempoEsperaGravacaoSeg do ambiente
-            var gravacaoPath = await _cameraService.GravarTrechoRTSP(ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
-            if (gravacaoPath != null)
+        // §5.11 doc técnica: após acesso liberado, aguarda em background a câmera capturar
+        // o movimento via ONVIF e persiste a URL da gravação na TentativaAcesso.
+        // Fire-and-forget porque o polling de eventos não pode travar 30-120s por gravação.
+        private void AgendarGravacaoOnvif(int tentativaId, Ambiente ambiente)
+        {
+            _ = Task.Run(async () =>
             {
-                // C3: usa Atualizar para evitar registro duplicado (antes chamava Registrar novamente)
-                tentativa.GravacaoPath = gravacaoPath;
-                _tentativaRepository.Atualizar(tentativa);
-                Console.WriteLine($"Gravação associada — Pessoa: {pessoa.Id} | Path: {gravacaoPath}");
-            }
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var cameraService = scope.ServiceProvider.GetRequiredService<CameraService>();
+                    var tentativaRepo = scope.ServiceProvider.GetRequiredService<ITentativaAcessoRepository>();
+                    var url = await cameraService.MonitorarNovoArquivo(ambiente.Id, DateTime.UtcNow, ambiente.TempoEsperaGravacaoSeg);
+                    if (!string.IsNullOrEmpty(url))
+                        tentativaRepo.AtualizarGravacaoPath(tentativaId, url);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ONVIF] Falha ao associar gravação à tentativa {tentativaId}: {ex.Message}");
+                }
+            });
         }
 
         private async Task FluxoNaoCadastrado(EventoAcesso evento, int ambienteId)

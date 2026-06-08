@@ -1,9 +1,8 @@
 @* =============================================================================
    Historico.razor - Histórico completo de tentativas de acesso
-   Features: 4 cards de resumo, filtros (busca, status, ambiente, período),
+   Features: cards de resumo, filtros (busca, status, ambiente, período),
              tabela com data/hora, pessoa, status (Permitido/Negado),
-             motivo da negação e link para gravação de vídeo,
-             ordenação por coluna, navegação clicável para entidades
+             motivo da negação, ordenação por coluna, navegação clicável.
    Rota: /historico
    ============================================================================= *@
 @page "/historico"
@@ -14,6 +13,7 @@
 @inject NavigationManager Nav
 @inject IConfiguration Config
 @inject ITokenStore TokenStore
+@* TokenStore mantido por causa do ExportarPdf que envia Bearer no header. *@
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -28,7 +28,7 @@
         <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-primary"><Icon Name="history" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count</p><p class="text-sm text-muted">Total de Registros</p></div></div></div></div>
         <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-success"><Icon Name="check-circle" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => h.AcessoLiberado)</p><p class="text-sm text-muted">Acessos Permitidos</p></div></div></div></div>
         <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-destructive"><Icon Name="x-circle" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => !h.AcessoLiberado)</p><p class="text-sm text-muted">Acessos Negados</p></div></div></div></div>
-        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-warning"><Icon Name="video" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => h.GravacaoPath != null)</p><p class="text-sm text-muted">Com Gravação</p></div></div></div></div>
+        <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-info"><Icon Name="video" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => !string.IsNullOrEmpty(h.GravacaoPath))</p><p class="text-sm text-muted">Com Gravação</p></div></div></div></div>
     </div>
 
     <div class="card">
@@ -54,7 +54,7 @@
                     <option value="senha_id">Senha + ID</option>
                 </select>
                 <select class="form-select" @bind="gravacaoFilter">
-                    <option value="todos">Gravação (qualquer)</option>
+                    <option value="todos">Gravação (todas)</option>
                     <option value="com">Com gravação</option>
                     <option value="sem">Sem gravação</option>
                 </select>
@@ -115,11 +115,18 @@
                                 </td>
                                 <td><span class="badge @(item.AcessoLiberado ? "badge-success" : "badge-destructive")"><Icon Name="@(item.AcessoLiberado ? "check-circle" : "x-circle")" Size="12" /> @(item.AcessoLiberado ? "Permitido" : "Negado")</span></td>
                                 <td class="text-muted">@(item.MotivoNegacao ?? "-")</td>
-                                <td>@if (item.GravacaoPath != null) {
-                                    <button class="btn btn-ghost btn-sm text-primary" @onclick="() => AbrirGravacao(item.Id)"><Icon Name="video" Size="16" /> Ver</button>
-                                } else {
-                                    <span class="text-sm text-muted">-</span>
-                                }</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.GravacaoPath))
+                                    {
+                                        <button class="btn btn-ghost btn-sm" @onclick="() => AbrirGravacao(item)" title="Visualizar gravação ONVIF">
+                                            <Icon Name="video" Size="14" /> Ver
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted text-xs">—</span>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -127,36 +134,32 @@
             </div>
         </div>
     </div>
-</div>
 
-@if (gravacaoAberta.HasValue)
-{
-    <div class="modal-overlay" @onclick="FecharGravacao">
-        <div class="modal" style="max-width:720px;width:90%" @onclick:stopPropagation="true">
-            <div class="modal-header">
-                <h3>Gravação da tentativa #@gravacaoAberta</h3>
-                <p>Visualização do momento do acesso</p>
-            </div>
-            <div class="modal-body">
-                @if (gravacaoCarregando)
-                {
-                    <div class="loading-overlay" style="position:relative;height:300px;background:#000;border-radius:8px">
-                        <div class="spinner spinner-lg"></div>
-                        <div class="loading-text">Carregando gravação…</div>
+    @if (gravacaoAberta != null)
+    {
+        <div class="modal-overlay" @onclick="FecharGravacao">
+            <div class="modal modal-lg" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h3><Icon Name="video" Size="20" /> Gravação — @DateHelper.Local(gravacaoAberta.DataHora).ToString("dd/MM/yyyy HH:mm:ss")</h3>
+                    <button class="btn btn-ghost btn-icon" @onclick="FecharGravacao"><Icon Name="x" Size="20" /></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-sm text-muted">Pessoa: <strong>@(gravacaoAberta.Pessoa?.Nome ?? "—")</strong> · Ambiente: <strong>@(gravacaoAberta.Ambiente?.Nome ?? "—")</strong></p>
+                    <div class="card" style="background: var(--muted); padding: 1.5rem; text-align: center; margin-top: 1rem;">
+                        <Icon Name="video" Size="48" />
+                        <p class="font-medium" style="margin-top: 0.75rem;">Stream RTSP de Replay</p>
+                        <p class="text-sm text-muted" style="margin-top: 0.5rem; word-break: break-all;">
+                            <code>@MascararSenhaUrl(gravacaoAberta.GravacaoPath!)</code>
+                        </p>
+                        <p class="text-sm text-muted" style="margin-top: 0.75rem;">
+                            Browsers não tocam RTSP nativamente. Abra esta URL no VLC ou outro player compatível com RTSP de replay.
+                        </p>
                     </div>
-                }
-                else if (gravacaoErro != null)
-                {
-                    <div class="alert alert-danger">@gravacaoErro</div>
-                }
-                <video id="player-gravacao" controls autoplay style="width:100%;background:#000;border-radius:8px;@(gravacaoCarregando ? "display:none" : "")"></video>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" @onclick="FecharGravacao">Fechar</button>
+                </div>
             </div>
         </div>
-    </div>
-}
+    }
+</div>
 
 @code {
     private string search = "";
@@ -170,6 +173,7 @@
     private DateTime? dataFim = null;
     private List<TentativaAcesso> todasTentativas = new();
     private List<Ambiente> ambientes = new();
+    private TentativaAcesso? gravacaoAberta = null;
 
     protected override void OnInitialized()
     {
@@ -188,8 +192,6 @@
             ambFilter = amb.ToString();
         if (qs.TryGetValue("status", out var st) && !string.IsNullOrEmpty(st))
             statusFilter = st.ToString();
-        if (qs.TryGetValue("gravacao", out var gv) && !string.IsNullOrEmpty(gv))
-            gravacaoFilter = gv.ToString();
     }
 
     private IEnumerable<TentativaAcesso> Filtered => todasTentativas.Where(h =>
@@ -199,9 +201,25 @@
         (statusFilter == "todos" || (statusFilter == "permitido" ? h.AcessoLiberado : !h.AcessoLiberado)) &&
         (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter) &&
         (tipoFilter == "todos" || h.TipoVerificacao == tipoFilter) &&
-        (gravacaoFilter == "todos" || (gravacaoFilter == "com" ? h.GravacaoPath != null : h.GravacaoPath == null)) &&
+        (gravacaoFilter == "todos" || (gravacaoFilter == "com" ? !string.IsNullOrEmpty(h.GravacaoPath) : string.IsNullOrEmpty(h.GravacaoPath))) &&
         (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
         (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
+
+    private void AbrirGravacao(TentativaAcesso t) => gravacaoAberta = t;
+    private void FecharGravacao() => gravacaoAberta = null;
+
+    // Esconde a senha do URL RTSP (rtsp://user:pass@host/...) ao exibir no modal.
+    private static string MascararSenhaUrl(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            if (string.IsNullOrEmpty(uri.UserInfo)) return url;
+            var partes = uri.UserInfo.Split(':', 2);
+            return url.Replace(uri.UserInfo, $"{partes[0]}:****");
+        }
+        catch { return url; }
+    }
 
     private IEnumerable<TentativaAcesso> Sorted => sortColumn switch
     {
@@ -221,40 +239,6 @@
         sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
 
     private void LimparDatas() { dataInicio = null; dataFim = null; }
-
-    private int? gravacaoAberta;
-    private bool gravacaoCarregando;
-    private string? gravacaoErro;
-
-    private async Task AbrirGravacao(int tentativaId)
-    {
-        gravacaoAberta = tentativaId;
-        gravacaoCarregando = true;
-        gravacaoErro = null;
-        StateHasChanged();
-
-        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await Task.Yield(); // garante o render do modal antes do JS interop
-        var resultado = await JS.InvokeAsync<CarregarVideoResultado>("carregarVideoNoElemento", apiUrl, tentativaId, TokenStore.Token, "player-gravacao");
-        if (!resultado.Ok) gravacaoErro = resultado.Reason ?? "Não foi possível carregar a gravação.";
-        gravacaoCarregando = false;
-    }
-
-    // DTO para o retorno do JS — propriedades minúsculas pra bater com JSON do JavaScript
-    private class CarregarVideoResultado
-    {
-        [System.Text.Json.Serialization.JsonPropertyName("ok")]
-        public bool Ok { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("reason")]
-        public string? Reason { get; set; }
-    }
-
-    private async Task FecharGravacao()
-    {
-        await JS.InvokeVoidAsync("liberarVideoBlob", "player-gravacao");
-        gravacaoAberta = null;
-        gravacaoErro = null;
-    }
 
     private async Task ExportarPdf()
     {
@@ -276,8 +260,8 @@
             var amb = item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}";
             var status = item.AcessoLiberado ? "Permitido" : "Negado";
             var motivo = item.MotivoNegacao ?? "";
-            var gravacao = item.GravacaoPath ?? "";
-            sb.AppendLine($"{DateHelper.Local(item.DataHora):dd/MM/yyyy HH:mm:ss},\"{pessoa}\",\"{amb}\",{status},{motivo},{gravacao}");
+            var gravacao = string.IsNullOrEmpty(item.GravacaoPath) ? "" : MascararSenhaUrl(item.GravacaoPath);
+            sb.AppendLine($"{DateHelper.Local(item.DataHora):dd/MM/yyyy HH:mm:ss},\"{pessoa}\",\"{amb}\",{status},{motivo},\"{gravacao}\"");
         }
         await JS.InvokeVoidAsync("downloadCsv",
             $"historico_{DateTime.Now:yyyyMMdd_HHmm}{SufixoFiltros()}.csv",

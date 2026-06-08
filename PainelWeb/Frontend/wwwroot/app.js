@@ -67,61 +67,6 @@ window.authStorage = {
 };
 
 // -----------------------------------------------------------------------------
-// Download de CSV
-// Dispara download de um arquivo CSV no navegador do usuário.
-// Chamado por Historico.razor e Logs.razor via IJSRuntime.
-// -----------------------------------------------------------------------------
-// Abre a gravação MP4 de uma tentativa em nova aba — usa o JWT do TokenStore
-// porque o endpoint /api/gravacoes/{id} é [Authorize].
-window.abrirGravacao = async function(apiBaseUrl, tentativaId, token) {
-    try {
-        var resp = await fetch(apiBaseUrl + 'api/gravacoes/' + tentativaId, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (!resp.ok) {
-            alert('Não foi possível abrir a gravação (HTTP ' + resp.status + ').');
-            return;
-        }
-        var blob = await resp.blob();
-        var url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // libera depois de 1min — tempo de o navegador começar a reproduzir
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
-    } catch (e) {
-        alert('Erro ao abrir gravação: ' + e.message);
-    }
-};
-
-// Carrega gravação como blob URL e injeta num <video> existente.
-// Usado pelo player modal in-app (Histórico.razor).
-window.carregarVideoNoElemento = async function(apiBaseUrl, tentativaId, token, videoElementId) {
-    try {
-        var video = document.getElementById(videoElementId);
-        if (!video) return { ok: false, reason: 'Elemento de vídeo não encontrado.' };
-        var resp = await fetch(apiBaseUrl + 'api/gravacoes/' + tentativaId, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (!resp.ok) {
-            // Mensagem amigável conforme o motivo do 404
-            var reason = resp.status === 404
-                ? 'Arquivo de gravação não encontrado no servidor (pode ter sido apagado ou nunca foi gerado).'
-                : 'Erro HTTP ' + resp.status + ' ao buscar a gravação.';
-            console.warn('Falha ao carregar gravação:', resp.status, await resp.text());
-            return { ok: false, reason: reason };
-        }
-        var blob = await resp.blob();
-        if (video.dataset.blobUrl) URL.revokeObjectURL(video.dataset.blobUrl);
-        var url = URL.createObjectURL(blob);
-        video.dataset.blobUrl = url;
-        video.src = url;
-        return { ok: true };
-    } catch (e) {
-        console.error('Erro ao carregar vídeo:', e);
-        return { ok: false, reason: 'Erro de rede ao buscar a gravação: ' + e.message };
-    }
-};
-
-// -----------------------------------------------------------------------------
 // HLS player — exibe stream HLS ao vivo em um <video> existente.
 // Browsers não falam RTSP nativamente; o admin precisa rodar um conversor RTSP→HLS
 // (ex: MediaMTX que já gera HLS automaticamente em :8888) e cadastrar a URL .m3u8
@@ -174,15 +119,6 @@ window.pararHls = function(videoElementId) {
     if (hls) {
         try { hls.destroy(); } catch(e) {}
         delete window._hlsInstances[videoElementId];
-    }
-};
-
-window.liberarVideoBlob = function(videoElementId) {
-    var video = document.getElementById(videoElementId);
-    if (video && video.dataset.blobUrl) {
-        URL.revokeObjectURL(video.dataset.blobUrl);
-        delete video.dataset.blobUrl;
-        video.src = '';
     }
 };
 

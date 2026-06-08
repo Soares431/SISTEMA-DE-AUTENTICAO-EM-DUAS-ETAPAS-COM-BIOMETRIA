@@ -1,6 +1,5 @@
 using BiometricAcess.Worker.Models;
 using BiometricAcess.Worker.Services;
-using InfraestruturaBloco1.Services;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
@@ -107,28 +106,6 @@ namespace BiometricAcess.Worker.Simulador
                 await pessoaRepo.AtualizarUltimoAcesso(pessoa.Id);
             }
 
-            // FIRE-AND-FORGET:
-            // 1. Pré-calcula o path do arquivo (sem gravar ainda)
-            // 2. INSERE tentativa NO BANCO já com GravacaoPath
-            // 3. Dispara FFmpeg em background — não bloqueia
-            //
-            // Resultado: tentativa aparece no /historico INSTANTANEAMENTE com botão "Ver",
-            // e o vídeo fica disponível ~60s depois. Se Worker morrer antes do FFmpeg
-            // terminar, cleanup do Int1 (próximo startup) zera GravacaoPath de arquivos
-            // que não existem.
-            string? gravacaoPath = null;
-            var cameraService = scope.ServiceProvider.GetService<CameraService>();
-            if (cameraService == null)
-            {
-                Console.WriteLine($"[SimuladorBanco] AVISO: CameraService não registrado no DI — gravação pulada");
-            }
-            else
-            {
-                gravacaoPath = cameraService.PrepararPath(ambiente.Id, evento.DataHora);
-                cameraService.GravarEmBackground(ambiente.Id, gravacaoPath, ambiente.TempoEsperaGravacaoSeg, evento.DataHora);
-                Console.WriteLine($"[SimuladorBanco] FFmpeg disparado em BG — arquivo será: {gravacaoPath}");
-            }
-
             var tentativa = new TentativaAcesso
             {
                 PessoaId        = pessoa?.Id,
@@ -137,13 +114,12 @@ namespace BiometricAcess.Worker.Simulador
                 AcessoLiberado  = acessoLiberado,
                 MotivoNegacao   = motivoNegacao,
                 TipoVerificacao = evento.TipoVerificacao,
-                DataExpiracao   = DateTime.UtcNow.AddDays(retencaoDias),
-                GravacaoPath    = gravacaoPath
+                DataExpiracao   = DateTime.UtcNow.AddDays(retencaoDias)
             };
 
             tentativaRepo.Adicionar(tentativa);
 
-            Console.WriteLine($"[SimuladorBanco] Pessoa {evento.PessoaID} | {(acessoLiberado ? "LIBERADO" : $"NEGADO — {motivoNegacao}")} | Ambiente: {ambiente.Nome} | Tentativa #{tentativa.Id} | Gravacao: {(gravacaoPath != null ? "✓ agendada" : "✗")}");
+            Console.WriteLine($"[SimuladorBanco] Pessoa {evento.PessoaID} | {(acessoLiberado ? "LIBERADO" : $"NEGADO — {motivoNegacao}")} | Ambiente: {ambiente.Nome} | Tentativa #{tentativa.Id}");
         }
     }
 }

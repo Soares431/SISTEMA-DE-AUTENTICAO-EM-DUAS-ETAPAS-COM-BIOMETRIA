@@ -156,7 +156,6 @@
                             <th>Ambiente</th>
                             <th>Motivo</th>
                             <th>Hora</th>
-                            <th>Gravação</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -167,16 +166,6 @@
                                 <td><span class="flex items-center gap-2 text-muted"><Icon Name="map-pin" Size="16" /> @(item.Ambiente?.Nome ?? $"Ambiente {item.AmbienteId}")</span></td>
                                 <td><span class="badge badge-destructive">@(item.MotivoNegacao ?? "-")</span></td>
                                 <td><span class="flex items-center gap-2 text-muted"><Icon Name="clock" Size="16" /> @DateHelper.Local(item.DataHora).ToString("HH:mm")</span></td>
-                                <td>
-                                    @if (item.GravacaoPath != null)
-                                    {
-                                        <button class="btn btn-ghost btn-sm text-primary" @onclick="() => AbrirGravacao(item.Id)">Ver vídeo</button>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-sm text-muted">Indisponível</span>
-                                    }
-                                </td>
                             </tr>
                         }
                     </tbody>
@@ -276,12 +265,6 @@
         "media" => "badge-warning",
         _ => "badge-muted"
     };
-
-    private async Task AbrirGravacao(int tentativaId)
-    {
-        var apiUrl = Config["BancoApiUrl"] ?? "http://localhost:5018/";
-        await JS.InvokeVoidAsync("abrirGravacao", apiUrl, tentativaId, TokenStore.Token);
-    }
 
     // Refresh manual acionado pelo botão na barra do gráfico
     private async Task HandleRefresh()

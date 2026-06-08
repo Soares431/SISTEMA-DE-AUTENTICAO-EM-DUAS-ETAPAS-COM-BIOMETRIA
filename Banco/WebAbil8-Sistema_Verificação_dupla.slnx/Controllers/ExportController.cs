@@ -86,7 +86,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 (!ambienteId.HasValue || h.AmbienteId == ambienteId.Value) &&
                 (string.IsNullOrEmpty(tipo) || tipo == "todos" || h.TipoVerificacao == tipo) &&
                 (string.IsNullOrEmpty(gravacao) || gravacao == "todos" ||
-                    (gravacao == "com" ? h.GravacaoPath != null : h.GravacaoPath == null)) &&
+                    (gravacao == "com" ? !string.IsNullOrEmpty(h.GravacaoPath) : string.IsNullOrEmpty(h.GravacaoPath))) &&
                 (!de.HasValue  || h.DataHora.Date >= de.Value.Date) &&
                 (!ate.HasValue || h.DataHora.Date <= ate.Value.Date));
         }

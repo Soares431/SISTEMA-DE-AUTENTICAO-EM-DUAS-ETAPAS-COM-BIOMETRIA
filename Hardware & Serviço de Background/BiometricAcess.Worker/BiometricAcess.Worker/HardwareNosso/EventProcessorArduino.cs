@@ -16,7 +16,7 @@ public class EventProcessorArduino : IEventProcessor
     private readonly ITentativaAcessoRepository _tentativaRepository;
     private readonly IConfiguracaoRepository _configuracaoRepository;
     private readonly IAnvizArduinoService _arduinoService;
-    private readonly CameraService? _cameraService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly string _aesKey;
 
     public EventProcessorArduino(
@@ -28,7 +28,7 @@ public class EventProcessorArduino : IEventProcessor
         IConfiguracaoRepository configuracaoRepository,
         IAnvizArduinoService arduinoService,
         IConfiguration configuration,
-        CameraService? cameraService = null)
+        IServiceScopeFactory scopeFactory)
     {
         _pessoaRepository = pessoaRepository;
         _ambientePessoaRepository = ambientePessoaRepository;
@@ -37,7 +37,7 @@ public class EventProcessorArduino : IEventProcessor
         _tentativaRepository = tentativaRepository;
         _configuracaoRepository = configuracaoRepository;
         _arduinoService = arduinoService;
-        _cameraService = cameraService;
+        _scopeFactory = scopeFactory;
         _aesKey = configuration["AesKey"] ?? "5cta-aes-key-senha-segura-32char";
     }
 
@@ -174,19 +174,29 @@ public class EventProcessorArduino : IEventProcessor
 
         await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
         var tentativa = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
+        AgendarGravacaoOnvif(tentativa.Id, ambiente);
+    }
 
-        // HW-16 — aguarda gravação da câmera em entradas liberadas (doc_tecnica §5.11)
-        if (_cameraService != null)
+    // §5.11 doc técnica: após acesso liberado, aguarda em background a câmera capturar
+    // o movimento via ONVIF e persiste a URL da gravação na TentativaAcesso.
+    private void AgendarGravacaoOnvif(int tentativaId, Ambiente ambiente)
+    {
+        _ = Task.Run(async () =>
         {
-            var gravacaoPath = await _cameraService.GravarTrechoRTSP(
-                ambiente.Id, evento.DataHora, ambiente.TempoEsperaGravacaoSeg);
-            if (gravacaoPath != null)
+            try
             {
-                tentativa.GravacaoPath = gravacaoPath;
-                _tentativaRepository.Atualizar(tentativa);
-                Console.WriteLine($"[Arduino] Gravação associada — Pessoa: {pessoa.Id} | Path: {gravacaoPath}");
+                using var scope = _scopeFactory.CreateScope();
+                var cameraService = scope.ServiceProvider.GetRequiredService<CameraService>();
+                var tentativaRepo = scope.ServiceProvider.GetRequiredService<ITentativaAcessoRepository>();
+                var url = await cameraService.MonitorarNovoArquivo(ambiente.Id, DateTime.UtcNow, ambiente.TempoEsperaGravacaoSeg);
+                if (!string.IsNullOrEmpty(url))
+                    tentativaRepo.AtualizarGravacaoPath(tentativaId, url);
             }
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ONVIF Arduino] Falha ao associar gravação à tentativa {tentativaId}: {ex.Message}");
+            }
+        });
     }
 
     private DispositivoT50? BuscarDispositivoPorIp(string ip)

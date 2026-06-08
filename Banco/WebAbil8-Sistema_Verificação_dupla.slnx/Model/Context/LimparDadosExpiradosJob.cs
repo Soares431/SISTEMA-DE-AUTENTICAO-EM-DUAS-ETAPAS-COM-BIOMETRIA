@@ -26,32 +26,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
                 .Where(t => t.DataExpiracao != null && t.DataExpiracao < agora)
                 .ToList();
 
-            // Deleta o arquivo MP4 de cada tentativa expirada antes de remover do banco.
-            // Sem isto, os MP4 ficariam órfãos em disco consumindo espaço.
-            int arquivosRemovidos = 0;
-            foreach (var t in tentativasExpiradas)
-            {
-                if (!string.IsNullOrEmpty(t.GravacaoPath))
-                {
-                    try
-                    {
-                        if (File.Exists(t.GravacaoPath))
-                        {
-                            File.Delete(t.GravacaoPath);
-                            arquivosRemovidos++;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Não bloqueia a limpeza do banco se um arquivo falhar (pode estar em uso)
-                        _logger.LogWarning(ex, "Falha ao deletar gravação {path} da tentativa {id}", t.GravacaoPath, t.Id);
-                    }
-                }
-            }
-
             _context.TentativasAcesso.RemoveRange(tentativasExpiradas);
-            _logger.LogInformation("{count} tentativas expiradas removidas ({arquivos} arquivos MP4 deletados).",
-                tentativasExpiradas.Count, arquivosRemovidos);
+            _logger.LogInformation("{count} tentativas expiradas removidas.", tentativasExpiradas.Count);
 
             var logsExpirados = _context.LogsAdmin
                 .Where(l => l.DataExpiracao != null && l.DataExpiracao < agora)

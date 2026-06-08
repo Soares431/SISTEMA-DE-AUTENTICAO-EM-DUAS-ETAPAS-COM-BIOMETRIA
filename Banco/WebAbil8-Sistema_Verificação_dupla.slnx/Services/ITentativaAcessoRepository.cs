@@ -14,9 +14,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         List<TentativaAcesso> ListarPorPessoa(long pessoaId);
         List<TentativaAcesso> ListarPorAmbiente(int ambienteId);
 
-        // UPDATE direto SQL — evita problemas de tracking do EF Core quando a entity
-        // já está no ChangeTracker do scope e SetValues não dispara UPDATE.
-        // Usado pelo Worker após CameraService gerar o MP4.
+        // Persiste a URL/path da gravação ONVIF associada a uma tentativa já registrada.
+        // Chamado pelo CameraService.MonitorarNovoArquivo após o tempo de espera configurado.
         int AtualizarGravacaoPath(int tentativaId, string gravacaoPath);
     }
 }
