@@ -3,7 +3,7 @@
 Guia operacional para a entrega do Sistema de Controle de Acesso Biométrico no 5º CTA — 10ª Brigada de Infantaria. Cobre tudo que **não pode ser feito no laboratório** porque depende de hardware físico, rede do quartel, credenciais de produção ou decisão do cliente.
 
 > Documento vivo. Atualize após cada etapa concluída — marcar data e responsável.
-> Última atualização: 2026-06-08 (após implementação ONVIF, gaps G2-G5 e fila T50Pendencia)
+> Última atualização: 2026-06-09 (UX de cadastro simplificada — multi-seleção de pessoas, "Adicionar a Ambientes" no perfil, formulários de câmera enxutos)
 
 ---
 
@@ -455,11 +455,12 @@ Duração: **2 horas** com até 5 admins por sessão.
 | Tempo | Tópico | Tela |
 |---|---|---|
 | 10 min | Visão geral do sistema | Dashboard |
-| 15 min | Cadastrar nova pessoa, entender senha gerada, enviar email | /pessoas |
-| 15 min | Adicionar pessoa a ambiente, T50 cheio + modo somente senha | /ambientes/{id} |
+| 15 min | Cadastrar nova pessoa, entender ID + senha gerados, modo de acesso fixado no perfil | /pessoas |
+| 15 min | Adicionar **várias pessoas de uma vez** a um ambiente (busca + chips) | /ambientes/{id} |
+| 10 min | Adicionar **uma pessoa a vários ambientes** (seleção visual com cards no perfil) | /pessoas/{id} |
 | 10 min | Inativar pessoa (confirmação dupla) | /pessoas/{id} |
 | 10 min | Resetar biometria | /pessoas/{id} |
-| 10 min | Reenviar senha | /pessoas/{id} |
+| 10 min | Reenviar credenciais (ID + senha) por email | /pessoas/{id} |
 | 10 min | Cadastrar câmera + visualização ao vivo (HLS) | /cameras |
 | 10 min | Consultar histórico com filtros + ver gravação ONVIF | /historico |
 | 10 min | Exportar PDFs (incluindo Relatório de Ambiente) | /historico, /ambientes/{id} |
@@ -478,6 +479,18 @@ Duração: **2 horas** com até 5 admins por sessão.
 - **Toda ação fica registrada em logs** (mostrar `/logs` com a ação que ele mesmo acabou de fazer)
 - **Inativação remove acesso imediatamente**, não há "desfazer"
 - **Senhas das pessoas são exibidas só 1 vez no cadastro** — anotar ou confiar no email
+- **Modo de acesso (digital+senha vs somente senha) é decidido no perfil da pessoa, não no vínculo com ambiente** — não há mais escolha por T50 ou por ambiente
+
+### Como o vínculo Pessoa ↔ Ambiente ↔ T50 funciona (regra simplificada)
+
+> Importante para o treinamento: explicar essa regra logo no início pra evitar dúvidas durante o cadastro.
+
+- **Toda pessoa vinculada a um ambiente é cadastrada automaticamente em TODOS os T50 daquele ambiente.**
+- **Se um novo T50 é vinculado ao ambiente depois, todas as pessoas já existentes são copiadas para ele** automaticamente (respeitando capacidade de 1000 digitais).
+- **Modo de acesso vem do perfil da pessoa:**
+  - `digital + senha` → ocupa 1 slot em cada T50 do ambiente
+  - `somente senha` → vincula só ao ambiente, **não ocupa slot de nenhum T50**
+- **Não existe mais escolha de "em qual T50 cadastrar a digital".** Se o admin quer separar pessoas por T50, precisa criar ambientes diferentes.
 
 ---
 
@@ -667,6 +680,31 @@ sc.exe start "5CTA-MediaMTX"
 - Latência típica: 4-8 segundos (limitação do HLS)
 
 > Para latência menor (~1s) considere usar **LL-HLS** ou **WebRTC** — disponíveis no MediaMTX mas precisam configuração adicional.
+
+#### 10.2.5 Referência rápida — formatos de URL aceitos pelo painel
+
+Os formulários `/cameras` (cadastrar/editar câmera) e `/ambientes/{id}` (modal "Adicionar Câmera") aceitam três campos de URL. Os formulários intencionalmente exibem apenas placeholders curtos — a referência completa de formato fica abaixo:
+
+| Campo do formulário | Para que serve | Exemplo de preenchimento |
+|---|---|---|
+| **URL RTSP** | Stream da câmera, usado pra construir a URL de Replay ONVIF (§10.3). **Inclua usuário:senha** — o sistema extrai dela pra autenticar no ONVIF. | `rtsp://admin:Senha123@192.168.1.100:554/Streaming/Channels/101` |
+| **URL HLS** *(opcional)* | URL servida pelo MediaMTX para tocar o stream ao vivo no painel (`/cameras` modal "Ver ao Vivo"). Deixe em branco se não vai usar streaming ao vivo. | `http://localhost:8888/entrada/index.m3u8` |
+| **Endereço ONVIF** | Endpoint SOAP da câmera para validar conexão antes de montar URL de Replay. | `http://192.168.1.100:80/onvif/device_service` |
+
+**Webcam local para testes (sem câmera IP):** o sistema atual aceita `dshow://Integrated Camera` no campo URL RTSP **apenas** se você rodar o MediaMTX com um path apontando pra dshow — caso contrário, deixe esse campo como uma RTSP normal e use apenas o painel sem stream ao vivo.
+
+**Câmeras Hikvision (URL Channel padrão):**
+- RTSP principal: `rtsp://user:pass@ip:554/Streaming/Channels/101`
+- RTSP secundário (qualidade menor): `rtsp://user:pass@ip:554/Streaming/Channels/102`
+- ONVIF: `http://ip:80/onvif/device_service`
+
+**Câmeras Dahua:**
+- RTSP: `rtsp://user:pass@ip:554/cam/realmonitor?channel=1&subtype=0`
+- ONVIF: `http://ip:80/onvif/device_service`
+
+**Câmeras Intelbras VIP:** mesmo padrão da Hikvision (`/Streaming/Channels/101`).
+
+> Se tiver dúvida de qual URL exata a câmera aceita: use o **ONVIF Device Manager** (gratuito) para descobrir RTSP e ONVIF na mesma tela.
 
 ---
 

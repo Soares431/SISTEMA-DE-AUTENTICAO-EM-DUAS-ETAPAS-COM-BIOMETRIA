@@ -4,6 +4,9 @@
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbientePessoaRepository AmbientePessoaRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject IAmbienteT50Repository AmbienteT50Repo
+@inject IPessoaT50Repository PessoaT50Repo
+@inject IT50PendenciaRepository T50PendenciaRepo
 @inject IDispositivoT50Repository DispositivoRepo
 @inject ICodigoRepository CodigoRepo
 @inject ISenhaRepository SenhaRepo
@@ -38,6 +41,11 @@
                             <span class="text-muted">ID T50:</span>
                             <span class="font-mono font-semibold">@(pessoa.CodigoUsuario ?? "—")</span>
                         </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <Icon Name="file-text" Size="16" CssClass="text-muted" />
+                            <span class="text-muted">CPF:</span>
+                            <span class="font-mono">@FormatHelper.FormatarCpf(pessoa.Cpf)</span>
+                        </div>
                         <div class="flex items-center gap-3 text-sm"><Icon Name="mail" Size="16" CssClass="text-muted" /> @pessoa.Email</div>
                         <div class="flex items-center gap-3 text-sm">
                             <Icon Name="fingerprint" Size="16" CssClass="text-muted" />
@@ -45,9 +53,11 @@
                                 Biometria @(pessoa.biometriaCadastrada != null ? "cadastrada" : "pendente")
                             </span>
                         </div>
-                        <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Ultimo acesso: @(DateHelper.Local(pessoa.dataUltimoAcesso)?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
+                        <div class="flex items-center gap-3 text-sm"><Icon Name="calendar" Size="16" CssClass="text-muted" /><span class="text-muted">Cadastro: @(DateHelper.Local(pessoa.dataCadastro)?.ToString("dd/MM/yyyy") ?? "-")</span></div>
+                        <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Último acesso: @(DateHelper.Local(pessoa.dataUltimoAcesso)?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
                     </div>
                     <div class="mt-6 pt-6 border-t space-y-xs">
+                        <button class="btn btn-primary btn-block" @onclick="AbrirModalAddAmbientes"><Icon Name="plus" Size="16" /> Adicionar a Ambientes</button>
                         <button class="btn btn-outline btn-block" @onclick="() => showEdit = true"><Icon Name="edit" Size="16" /> Editar Perfil</button>
                         <button class="btn btn-outline btn-block" @onclick="HandleReenviarSenha" disabled="@isReenviando">
                             @if (isReenviando) { <span class="spinner"></span><span>Reenviando…</span> }
@@ -93,7 +103,7 @@
                 else
                 {
                     <div class="card">
-                        <div class="card-header card-header-row"><div><div class="card-title"><Icon Name="history" Size="20" /> Histórico de Entradas</div><p class="card-description">Últimas tentativas de acesso</p></div><a href="/historico" class="btn btn-outline btn-sm">Ver Todos</a></div>
+                        <div class="card-header card-header-row"><div><div class="card-title"><Icon Name="history" Size="20" /> Histórico de Entradas</div><p class="card-description">Últimas tentativas de acesso</p></div><a href="/historico?pessoaId=@pessoa.Id" class="btn btn-outline btn-sm">Ver Todos</a></div>
                         <div class="card-content">
                             <table>
                                 <thead><tr><th>Data/Hora</th><th>Ambiente</th><th>Status</th></tr></thead>
@@ -232,6 +242,92 @@
     </div>
 }
 
+@if (showAddAmbientes && pessoa != null)
+{
+    <div class="modal-overlay">
+        <div class="modal modal-lg" @onclick:stopPropagation="true" style="max-width:960px; width:92vw;">
+            <div class="modal-header">
+                <h3>Adicionar @pessoa.Nome a Ambientes</h3>
+                <p>Selecione um ou mais ambientes. A pessoa será cadastrada em todos os T50 de cada um.</p>
+            </div>
+            <div class="modal-body">
+                <div class="flex items-center gap-4" style="flex-wrap:wrap;">
+                    <div class="input-icon-wrapper flex-1" style="min-width:220px;">
+                        <Icon Name="search" />
+                        <input class="form-input" placeholder="Buscar ambientes..." @bind="addAmbienteBusca" @bind:event="oninput" />
+                    </div>
+                    <select class="form-select" style="width:170px;" @bind="addAmbienteSort">
+                        <option value="nome_az">Nome A→Z</option>
+                        <option value="nome_za">Nome Z→A</option>
+                        <option value="digitais_max">Mais digitais</option>
+                        <option value="digitais_min">Menos digitais</option>
+                    </select>
+                    <button class="btn btn-outline btn-sm" @onclick="ToggleSelecionarTodos">
+                        @(TodosAmbientesSelecionaveisMarcados ? "Desmarcar todos" : "Selecionar todos")
+                    </button>
+                </div>
+
+                @if (todosAmbientes.Count == 0)
+                {
+                    <div class="alert alert-warning" style="margin-top:1rem;">Nenhum ambiente cadastrado.</div>
+                }
+                else if (!AmbientesFiltradosOrdenados.Any())
+                {
+                    <p class="text-muted" style="margin-top:1rem;">Nenhum ambiente bate com os filtros.</p>
+                }
+                else
+                {
+                    <div class="grid grid-3" style="margin-top:1rem; gap:0.75rem;">
+                        @foreach (var amb in AmbientesFiltradosOrdenados)
+                        {
+                            var jaVinculado = ambientesPessoa.Any(a => a.Id == amb.Id);
+                            var selecionado = ambientesSelecionados.Contains(amb.Id);
+                            var t50sDoAmb = t50sPorAmbiente.TryGetValue(amb.Id, out var list) ? list : new();
+                            var digitaisTexto = t50sDoAmb.Any()
+                                ? string.Join(" + ", t50sDoAmb.Select(d => $"{d.DigitaisCadastradas}/1000"))
+                                : "sem T50";
+                            <button type="button"
+                                    style="text-align:left; cursor:@(jaVinculado ? "not-allowed" : "pointer"); background:transparent; border:@(selecionado ? "2px solid var(--primary)" : "1px solid var(--border)"); border-radius:8px; opacity:@(jaVinculado ? "0.55" : "1"); padding:1rem; position:relative; transition:border-color 0.15s;"
+                                    disabled="@jaVinculado"
+                                    @onclick="() => ToggleAmbienteSelecionado(amb.Id)">
+                                <div style="position:absolute; top:0.6rem; right:0.6rem;">
+                                    @if (jaVinculado)
+                                    {
+                                        <span class="badge badge-success" style="font-size:0.7rem;">Já vinculada</span>
+                                    }
+                                    else if (selecionado)
+                                    {
+                                        <Icon Name="check-circle" Size="22" CssClass="text-primary" />
+                                    }
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <Icon Name="map-pin" Size="18" CssClass="text-muted" />
+                                    <h3 class="font-semibold" style="margin:0;">@amb.Nome</h3>
+                                </div>
+                                <p class="text-xs text-muted" style="margin-top:0.5rem;">
+                                    @t50sDoAmb.Count T50 · @digitaisTexto
+                                </p>
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (erroAddAmbientes != null)
+                {
+                    <div class="alert alert-danger" style="margin-top:1rem;">@erroAddAmbientes</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="FecharModalAddAmbientes" disabled="@isAddingAmbientes">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarAddAmbientes" disabled="@(isAddingAmbientes || ambientesSelecionados.Count == 0)">
+                    @if (isAddingAmbientes) { <span class="spinner"></span><span>Adicionando...</span> }
+                    else { <span>Adicionar (@ambientesSelecionados.Count)</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public long Id { get; set; }
     private string tab = "ambientes";
@@ -251,6 +347,167 @@
     private string editNome = "";
     private string editEmail = "";
     private string editCargo = "";
+
+    // Modal "Adicionar a Ambientes" — seleção visual com cards
+    private bool showAddAmbientes = false;
+    private string addAmbienteBusca = "";
+    private string addAmbienteSort = "nome_az";
+    private bool isAddingAmbientes = false;
+    private string? erroAddAmbientes = null;
+    private List<Ambiente> todosAmbientes = new();
+    private Dictionary<int, List<DispositivoT50>> t50sPorAmbiente = new();
+    private HashSet<int> ambientesSelecionados = new();
+
+    private IEnumerable<Ambiente> AmbientesFiltradosOrdenados
+    {
+        get
+        {
+            var q = todosAmbientes.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(addAmbienteBusca))
+                q = q.Where(a => a.Nome.Contains(addAmbienteBusca, StringComparison.OrdinalIgnoreCase));
+            return addAmbienteSort switch
+            {
+                "nome_za" => q.OrderByDescending(a => a.Nome),
+                "digitais_max" => q.OrderByDescending(a => t50sPorAmbiente.TryGetValue(a.Id, out var l) ? l.Sum(d => d.DigitaisCadastradas) : 0),
+                "digitais_min" => q.OrderBy(a => t50sPorAmbiente.TryGetValue(a.Id, out var l) ? l.Sum(d => d.DigitaisCadastradas) : 0),
+                _ => q.OrderBy(a => a.Nome),
+            };
+        }
+    }
+
+    // True se todos os ambientes filtrados E ainda não vinculados estão na seleção
+    private bool TodosAmbientesSelecionaveisMarcados
+    {
+        get
+        {
+            var idsVinculados = ambientesPessoa.Select(a => a.Id).ToHashSet();
+            var selecionaveis = AmbientesFiltradosOrdenados.Where(a => !idsVinculados.Contains(a.Id)).Select(a => a.Id).ToList();
+            return selecionaveis.Any() && selecionaveis.All(id => ambientesSelecionados.Contains(id));
+        }
+    }
+
+    private void AbrirModalAddAmbientes()
+    {
+        todosAmbientes = AmbienteRepo.ListarTodos();
+        t50sPorAmbiente = todosAmbientes.ToDictionary(
+            a => a.Id,
+            a => AmbienteT50Repo.ListarT50sDoAmbiente(a.Id));
+        ambientesSelecionados = new HashSet<int>();
+        addAmbienteBusca = "";
+        addAmbienteSort = "nome_az";
+        erroAddAmbientes = null;
+        showAddAmbientes = true;
+    }
+
+    private void FecharModalAddAmbientes()
+    {
+        showAddAmbientes = false;
+        ambientesSelecionados = new HashSet<int>();
+        addAmbienteBusca = "";
+        erroAddAmbientes = null;
+    }
+
+    private void ToggleAmbienteSelecionado(int ambienteId)
+    {
+        if (ambientesSelecionados.Contains(ambienteId)) ambientesSelecionados.Remove(ambienteId);
+        else ambientesSelecionados.Add(ambienteId);
+        erroAddAmbientes = null;
+    }
+
+    private void ToggleSelecionarTodos()
+    {
+        var idsVinculados = ambientesPessoa.Select(a => a.Id).ToHashSet();
+        var selecionaveis = AmbientesFiltradosOrdenados.Where(a => !idsVinculados.Contains(a.Id)).Select(a => a.Id).ToList();
+        if (selecionaveis.All(id => ambientesSelecionados.Contains(id)))
+        {
+            foreach (var id in selecionaveis) ambientesSelecionados.Remove(id);
+        }
+        else
+        {
+            foreach (var id in selecionaveis) ambientesSelecionados.Add(id);
+        }
+    }
+
+    private async Task HandleConfirmarAddAmbientes()
+    {
+        if (pessoa == null || ambientesSelecionados.Count == 0) return;
+
+        isAddingAmbientes = true;
+        erroAddAmbientes = null;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            // Pré-validação: se a pessoa usa digital, cada T50 dos ambientes selecionados precisa
+            // ter slot livre (a menos que a pessoa já esteja cadastrada nele).
+            if (pessoa.modoAcesso == "digital_e_senha")
+            {
+                foreach (var ambId in ambientesSelecionados)
+                {
+                    if (!t50sPorAmbiente.TryGetValue(ambId, out var t50s)) continue;
+                    foreach (var t50 in t50s)
+                    {
+                        if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id)) continue;
+                        if (t50.DigitaisCadastradas >= 1000)
+                        {
+                            var amb = todosAmbientes.First(a => a.Id == ambId);
+                            erroAddAmbientes = $"T50 '{t50.Nome}' do ambiente '{amb.Nome}' está cheio (1000/1000). Remova templates inativos primeiro.";
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Persiste cada vínculo
+            foreach (var ambId in ambientesSelecionados.ToList())
+            {
+                if (AmbientePessoaRepo.PessoaTemAcesso(ambId, pessoa.Id)) continue;
+
+                AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = ambId, PessoaId = pessoa.Id });
+                LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoa.Id);
+
+                if (pessoa.modoAcesso == "digital_e_senha"
+                    && t50sPorAmbiente.TryGetValue(ambId, out var t50s))
+                {
+                    foreach (var t50 in t50s)
+                    {
+                        if (!PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id))
+                        {
+                            PessoaT50Repo.Adicionar(pessoa.Id, t50.Id);
+                            T50PendenciaRepo.Enfileirar("adicionar", pessoa.Id, t50.Id);
+                        }
+                    }
+
+                    // Reativação: se tem template backup, marca biometria como cadastrada
+                    if (pessoa.templateBackup != null
+                        && pessoa.templateBackup.Length > 0
+                        && pessoa.biometriaCadastrada == null)
+                    {
+                        await PessoaRepo.MarcarBiometriaCadastrada(pessoa.Id);
+                        LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoa.Id);
+                    }
+                }
+            }
+
+            // Ativa a pessoa se estava inativa
+            if (pessoa.Status != "ativo")
+            {
+                await PessoaRepo.AlterarStatus(pessoa.Id, true);
+            }
+
+            // Recarrega o estado e fecha o modal
+            pessoa = await PessoaRepo.BuscarPorId(Id);
+            ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(Id);
+            showAddAmbientes = false;
+            ambientesSelecionados = new HashSet<int>();
+            addAmbienteBusca = "";
+        }
+        catch (Exception ex)
+        {
+            erroAddAmbientes = ex.Message;
+        }
+        finally { isAddingAmbientes = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {

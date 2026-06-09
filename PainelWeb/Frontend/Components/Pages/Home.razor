@@ -44,12 +44,12 @@
         </div>
         <div class="card">
             <div class="card-header card-header-row">
-                <span class="text-sm font-medium text-muted">Alertas T50</span>
+                <span class="text-sm font-medium text-muted">T50 em Alerta</span>
                 <div class="icon-bg icon-bg-warning"><Icon Name="alert-triangle" Size="16" /></div>
             </div>
             <div class="card-content">
                 <div class="stat-value">@totalAlertas</div>
-                <p class="text-xs text-muted">dispositivos</p>
+                <p class="text-xs text-muted">dispositivo(s) offline ou na capacidade</p>
             </div>
         </div>
         <div class="card">
@@ -124,10 +124,11 @@
                     var badgeClass = offline ? "badge-destructive" : "badge-warning";
                     var badgeText = offline ? "Offline" : "Capacidade";
                     <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--muted) 30%, transparent); overflow: hidden;">
-                        <div class="icon-bg @iconBg" style="flex-shrink: 0;"><Icon Name="@(offline ? "wifi-off" : "building")" Size="16" /></div>
+                        <div class="icon-bg @iconBg" style="flex-shrink: 0;"><Icon Name="@(offline ? "wifi-off" : "settings")" Size="16" /></div>
                         <div style="flex: 1; min-width: 0;">
                             <div class="flex items-center gap-2" style="flex-wrap: wrap;">
-                                <span class="font-medium" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">@disp.Nome</span>
+                                <span class="text-xs text-muted" style="flex-shrink: 0;">T50</span>
+                                <span class="font-medium" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%;">@disp.Nome</span>
                                 <span class="badge @badgeClass" style="flex-shrink: 0;">@badgeText</span>
                             </div>
                             <p class="text-sm text-muted" style="overflow-wrap: anywhere;">IP: @disp.EnderecoIP @(offline && disp.UltimaConexao.HasValue ? $"· última conexão {DateHelper.Local(disp.UltimaConexao.Value):dd/MM HH:mm}" : "")</p>
@@ -145,7 +146,7 @@
                 <div class="card-title"><Icon Name="x-circle" CssClass="text-destructive" /> Últimos Acessos Negados</div>
                 <p class="card-description">Tentativas de acesso negadas @(IsHoje ? "hoje" : "em " + dataGrafico.ToString("dd/MM/yyyy"))</p>
             </div>
-            <a href="/historico" class="btn btn-outline btn-sm">Ver todos</a>
+            <a href="/historico?status=negado" class="btn btn-outline btn-sm">Ver todos</a>
         </div>
         <div class="card-content">
             <div class="table-wrapper">

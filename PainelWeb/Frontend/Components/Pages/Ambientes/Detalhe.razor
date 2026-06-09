@@ -50,7 +50,7 @@
                 <div class="card-header card-header-row">
                     <div>
                         <div class="card-title"><Icon Name="settings" Size="20" /> Dispositivos T50 vinculados</div>
-                        <p class="card-description">@t50sVinculados.Count terminal(is) — ao adicionar um T50 ao ambiente, todas as @pessoas.Count pessoa(s) já cadastradas são copiadas pra ele (respeitando a capacidade)</p>
+                        <p class="card-description">@t50sVinculados.Count terminal(is) — novos T50 recebem as @pessoas.Count pessoa(s) já cadastradas automaticamente</p>
                     </div>
                     <div class="flex gap-2">
                         <button class="btn btn-primary btn-sm" @onclick="AbrirAdicionarT50">
@@ -163,65 +163,114 @@
 {
     <div class="modal-overlay">
         <div class="modal" @onclick:stopPropagation="true">
-            <div class="modal-header"><h3>Adicionar Pessoa</h3><p>Selecione uma pessoa para conceder acesso a este ambiente</p></div>
+            <div class="modal-header">
+                <h3>Adicionar Pessoa(s)</h3>
+                <p>Busque pelo nome e selecione quantas pessoas quiser. Todas serão cadastradas em todos os T50 do ambiente.</p>
+            </div>
             <div class="modal-body">
                 @if (pessoasDisponiveis.Count == 0)
                 {
                     <p class="text-muted">Todas as pessoas cadastradas já têm acesso a este ambiente.</p>
                 }
+                else if (!t50sVinculados.Any())
+                {
+                    <div class="alert alert-warning">Ambiente sem T50 vinculado — adicione um T50 antes de cadastrar pessoas.</div>
+                }
                 else
                 {
                     <div class="form-group">
-                        <label class="form-label">Pessoa</label>
-                        <select class="form-select" @bind="pessoaSelecionadaId">
-                            @foreach (var p in pessoasDisponiveis)
+                        <div style="border:1px solid var(--border); border-radius:6px; padding:0.5rem; display:flex; flex-wrap:wrap; gap:0.35rem; min-height:48px; align-items:center;">
+                            @foreach (var pid in pessoasSelecionadas.ToList())
                             {
-                                <option value="@p.Id">@p.Nome - @p.Cargo</option>
-                            }
-                        </select>
-                    </div>
-                    @if (t50sVinculados.Any())
-                    {
-                        <div class="form-group">
-                            <label class="form-label">Cadastrar biometria em quais T50? <span class="text-destructive">*</span></label>
-                            <p class="text-xs text-muted">Marque pelo menos um. Em produção, cada T50 marcado vai requerer enroll físico da digital no terminal.</p>
-                            <div class="space-y-xs" style="display:flex; flex-direction:column; gap:0.5rem; padding:0.5rem 0;">
-                                @foreach (var t50 in t50sVinculados)
+                                var p = pessoasDisponiveis.FirstOrDefault(x => x.Id == pid);
+                                if (p != null)
                                 {
-                                    var lotado = t50.DigitaisCadastradas >= 1000;
-                                    <label class="flex items-center gap-2 text-sm" style="@(lotado ? "opacity:0.5;" : "")">
-                                        <input type="checkbox"
-                                               checked="@t50sSelecionadosParaPessoa.Contains(t50.Id)"
-                                               disabled="@lotado"
-                                               @onchange="(e) => ToggleT50ParaPessoa(t50.Id, (bool)e.Value!)" />
-                                        <span>
-                                            <strong>@t50.Nome</strong> (@t50.EnderecoIP) — @t50.DigitaisCadastradas/1000 digitais
-                                            @if (lotado) { <span class="badge badge-destructive">Cheio</span> }
-                                        </span>
-                                    </label>
+                                    <span style="background:var(--muted); padding:0.25rem 0.6rem; border-radius:999px; display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;">
+                                        <span>@p.Nome</span>
+                                        <button type="button" style="background:none; border:none; cursor:pointer; padding:0; line-height:1;" @onclick="() => RemoverPessoaSelecionada(p.Id)" title="Remover">
+                                            <Icon Name="x" Size="12" />
+                                        </button>
+                                    </span>
                                 }
-                            </div>
-                            @if (!t50sSelecionadosParaPessoa.Any())
+                            }
+                            <input style="flex:1; min-width:180px; border:none; outline:none; background:transparent; padding:0.25rem;"
+                                   placeholder="@(pessoasSelecionadas.Count == 0 ? "Buscar por nome, cargo ou email..." : "Buscar mais...")"
+                                   @bind="buscaPessoa" @bind:event="oninput" />
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(buscaPessoa))
+                        {
+                            var sugestoes = PessoasFiltradas.Take(8).ToList();
+                            @if (sugestoes.Any())
                             {
-                                <p class="text-xs text-destructive">Selecione pelo menos um T50, ou marque "Somente senha" abaixo.</p>
+                                <div style="border:1px solid var(--border); border-radius:6px; margin-top:0.4rem; max-height:240px; overflow-y:auto;">
+                                    @foreach (var p in sugestoes)
+                                    {
+                                        <button type="button"
+                                                style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; width:100%; background:none; border:none; border-bottom:1px solid var(--border); text-align:left; cursor:pointer;"
+                                                @onclick="() => AdicionarPessoaSelecionada(p.Id)">
+                                            <span class="avatar avatar-sm">@GetIniciais(p.Nome)</span>
+                                            <span style="flex:1;">
+                                                <div style="font-weight:500;">@p.Nome</div>
+                                                <div class="text-xs text-muted">@p.Cargo · @(p.modoAcesso == "somente_senha" ? "somente senha" : "digital + senha")</div>
+                                            </span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-sm text-muted" style="margin-top:0.4rem;">Nenhuma pessoa encontrada.</p>
+                            }
+                        }
+                    </div>
+
+                    @if (pessoasSelecionadas.Any())
+                    {
+                        var pessoasObjs = pessoasSelecionadas
+                            .Select(pid => pessoasDisponiveis.FirstOrDefault(x => x.Id == pid))
+                            .Where(p => p != null)
+                            .ToList();
+                        var qtdDigital = pessoasObjs.Count(p => p!.modoAcesso == "digital_e_senha");
+                        var qtdSenha = pessoasObjs.Count - qtdDigital;
+                        var t50sCheios = new List<string>();
+                        foreach (var t50 in t50sVinculados)
+                        {
+                            var capacidadeRestante = 1000 - t50.DigitaisCadastradas;
+                            if (qtdDigital > capacidadeRestante)
+                                t50sCheios.Add($"{t50.Nome} (faltam {qtdDigital - capacidadeRestante})");
+                        }
+                        capacidadeOk = !t50sCheios.Any();
+                        <div class="alert @(capacidadeOk ? "alert-success" : "alert-danger")" style="font-size:0.85rem;">
+                            <strong>@pessoasSelecionadas.Count pessoa(s) selecionada(s).</strong>
+                            @if (qtdDigital > 0)
+                            {
+                                <span> @qtdDigital com digital — cadastradas em todos os @t50sVinculados.Count T50.</span>
+                            }
+                            @if (qtdSenha > 0)
+                            {
+                                <span> @qtdSenha somente-senha — sem cadastro de digital.</span>
+                            }
+                            @if (!capacidadeOk)
+                            {
+                                <div class="text-destructive" style="margin-top:0.35rem;">
+                                    Capacidade insuficiente em: @string.Join(", ", t50sCheios)
+                                </div>
                             }
                         </div>
-                        <label class="flex items-center gap-2 text-sm">
-                            <input type="checkbox" @bind="aceitouSomenteSenha" />
-                            Esta pessoa será <strong>somente senha</strong> (não usar digital em nenhum T50)
-                        </label>
                     }
-                    else
+
+                    @if (erroAdicionarPessoa != null)
                     {
-                        <div class="alert alert-warning">Ambiente sem T50 vinculado — adicione um T50 antes de cadastrar pessoas.</div>
+                        <div class="alert alert-danger">@erroAdicionarPessoa</div>
                     }
                 }
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" @onclick="() => showAddPessoa = false">Cancelar</button>
+                <button class="btn btn-outline" @onclick="FecharModalAdicionarPessoa" disabled="@isAdicionandoPessoa">Cancelar</button>
                 <button class="btn btn-primary" @onclick="HandleAdicionarPessoa"
-                    disabled="@(isAdicionandoPessoa || pessoasDisponiveis.Count == 0 || !t50sVinculados.Any() || (!aceitouSomenteSenha && !t50sSelecionadosParaPessoa.Any()))">
-                    @if (isAdicionandoPessoa) { <span class="spinner"></span><span>Adicionando…</span> } else { <span>Adicionar</span> }
+                    disabled="@(isAdicionandoPessoa || pessoasDisponiveis.Count == 0 || !t50sVinculados.Any() || pessoasSelecionadas.Count == 0 || !capacidadeOk)">
+                    @if (isAdicionandoPessoa) { <span class="spinner"></span><span>Adicionando...</span> } else { <span>Pronto</span> }
                 </button>
             </div>
         </div>
@@ -254,10 +303,10 @@
             <div class="modal-header"><h3>Adicionar Câmera</h3><p>Configure uma nova câmera para este ambiente</p></div>
             <div class="modal-body space-y-sm">
                 <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="80" placeholder="Ex: Câmera Principal" @bind="novaCameraNome" @bind:event="oninput" /></div>
-                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://..." @bind="novaCameraRtsp" @bind:event="oninput" /></div>
+                <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" placeholder="rtsp://usuario:senha@ip:554/stream" @bind="novaCameraRtsp" @bind:event="oninput" /></div>
                 <div class="form-group">
-                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, feed ao vivo)</span></label>
-                    <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="novaCameraHls" @bind:event="oninput" />
+                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional)</span></label>
+                    <input class="form-input" maxlength="255" placeholder="http://ip:porta/path/index.m3u8" @bind="novaCameraHls" @bind:event="oninput" />
                 </div>
                 <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" placeholder="http://ip:porta/onvif/device_service" @bind="novaCameraOnvif" @bind:event="oninput" /></div>
                 <div class="form-group">
@@ -314,17 +363,14 @@
                 </div>
                 @if (t50Sel != null)
                 {
-                    <div class="alert @(cabeNoT50 ? "alert-success" : "alert-danger")">
-                        <strong>Pré-validação de capacidade:</strong><br />
-                        - Pessoas neste ambiente a copiar: <strong>@pessoasACopiar</strong><br />
-                        - Capacidade restante em <strong>@t50Sel.Nome</strong>: <strong>@capacidadeRestante</strong> de 1000<br />
+                    <div class="alert @(cabeNoT50 ? "alert-success" : "alert-danger")" style="font-size:0.85rem;">
                         @if (cabeNoT50)
                         {
-                            <span>OK — após vinculação, o T50 terá <strong>@(t50Sel.DigitaisCadastradas + pessoasACopiar) / 1000</strong> digitais.</span>
+                            <span><strong>OK.</strong> Copia @pessoasACopiar pessoa(s) — T50 ficará com <strong>@(t50Sel.DigitaisCadastradas + pessoasACopiar)/1000</strong>.</span>
                         }
                         else
                         {
-                            <span>BLOQUEADO — faltam <strong>@(pessoasACopiar - capacidadeRestante)</strong> slots no T50 destino. Remova templates inativos ou escolha outro T50.</span>
+                            <span><strong>Bloqueado.</strong> Faltam <strong>@(pessoasACopiar - capacidadeRestante)</strong> slot(s) em @t50Sel.Nome.</span>
                         }
                     </div>
                 }
@@ -417,8 +463,11 @@
     private string? errAddT50 = null;
     private int novoT50ParaAdicionarId = 0;
     private int showConfirmRemoverT50 = 0; // ID do T50 a remover (0 = modal fechado)
-    // T50s marcados pelo admin no modal "Adicionar Pessoa"
-    private HashSet<int> t50sSelecionadosParaPessoa = new();
+    // Modal "Adicionar Pessoa(s)" — busca + chips multi-seleção
+    private string buscaPessoa = "";
+    private HashSet<long> pessoasSelecionadas = new();
+    private bool capacidadeOk = true;
+    private string? erroAdicionarPessoa = null;
 
     private void RecarregarT50s()
     {
@@ -474,11 +523,38 @@
         showConfirmRemoverT50 = 0;
     }
 
-    private void ToggleT50ParaPessoa(int t50Id, bool marcar)
+    // Computed: pessoas que casam com a busca e que ainda não foram selecionadas
+    private IEnumerable<Pessoa> PessoasFiltradas => pessoasDisponiveis
+        .Where(p => !pessoasSelecionadas.Contains(p.Id))
+        .Where(p => string.IsNullOrWhiteSpace(buscaPessoa)
+            || p.Nome.Contains(buscaPessoa, StringComparison.OrdinalIgnoreCase)
+            || (p.Cargo != null && p.Cargo.Contains(buscaPessoa, StringComparison.OrdinalIgnoreCase))
+            || (p.Email != null && p.Email.Contains(buscaPessoa, StringComparison.OrdinalIgnoreCase)))
+        .OrderBy(p => p.Nome);
+
+    private void AdicionarPessoaSelecionada(long pid)
     {
-        if (marcar) t50sSelecionadosParaPessoa.Add(t50Id);
-        else t50sSelecionadosParaPessoa.Remove(t50Id);
+        pessoasSelecionadas.Add(pid);
+        buscaPessoa = "";
+        erroAdicionarPessoa = null;
     }
+
+    private void RemoverPessoaSelecionada(long pid)
+    {
+        pessoasSelecionadas.Remove(pid);
+        erroAdicionarPessoa = null;
+    }
+
+    private void FecharModalAdicionarPessoa()
+    {
+        showAddPessoa = false;
+        pessoasSelecionadas = new HashSet<long>();
+        buscaPessoa = "";
+        erroAdicionarPessoa = null;
+    }
+
+    private static string GetIniciais(string nome) =>
+        string.IsNullOrWhiteSpace(nome) ? "?" : string.Join("", nome.Split(' ').Take(2).Select(n => n.Length > 0 ? n[0] : ' ')).ToUpper();
 
     private string nomeConfirmacaoExcluir = "";
     private string? erroExcluir = null;
@@ -489,8 +565,6 @@
     private List<Pessoa> pessoasDisponiveis = new();
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.Camera> cameras = new();
     private int tempoEspera = 60;
-    private long pessoaSelecionadaId = 0;
-    private bool aceitouSomenteSenha = false;
     private string novaCameraNome = "";
     private string novaCameraRtsp = "";
     private string novaCameraHls = "";
@@ -515,19 +589,15 @@
     {
         var idsComAcesso = pessoas.Select(p => p.Id).ToHashSet();
         pessoasDisponiveis = todas.Where(p => !idsComAcesso.Contains(p.Id)).ToList();
-        pessoaSelecionadaId = pessoasDisponiveis.FirstOrDefault()?.Id ?? 0;
     }
 
     private async Task AbrirModalAdicionarPessoa()
     {
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
         RecarregarT50s();
-        // Pré-seleciona todos os T50 não-cheios como conveniência (admin pode desmarcar)
-        t50sSelecionadosParaPessoa = t50sVinculados
-            .Where(t => t.DigitaisCadastradas < 1000)
-            .Select(t => t.Id)
-            .ToHashSet();
-        aceitouSomenteSenha = false;
+        pessoasSelecionadas = new HashSet<long>();
+        buscaPessoa = "";
+        erroAdicionarPessoa = null;
         showAddPessoa = true;
     }
 
@@ -579,69 +649,77 @@
 
     private async Task HandleAdicionarPessoa()
     {
-        if (pessoaSelecionadaId == 0) return;
-        // Validação: precisa ter selecionado T50s OU marcado somente-senha
-        if (!aceitouSomenteSenha && !t50sSelecionadosParaPessoa.Any()) return;
-        // Validação: T50s selecionados precisam ter capacidade
-        if (!aceitouSomenteSenha)
-        {
-            foreach (var t50Id in t50sSelecionadosParaPessoa)
-            {
-                var t = t50sVinculados.FirstOrDefault(x => x.Id == t50Id);
-                if (t != null && t.DigitaisCadastradas >= 1000) return;
-            }
-        }
+        if (pessoasSelecionadas.Count == 0 || !t50sVinculados.Any()) return;
 
         isAdicionandoPessoa = true;
+        erroAdicionarPessoa = null;
         StateHasChanged();
         await Task.Yield();
         try
         {
-            // Vincula pessoa ao ambiente
-            AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaSelecionadaId });
-            await PessoaRepo.AlterarStatus(pessoaSelecionadaId, true);
-            LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaSelecionadaId);
-
-            var pessoaAdd = await PessoaRepo.BuscarPorId(pessoaSelecionadaId);
-
-            if (aceitouSomenteSenha)
+            // Pré-valida capacidade: para cada T50 do ambiente, quantas pessoas com digital
+            // serão adicionadas (descontando as que já estão lá). Bloqueia tudo se algum não couber.
+            var pessoasObjs = pessoasSelecionadas
+                .Select(pid => pessoasDisponiveis.FirstOrDefault(x => x.Id == pid))
+                .Where(p => p != null).Select(p => p!).ToList();
+            var pessoasComDigital = pessoasObjs.Where(p => p.modoAcesso == "digital_e_senha").ToList();
+            foreach (var t50 in t50sVinculados)
             {
-                // Modo somente senha — não cadastra digital em nenhum T50
-                if (pessoaAdd != null && pessoaAdd.modoAcesso != "somente_senha")
+                var aAdicionar = pessoasComDigital.Count(p => !PessoaT50Repo.EstaCadastrada(p.Id, t50.Id));
+                var capacidadeRestante = 1000 - t50.DigitaisCadastradas;
+                if (aAdicionar > capacidadeRestante)
                 {
-                    pessoaAdd.modoAcesso = "somente_senha";
-                    await PessoaRepo.Atualizar(pessoaAdd);
+                    erroAdicionarPessoa = $"T50 '{t50.Nome}' não tem capacidade. Faltam {aAdicionar - capacidadeRestante} slot(s).";
+                    return;
                 }
             }
-            else
-            {
-                // Cadastra digital em cada T50 selecionado (incrementa contador de cada um)
-                // e enfileira pendência pro Worker cadastrar no hardware via SDK (§5.2 doc técnica).
-                foreach (var t50Id in t50sSelecionadosParaPessoa)
-                {
-                    PessoaT50Repo.Adicionar(pessoaSelecionadaId, t50Id);
-                    T50PendenciaRepo.Enfileirar("adicionar", pessoaSelecionadaId, t50Id);
-                }
 
-                // Marca biometriaCadastrada se houver templateBackup (reativação)
-                if (pessoaAdd != null
-                    && pessoaAdd.modoAcesso == "digital_e_senha"
-                    && pessoaAdd.templateBackup != null
-                    && pessoaAdd.templateBackup.Length > 0
-                    && pessoaAdd.biometriaCadastrada == null)
+            // Processa cada pessoa selecionada
+            foreach (var pessoaId in pessoasSelecionadas.ToList())
+            {
+                // Idempotente: pula se já está no ambiente
+                if (AmbientePessoaRepo.PessoaTemAcesso(Id, pessoaId)) continue;
+
+                AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaId });
+                await PessoaRepo.AlterarStatus(pessoaId, true);
+                LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Pessoa", (int)pessoaId);
+
+                var pessoaAdd = await PessoaRepo.BuscarPorId(pessoaId);
+                if (pessoaAdd == null) continue;
+
+                // Modo definido no perfil da pessoa — não escolhido aqui
+                if (pessoaAdd.modoAcesso == "digital_e_senha")
                 {
-                    await PessoaRepo.MarcarBiometriaCadastrada(pessoaAdd.Id);
-                    LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoaAdd.Id);
+                    // Propaga para TODOS os T50 do ambiente automaticamente
+                    foreach (var t50 in t50sVinculados)
+                    {
+                        if (!PessoaT50Repo.EstaCadastrada(pessoaAdd.Id, t50.Id))
+                        {
+                            PessoaT50Repo.Adicionar(pessoaAdd.Id, t50.Id);
+                            T50PendenciaRepo.Enfileirar("adicionar", pessoaAdd.Id, t50.Id);
+                        }
+                    }
+
+                    // Reativação: se tem template de backup, marca biometria como cadastrada
+                    if (pessoaAdd.templateBackup != null
+                        && pessoaAdd.templateBackup.Length > 0
+                        && pessoaAdd.biometriaCadastrada == null)
+                    {
+                        await PessoaRepo.MarcarBiometriaCadastrada(pessoaAdd.Id);
+                        LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoaAdd.Id);
+                    }
                 }
+                // somente_senha: pessoa vinculada ao ambiente sem digital em nenhum T50
             }
 
             pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
             RecarregarT50s();
             AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
             showAddPessoa = false;
-            aceitouSomenteSenha = false;
-            t50sSelecionadosParaPessoa = new HashSet<int>();
+            pessoasSelecionadas = new HashSet<long>();
+            buscaPessoa = "";
         }
+        catch (Exception ex) { erroAdicionarPessoa = ex.Message; }
         finally { isAdicionandoPessoa = false; }
     }
 

@@ -154,16 +154,11 @@
                 <div class="form-group"><label class="form-label">Nome da Câmera</label><input class="form-input" maxlength="80" placeholder="Ex: Recepção - Entrada" @bind="novoNome" @bind:event="oninput" /></div>
                 <div class="form-group">
                     <label class="form-label">URL RTSP <span class="text-destructive">*</span></label>
-                    <input class="form-input" maxlength="255" placeholder="dshow://Integrated Camera" @bind="novoRtsp" @bind:event="oninput" />
-                    <p class="text-xs text-muted">
-                        Webcam local: <code>dshow://Integrated Camera</code> (nome conforme <code>ffmpeg -list_devices true -f dshow -i dummy</code>).<br />
-                        Câmera IP: <code>rtsp://usuario:senha@ip-da-camera:554/stream</code>.
-                    </p>
+                    <input class="form-input" maxlength="255" placeholder="rtsp://usuario:senha@ip:554/stream" @bind="novoRtsp" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, para feed ao vivo no painel)</span></label>
-                    <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="novoHls" @bind:event="oninput" />
-                    <p class="text-xs text-muted">Convenção MediaMTX: porta 8888. Ex: <code>http://localhost:8888/webcam/index.m3u8</code></p>
+                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional)</span></label>
+                    <input class="form-input" maxlength="255" placeholder="http://ip:porta/path/index.m3u8" @bind="novoHls" @bind:event="oninput" />
                 </div>
                 <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" placeholder="http://ip:porta/onvif/device_service" @bind="novoOnvif" @bind:event="oninput" /></div>
                 <div class="form-group">
@@ -197,8 +192,8 @@
                 <div class="form-group"><label class="form-label">Nome</label><input class="form-input" maxlength="80" @bind="editandoCamera.Nome" @bind:event="oninput" /></div>
                 <div class="form-group"><label class="form-label">URL RTSP</label><input class="form-input" maxlength="255" @bind="editandoCamera.UrlRTSP" @bind:event="oninput" /></div>
                 <div class="form-group">
-                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional, para feed ao vivo no painel)</span></label>
-                    <input class="form-input" maxlength="255" placeholder="http://ip:8888/path/index.m3u8" @bind="editandoCamera.UrlHLS" @bind:event="oninput" />
+                    <label class="form-label">URL HLS <span class="text-muted text-sm">(opcional)</span></label>
+                    <input class="form-input" maxlength="255" placeholder="http://ip:porta/path/index.m3u8" @bind="editandoCamera.UrlHLS" @bind:event="oninput" />
                 </div>
                 <div class="form-group"><label class="form-label">Endereço ONVIF</label><input class="form-input" maxlength="255" @bind="editandoCamera.EnderecoONVIF" @bind:event="oninput" /></div>
                 <div class="form-group">

@@ -24,6 +24,14 @@
         </div>
     </div>
 
+    @if (pessoaIdFilter != null)
+    {
+        <div class="alert alert-info" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+            <span><Icon Name="user" Size="14" /> Filtrando por pessoa: <strong>@(pessoaNomeFiltrada ?? $"ID {pessoaIdFilter}")</strong></span>
+            <button class="btn btn-ghost btn-sm" @onclick="LimparFiltroPessoa">Limpar filtro</button>
+        </div>
+    }
+
     <div class="grid grid-4">
         <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-primary"><Icon Name="history" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count</p><p class="text-sm text-muted">Total de Registros</p></div></div></div></div>
         <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-success"><Icon Name="check-circle" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count(h => h.AcessoLiberado)</p><p class="text-sm text-muted">Acessos Permitidos</p></div></div></div></div>
@@ -43,7 +51,7 @@
                 </select>
                 <select class="form-select" @bind="ambFilter">
                     <option value="todos">Todos</option>
-                    @foreach (var a in ambientes)
+                    @foreach (var a in ambientesAtivos)
                     {
                         <option value="@a.Id">@a.Nome</option>
                     }
@@ -171,8 +179,13 @@
     private bool sortAsc = false;
     private DateTime? dataInicio = null;
     private DateTime? dataFim = null;
+    private long? pessoaIdFilter = null;
+    private string? pessoaNomeFiltrada = null;  // só pra exibir no banner "filtrando por..."
     private List<TentativaAcesso> todasTentativas = new();
+    // ambientes = todos (inclui excluídos) — usado pra resolver o nome em tentativas antigas
     private List<Ambiente> ambientes = new();
+    // ambientesAtivos = só não-excluídos — usado no dropdown de filtro
+    private List<Ambiente> ambientesAtivos = new();
     private TentativaAcesso? gravacaoAberta = null;
 
     protected override void OnInitialized()
@@ -181,9 +194,10 @@
             .OrderByDescending(t => t.DataHora)
             .Take(500)
             .ToList();
-        // Inclui ambientes excluídos — tentativas antigas referenciam o ambiente original
-        // mesmo após exclusão (soft-delete preserva o nome no Histórico).
+        // Mantém lista completa pra resolver nome em tentativas antigas (soft-delete preserva FK).
         ambientes = AmbienteRepo.ListarTodosIncluindoExcluidos();
+        // Dropdown de filtro só mostra ambientes operacionais (não excluídos).
+        ambientesAtivos = AmbienteRepo.ListarTodos();
 
         // Pré-aplica filtros vindos pela URL (ex: /historico?ambienteId=3 ao chegar do "Ver no Histórico")
         var uri = new Uri(Nav.Uri);
@@ -192,6 +206,25 @@
             ambFilter = amb.ToString();
         if (qs.TryGetValue("status", out var st) && !string.IsNullOrEmpty(st))
             statusFilter = st.ToString();
+        if (qs.TryGetValue("gravacao", out var g) && !string.IsNullOrEmpty(g))
+            gravacaoFilter = g.ToString();
+        if (qs.TryGetValue("tipo", out var tp) && !string.IsNullOrEmpty(tp))
+            tipoFilter = tp.ToString();
+        if (qs.TryGetValue("search", out var sc) && !string.IsNullOrEmpty(sc))
+            search = sc.ToString();
+        if (qs.TryGetValue("de", out var de) && DateTime.TryParse(de.ToString(), out var deDt))
+            dataInicio = deDt.Date;
+        if (qs.TryGetValue("ate", out var ate) && DateTime.TryParse(ate.ToString(), out var ateDt))
+            dataFim = ateDt.Date;
+        if (qs.TryGetValue("pessoaId", out var pid) && long.TryParse(pid.ToString(), out var pidLong))
+        {
+            pessoaIdFilter = pidLong;
+            // Pega o nome pra exibir no banner — busca em qualquer tentativa que tenha a pessoa carregada
+            pessoaNomeFiltrada = todasTentativas
+                .Where(t => t.PessoaId == pidLong && t.Pessoa != null)
+                .Select(t => t.Pessoa!.Nome)
+                .FirstOrDefault();
+        }
     }
 
     private IEnumerable<TentativaAcesso> Filtered => todasTentativas.Where(h =>
@@ -203,7 +236,8 @@
         (tipoFilter == "todos" || h.TipoVerificacao == tipoFilter) &&
         (gravacaoFilter == "todos" || (gravacaoFilter == "com" ? !string.IsNullOrEmpty(h.GravacaoPath) : string.IsNullOrEmpty(h.GravacaoPath))) &&
         (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
-        (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
+        (dataFim == null || h.DataHora.Date <= dataFim.Value.Date) &&
+        (pessoaIdFilter == null || h.PessoaId == pessoaIdFilter));
 
     private void AbrirGravacao(TentativaAcesso t) => gravacaoAberta = t;
     private void FecharGravacao() => gravacaoAberta = null;
@@ -239,6 +273,12 @@
         sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
 
     private void LimparDatas() { dataInicio = null; dataFim = null; }
+
+    private void LimparFiltroPessoa()
+    {
+        pessoaIdFilter = null;
+        pessoaNomeFiltrada = null;
+    }
 
     private async Task ExportarPdf()
     {
@@ -278,6 +318,7 @@
         if (gravacaoFilter != "todos")        q.Add($"gravacao={gravacaoFilter}");
         if (dataInicio != null)               q.Add($"de={dataInicio.Value:yyyy-MM-dd}");
         if (dataFim != null)                  q.Add($"ate={dataFim.Value:yyyy-MM-dd}");
+        if (pessoaIdFilter != null)           q.Add($"pessoaId={pessoaIdFilter}");
         return q.Count > 0 ? "?" + string.Join("&", q) : "";
     }
 
@@ -290,6 +331,7 @@
         if (gravacaoFilter != "todos")        s.Add($"grav-{gravacaoFilter}");
         if (dataInicio != null)               s.Add($"de-{dataInicio.Value:yyyyMMdd}");
         if (dataFim != null)                  s.Add($"ate-{dataFim.Value:yyyyMMdd}");
+        if (pessoaIdFilter != null)           s.Add($"pessoa-{pessoaIdFilter}");
         if (!string.IsNullOrEmpty(search))    s.Add($"busca-{Slug(search)}");
         return s.Count > 0 ? "_" + string.Join("_", s) : "";
     }
