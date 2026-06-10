@@ -22,6 +22,7 @@ namespace BiometricAcess.Worker.Tests
             public void NotificarPrimeiroAcesso(int pessoaId, int slotAs608) => Notificacoes.Add($"primeiroAcesso:{pessoaId}:slot{slotAs608}");
             public void NotificarVerificarDigital(int pessoaId) => Notificacoes.Add($"verificarDigital:{pessoaId}");
             public void NotificarAcessoNegado(int pessoaId, string motivo) => Notificacoes.Add($"negado:{pessoaId}:{motivo}");
+            public void NotificarAcessoLiberado(int duracaoSegundos = 5) => Notificacoes.Add($"acessoLiberado:{duracaoSegundos}s");
         }
 
         private const string PortaSerial = "COM3";
@@ -232,7 +233,7 @@ namespace BiometricAcess.Worker.Tests
                 DataHora = DateTime.UtcNow
             });
 
-            Assert.Contains($"primeiroAcesso:{p.Id}", arduino.Notificacoes);
+            Assert.Contains(arduino.Notificacoes, s => s.StartsWith($"primeiroAcesso:{p.Id}:"));
         }
 
         [Fact]
@@ -275,7 +276,7 @@ namespace BiometricAcess.Worker.Tests
             });
 
             Assert.Contains($"negado:{p.Id}:inativo", arduino.Notificacoes);
-            Assert.DoesNotContain($"primeiroAcesso:{p.Id}", arduino.Notificacoes);
+            Assert.DoesNotContain(arduino.Notificacoes, s => s.StartsWith($"primeiroAcesso:{p.Id}:"));
         }
 
         [Fact]

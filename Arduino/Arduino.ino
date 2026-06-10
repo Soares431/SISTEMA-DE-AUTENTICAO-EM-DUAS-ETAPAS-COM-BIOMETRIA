@@ -62,6 +62,11 @@ Adafruit_Fingerprint finger = Adafruit_Fingerprint(&fingerSerial);
 // ── BUZZER ───────────────────────────────────────────────────────
 const byte BUZZER_PIN = A0;
 
+// ── RELÉ (fechadura/solenoide) ───────────────────────────────────
+// HIGH = acionado (fechadura abre se o relé for normalmente-aberto).
+// Worker envia CMD|RELAY|OPEN|<segundos>; o Arduino aciona por X seg.
+const byte RELAY_PIN = A1;
+
 // ── TIMEOUTS ─────────────────────────────────────────────────────
 const unsigned long TIMEOUT_DEDO_MS = 10000;     // tempo pra colocar o dedo
 const unsigned long DURACAO_RESULTADO_MS = 2500;
@@ -87,6 +92,8 @@ unsigned long tempoResultado = 0;
 unsigned long tempoInicioEspera = 0;
 uint16_t slotEnroll = 0;          // slot do AS608 vindo do CMD|FINGER|START_ENROLL|<slot>
 bool dedoEstavaPresente = false;  // pra emitir PLACED/REMOVED por borda
+bool releAtivo = false;           // estado atual do relé
+unsigned long releDesligaAt = 0;  // millis() em que o relé deve desligar
 
 // ═══════════════════════════════════════════════════════════════
 // SETUP
@@ -100,6 +107,8 @@ void setup() {
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
   pinMode(FP_TCH_PIN, INPUT);
 
   // AS608 fala em 57600 (padrão Adafruit Fingerprint)
@@ -121,9 +130,18 @@ void setup() {
 void loop() {
   receberSerial();
   voltarSeResultadoExpirou();
+  gerenciarRele();
   detectarTouch();
   processarEstadoBiometrico();
   lerTeclado();
+}
+
+// Desliga o relé quando o tempo solicitado pelo Worker expira (não-bloqueante).
+void gerenciarRele() {
+  if (releAtivo && (long)(millis() - releDesligaAt) >= 0) {
+    digitalWrite(RELAY_PIN, LOW);
+    releAtivo = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -270,6 +288,16 @@ void processarLinhaSerial(String linha) {
   }
   if (c[1] == "BUZZER" && c[2] == "FAIL") {
     beepFalha();
+    return;
+  }
+
+  // CMD|RELAY|OPEN|<segundos> — aciona relé por N segundos (não-bloqueante)
+  if (c[1] == "RELAY" && c[2] == "OPEN") {
+    int dur = (n >= 4) ? c[3].toInt() : 5;
+    if (dur <= 0 || dur > 60) dur = 5;  // sanidade: limita 60s
+    digitalWrite(RELAY_PIN, HIGH);
+    releAtivo = true;
+    releDesligaAt = millis() + (unsigned long)dur * 1000UL;
     return;
   }
 

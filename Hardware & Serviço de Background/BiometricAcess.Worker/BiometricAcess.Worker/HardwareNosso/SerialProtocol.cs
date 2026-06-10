@@ -27,6 +27,8 @@ public static class Comandos
     public const string BuzzerOk = "CMD|BUZZER|OK";
     public const string BuzzerFalhou = "CMD|BUZZER|FAIL";
     public const string AccessDenied = "CMD|ACCESS|DENIED";
+    // CMD|RELAY|OPEN|<segundos> — aciona relé/solenoide da fechadura pelo tempo informado
+    public const string RelayOpen = "CMD|RELAY|OPEN";
 }
 
 // Parser — quebra uma linha recebida em partes

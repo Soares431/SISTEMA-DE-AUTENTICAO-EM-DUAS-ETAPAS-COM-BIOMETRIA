@@ -36,6 +36,7 @@ public class EventProcessorArduinoSimulador : IEventProcessor
             }
 
             Console.WriteLine($"[ArduinoSim] Acesso liberado — Pessoa: {evento.PessoaID}");
+            _arduinoService.NotificarAcessoLiberado();
             return Task.CompletedTask;
         }
 

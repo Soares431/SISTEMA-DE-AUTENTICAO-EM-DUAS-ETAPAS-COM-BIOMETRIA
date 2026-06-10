@@ -151,7 +151,9 @@ public class ArduinoConnector : IAnvizConnector
                     MotivoNegacao = string.Empty
                 };
 
-                EnviarComando(Comandos.BuzzerOk);
+                // BUZZER|OK + RELAY|OPEN são disparados pelo EventProcessorArduino após
+                // confirmar a tentativa no banco — não aqui no connector. Garante que a porta
+                // só abre se o C# validar permissão (single source of truth).
                 _idEmAndamento = 0;
                 _senhaEmAndamento = "";
                 return;

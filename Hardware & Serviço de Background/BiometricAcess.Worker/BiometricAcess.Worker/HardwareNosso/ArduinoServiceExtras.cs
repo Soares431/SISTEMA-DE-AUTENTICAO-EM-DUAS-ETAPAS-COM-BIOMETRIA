@@ -32,4 +32,11 @@ public class ArduinoServiceExtras : IAnvizArduinoService
         Console.WriteLine($"[ArduinoServiceExtras] Pedindo senha — ID {pessoaId}");
         _connector.EnviarComando(Comandos.PedirSenha);
     }
+
+    public void NotificarAcessoLiberado(int duracaoSegundos = 5)
+    {
+        Console.WriteLine($"[ArduinoServiceExtras] Acesso liberado — buzzer OK + rele aberto por {duracaoSegundos}s");
+        _connector.EnviarComando(Comandos.BuzzerOk);
+        _connector.EnviarComando($"{Comandos.RelayOpen}|{duracaoSegundos}");
+    }
 }

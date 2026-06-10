@@ -8,4 +8,8 @@ public interface IAnvizArduinoService
     void NotificarPrimeiroAcesso(int pessoaId, int slotAs608);
     void NotificarVerificarDigital(int pessoaId);
     void NotificarAcessoNegado(int pessoaId, string motivo);
+    // Dispara buzzer de OK + abre o relé/solenoide pelo tempo informado.
+    // Centraliza a abertura da porta — disparado pelo EventProcessor quando o acesso
+    // é confirmado (digital OK, 1º acesso concluído, ou somente_senha validada).
+    void NotificarAcessoLiberado(int duracaoSegundos = 5);
 }

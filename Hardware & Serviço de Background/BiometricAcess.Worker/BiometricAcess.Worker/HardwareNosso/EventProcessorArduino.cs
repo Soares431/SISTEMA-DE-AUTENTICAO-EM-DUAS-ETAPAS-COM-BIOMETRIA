@@ -152,8 +152,21 @@ public class EventProcessorArduino : IEventProcessor
                 return;
             }
 
-            // Senha correta — cadastra biometria.
-            // Slot do AS608 é calculado a partir do Pessoa.Id (limite do sensor: 127 templates).
+            // Senha correta — bifurca pelo modo de acesso da pessoa:
+            // - somente_senha: libera direto, sem pedir biometria
+            // - digital_e_senha: cadastra biometria no AS608 (1º acesso)
+            if (pessoa.modoAcesso == "somente_senha")
+            {
+                await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
+                var tentSenha = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
+                _arduinoService.NotificarAcessoLiberado();
+                AgendarGravacaoOnvif(tentSenha.Id, ambiente);
+                Console.WriteLine($"[Arduino] Acesso liberado (somente_senha) — Pessoa: {pessoa.Id}");
+                return;
+            }
+
+            // digital_e_senha — vai cadastrar biometria (1º acesso).
+            // Slot do AS608 calculado a partir do Pessoa.Id (limite do sensor: 127 templates).
             // Em produção, se 2 pessoas colidirem no mesmo slot, a 2ª sobrescreve a 1ª no sensor.
             // Pra muitas pessoas por Arduino, considerar coluna SlotAs608 no banco com gestão de slots livres.
             var slot = (int)((pessoa.Id % 127) + 1);
@@ -178,6 +191,9 @@ public class EventProcessorArduino : IEventProcessor
 
         await _pessoaRepository.AtualizarUltimoAcesso(pessoa.Id);
         var tentativa = await RegistrarTentativa(evento, pessoa, ambiente.Id, true, null);
+        // Centraliza abertura da porta: buzzer OK + relé pelo tempo padrão.
+        // (Antes o BUZZER|OK saía direto do ArduinoConnector — agora EventProcessor controla.)
+        _arduinoService.NotificarAcessoLiberado();
         AgendarGravacaoOnvif(tentativa.Id, ambiente);
     }
 
