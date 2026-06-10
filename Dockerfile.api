@@ -1,0 +1,36 @@
+# ═══════════════════════════════════════════════════════════════
+# Dockerfile do Int1 — Banco/API REST
+# ═══════════════════════════════════════════════════════════════
+# Build em duas fases:
+#  1) "build": imagem com o SDK do .NET 8 — só pra compilar
+#  2) "runtime": imagem mais leve só com o aspnet runtime — o que vai rodar
+# ═══════════════════════════════════════════════════════════════
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Restore — copia só os csproj primeiro pra Docker cachear esta camada
+# (se nada mudar nos csproj, o restore não roda de novo).
+COPY ["Banco/WebAbil8-Sistema_Verificação_dupla.slnx/WebAbil8-Sistema_Verificação_dupla.slnx.csproj", "Banco/WebAbil8-Sistema_Verificação_dupla.slnx/"]
+COPY ["InfraestruturaBloco1/InfraestruturaBloco1.csproj", "InfraestruturaBloco1/"]
+RUN dotnet restore "Banco/WebAbil8-Sistema_Verificação_dupla.slnx/WebAbil8-Sistema_Verificação_dupla.slnx.csproj"
+
+# Copia o resto do código e publica
+COPY . .
+WORKDIR "/src/Banco/WebAbil8-Sistema_Verificação_dupla.slnx"
+RUN dotnet publish "WebAbil8-Sistema_Verificação_dupla.slnx.csproj" -c Release -o /app/publish --no-restore
+
+# ── Fase de runtime ─────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Porta interna onde o Kestrel escuta. Mapeada no docker-compose como 5018:5018.
+EXPOSE 5018
+ENV ASPNETCORE_URLS=http://+:5018
+
+# Caminho do banco SQLite no volume compartilhado (montado em /data pelo compose).
+ENV DB_PATH=/data/banco.db
+RUN mkdir -p /data
+
+ENTRYPOINT ["dotnet", "WebAbil8-Sistema_Verificação_dupla.slnx.dll"]

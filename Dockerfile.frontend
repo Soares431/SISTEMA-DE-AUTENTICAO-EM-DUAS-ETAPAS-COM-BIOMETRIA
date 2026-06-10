@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════════════════════
+# Dockerfile do Int3 — Frontend Blazor Server
+# ═══════════════════════════════════════════════════════════════
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Restore — csproj primeiro pra cache layer
+COPY ["PainelWeb/Frontend/FrontendControleAcesso.csproj", "PainelWeb/Frontend/"]
+COPY ["Banco/WebAbil8-Sistema_Verificação_dupla.slnx/WebAbil8-Sistema_Verificação_dupla.slnx.csproj", "Banco/WebAbil8-Sistema_Verificação_dupla.slnx/"]
+COPY ["InfraestruturaBloco1/InfraestruturaBloco1.csproj", "InfraestruturaBloco1/"]
+RUN dotnet restore "PainelWeb/Frontend/FrontendControleAcesso.csproj"
+
+# Build + publish
+COPY . .
+WORKDIR "/src/PainelWeb/Frontend"
+RUN dotnet publish "FrontendControleAcesso.csproj" -c Release -o /app/publish --no-restore
+
+# ── Runtime ─────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+# Banco compartilhado via volume (mesmo arquivo do Int1).
+ENV DB_PATH=/data/banco.db
+
+# URL da API do Int1 dentro da rede do compose (nome do serviço).
+ENV BancoApiUrl=http://int1:5018/
+
+ENTRYPOINT ["dotnet", "FrontendControleAcesso.dll"]

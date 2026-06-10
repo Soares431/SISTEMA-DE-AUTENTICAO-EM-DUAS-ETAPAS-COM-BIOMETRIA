@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════
+# Orquestração dos 3 serviços do sistema
+# ═══════════════════════════════════════════════════════════════
+# - int1: API REST (.NET 8) — porta 5018
+# - int3: Frontend Blazor — porta 8080
+# - worker: serviço de background (modo simulador)
+#
+# Todos compartilham o mesmo arquivo banco.db via volume `db-data`.
+# Subir tudo:    docker compose up -d --build
+# Derrubar:     docker compose down
+# Logs ao vivo: docker compose logs -f
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  int1:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: cta-int1-api
+    ports:
+      - "5018:5018"
+    volumes:
+      - db-data:/data
+    environment:
+      - DB_PATH=/data/banco.db
+      - ASPNETCORE_ENVIRONMENT=Production
+      # Sobrescreve as chaves do appsettings.json. Em prod, troque por valores fortes.
+      - Jwt__Key=chave-secreta-minimo-32-caracteres-5cta
+      - AesKey=5cta-aes-key-senha-segura-32char
+    healthcheck:
+      # Verifica se a API ta respondendo antes do Frontend tentar conectar.
+      # Usa a rota /swagger (existe em Dev) ou /hangfire — ambas retornam algo.
+      test: ["CMD", "curl", "-fsS", "http://localhost:5018/hangfire/stats", "||", "exit", "1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  int3:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: cta-int3-frontend
+    ports:
+      - "8080:8080"
+    volumes:
+      - db-data:/data
+    environment:
+      - DB_PATH=/data/banco.db
+      - BancoApiUrl=http://int1:5018/
+      - ASPNETCORE_ENVIRONMENT=Production
+    depends_on:
+      int1:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: cta-worker
+    volumes:
+      - db-data:/data
+    environment:
+      - DB_PATH=/data/banco.db
+      - DOTNET_ENVIRONMENT=Production
+    depends_on:
+      int1:
+        condition: service_started
+    restart: unless-stopped
+
+# Volume nomeado — persiste o banco.db entre `down`/`up`. Pra apagar:
+# docker compose down -v   (CUIDADO: zera o banco)
+volumes:
+  db-data:

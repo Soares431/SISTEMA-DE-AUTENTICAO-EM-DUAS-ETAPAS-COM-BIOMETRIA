@@ -1,0 +1,23 @@
+# Não envia coisas pesadas/locais pra dentro do build context
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/.git/
+**/.gitignore
+**/*.user
+**/*.suo
+**/banco.db
+**/banco.db-shm
+**/banco.db-wal
+**/node_modules/
+**/Dockerfile*
+**/docker-compose*.yml
+**/.dockerignore
+**/Downloads/
+**/cameras/
+**/wwwroot/lib/
+**/Logs/
+**/logs/
+**/*.log

@@ -16,10 +16,13 @@ builder.Services.AddWindowsService();
 
 // ═══════════════════════════════════════════════════════════════
 // Banco compartilhado com Int1
+// Em Docker, DB_PATH aponta pro volume compartilhado (ex.: /data/banco.db).
 // ═══════════════════════════════════════════════════════════════
-var dbPath = Path.GetFullPath(
-    Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..",
-    "Banco", "WebAbil8-Sistema_Verificação_dupla.slnx", "banco.db"));
+var dbPath = Environment.GetEnvironmentVariable("DB_PATH");
+if (string.IsNullOrWhiteSpace(dbPath))
+    dbPath = Path.GetFullPath(
+        Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..",
+        "Banco", "WebAbil8-Sistema_Verificação_dupla.slnx", "banco.db"));
 Console.WriteLine($"[INT2 DB] {dbPath}");
 
 builder.Services.AddDbContext<AppDbContext>(options =>

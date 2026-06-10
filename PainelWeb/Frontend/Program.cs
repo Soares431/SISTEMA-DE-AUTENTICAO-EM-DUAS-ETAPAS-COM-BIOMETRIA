@@ -18,10 +18,13 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Banco do Int1 — compartilhado via ProjectReference
-// Banco do Int1 — caminho resolvido a partir do executável
-var dbPath = Path.GetFullPath(
-    Path.Combine(builder.Environment.ContentRootPath, "..", "..",
-    "Banco", "WebAbil8-Sistema_Verificação_dupla.slnx", "banco.db"));
+// Banco do Int1 — caminho resolvido a partir do executável.
+// Em Docker, DB_PATH aponta pro volume compartilhado (ex.: /data/banco.db).
+var dbPath = Environment.GetEnvironmentVariable("DB_PATH");
+if (string.IsNullOrWhiteSpace(dbPath))
+    dbPath = Path.GetFullPath(
+        Path.Combine(builder.Environment.ContentRootPath, "..", "..",
+        "Banco", "WebAbil8-Sistema_Verificação_dupla.slnx", "banco.db"));
 Console.WriteLine($"[INT3 DB] {dbPath}");
 
 builder.Services.AddDbContext<AppDbContext>(options =>

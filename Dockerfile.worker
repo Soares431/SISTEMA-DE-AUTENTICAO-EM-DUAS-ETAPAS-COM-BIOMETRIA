@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════
+# Dockerfile do Worker (Int2) — Hardware Service
+# ═══════════════════════════════════════════════════════════════
+# Atenção: containers Linux NÃO enxergam portas COM/Serial do Windows.
+# Esta imagem só serve pra rodar o Worker em modo SIMULADOR (OPÇÃO 1B
+# no Program.cs). Pra hardware real (Arduino COM3 ou T50M Anviz),
+# rode o Worker nativo no host Windows — não dentro do Docker.
+# ═══════════════════════════════════════════════════════════════
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY ["Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/BiometricAcess.Worker.csproj", "Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/"]
+COPY ["Banco/WebAbil8-Sistema_Verificação_dupla.slnx/WebAbil8-Sistema_Verificação_dupla.slnx.csproj", "Banco/WebAbil8-Sistema_Verificação_dupla.slnx/"]
+COPY ["InfraestruturaBloco1/InfraestruturaBloco1.csproj", "InfraestruturaBloco1/"]
+RUN dotnet restore "Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/BiometricAcess.Worker.csproj"
+
+COPY . .
+WORKDIR "/src/Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker"
+RUN dotnet publish "BiometricAcess.Worker.csproj" -c Release -o /app/publish --no-restore
+
+# ── Runtime ─────────────────────────────────────────────────────
+# Usa aspnet (em vez de runtime puro) porque o Worker referencia projetos
+# que dependem do ASP.NET (Hangfire, etc).
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV DB_PATH=/data/banco.db
+
+ENTRYPOINT ["dotnet", "BiometricAcess.Worker.dll"]
