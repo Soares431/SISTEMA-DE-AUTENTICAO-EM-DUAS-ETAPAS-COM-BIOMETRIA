@@ -30,6 +30,14 @@ $int2Parent = Get-ChildItem -Path (Join-Path $raiz "Hardware*") -Directory -Recu
 $int2 = Join-Path $int2Parent "BiometricAcess.Worker"
 $int3 = Join-Path $raiz "PainelWeb\Frontend"
 
+# Backup automatico do banco antes de subir (so se o script existir).
+# Roda DEPOIS de matar portas (WAL/SHM liberados) pra capturar estado consistente.
+$backupScript = Join-Path $raiz "backup-banco.ps1"
+if (Test-Path $backupScript) {
+    Write-Host "[BKP] Salvando snapshot do banco antes de subir..." -ForegroundColor DarkCyan
+    & $backupScript
+}
+
 # Int1 usa --launch-profile http (porta 5018 apenas, sem HTTPS)
 # Evita problema de certificado dev nao configurado que impedia o Int1 de subir
 Write-Host "[1/3] Iniciando Int1 - Banco API (em segundo plano)..." -ForegroundColor Green
