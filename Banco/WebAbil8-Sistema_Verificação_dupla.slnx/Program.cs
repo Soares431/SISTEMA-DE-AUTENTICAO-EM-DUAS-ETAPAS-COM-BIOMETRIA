@@ -394,6 +394,21 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
+    // Slot ocupado no AS608 (1-127) — pool de slots livres pra contornar limite do sensor.
+    if (!pessoaColsExistentes.Contains("slotAs608"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN slotAs608 INTEGER NULL";
+        alterCmd.ExecuteNonQuery();
+    }
+    // Fila de slots pendentes de delete no AS608 — Worker drena periodicamente.
+    if (!pessoaColsExistentes.Contains("slotAs608ParaApagar"))
+    {
+        using var alterCmd = conn.CreateCommand();
+        alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN slotAs608ParaApagar INTEGER NULL";
+        alterCmd.ExecuteNonQuery();
+    }
+
     // Índice unique para garantir códigos distintos
     using (var idxCmd = conn.CreateCommand())
     {

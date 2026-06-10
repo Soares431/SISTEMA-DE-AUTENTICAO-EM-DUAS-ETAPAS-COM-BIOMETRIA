@@ -12,6 +12,13 @@ public static class Eventos
     public const string DigitalCadastrada = "EVT|FINGER|ENROLLED"; // EVT|FINGER|ENROLLED|100001
     public const string DigoPosto = "EVT|FINGER|PLACED";
     public const string DigoRetirado = "EVT|FINGER|REMOVED";
+    // Heartbeat do sensor AS608 — Arduino emite a cada INTERVALO_HEARTBEAT_MS
+    public const string SensorOk = "EVT|FINGER|SENSOR|OK";
+    public const string SensorFalhou = "EVT|FINGER|SENSOR|FAIL";
+    // EVT|FINGER|DELETED|<slot> — confirmação de deleção do template
+    public const string DigitalApagada = "EVT|FINGER|DELETED";
+    // EVT|SERVIDOR|TIMEOUT — Arduino não recebeu resposta do Worker no tempo esperado
+    public const string ServidorTimeout = "EVT|SERVIDOR|TIMEOUT";
 }
 
 // Comandos que o C# manda PARA o Arduino
@@ -29,6 +36,8 @@ public static class Comandos
     public const string AccessDenied = "CMD|ACCESS|DENIED";
     // CMD|RELAY|OPEN|<segundos> — aciona relé/solenoide da fechadura pelo tempo informado
     public const string RelayOpen = "CMD|RELAY|OPEN";
+    // CMD|FINGER|DELETE|<slot> — apaga o template do slot no AS608
+    public const string DigitalApagar = "CMD|FINGER|DELETE";
 }
 
 // Parser — quebra uma linha recebida em partes

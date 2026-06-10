@@ -39,4 +39,10 @@ public class ArduinoServiceExtras : IAnvizArduinoService
         _connector.EnviarComando(Comandos.BuzzerOk);
         _connector.EnviarComando($"{Comandos.RelayOpen}|{duracaoSegundos}");
     }
+
+    public void NotificarApagarDigital(int slotAs608)
+    {
+        Console.WriteLine($"[ArduinoServiceExtras] Apagando template do AS608 — slot {slotAs608}");
+        _connector.EnviarComando($"{Comandos.DigitalApagar}|{slotAs608}");
+    }
 }

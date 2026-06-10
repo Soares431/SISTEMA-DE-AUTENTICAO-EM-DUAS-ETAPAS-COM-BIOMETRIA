@@ -166,11 +166,22 @@ public class EventProcessorArduino : IEventProcessor
             }
 
             // digital_e_senha — vai cadastrar biometria (1º acesso).
-            // Slot do AS608 calculado a partir do Pessoa.Id (limite do sensor: 127 templates).
-            // Em produção, se 2 pessoas colidirem no mesmo slot, a 2ª sobrescreve a 1ª no sensor.
-            // Pra muitas pessoas por Arduino, considerar coluna SlotAs608 no banco com gestão de slots livres.
-            var slot = (int)((pessoa.Id % 127) + 1);
-            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID, slot);
+            // Aloca slot do pool 1-127 (limite físico do AS608) via banco. Reuso de slots
+            // vazios garante que sensor não lota mesmo após admin resetar biometrias.
+            int? slot = pessoa.SlotAs608;
+            if (slot == null)
+            {
+                slot = await _pessoaRepository.AlocarSlotAs608Livre();
+                if (slot == null)
+                {
+                    Console.WriteLine($"[Arduino] AS608 lotado (127/127) — não foi possível alocar slot pra pessoa {pessoa.Id}");
+                    _arduinoService.NotificarAcessoNegado(evento.PessoaID, "sensor_lotado");
+                    await RegistrarTentativa(evento, pessoa, ambiente.Id, false, "sensor_lotado");
+                    return;
+                }
+                await _pessoaRepository.DefinirSlotAs608(pessoa.Id, slot.Value);
+            }
+            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID, slot.Value);
             return;
         }
 

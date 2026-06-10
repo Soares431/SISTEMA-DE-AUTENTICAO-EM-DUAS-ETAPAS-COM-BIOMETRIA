@@ -23,6 +23,7 @@ namespace BiometricAcess.Worker.Tests
             public void NotificarVerificarDigital(int pessoaId) => Notificacoes.Add($"verificarDigital:{pessoaId}");
             public void NotificarAcessoNegado(int pessoaId, string motivo) => Notificacoes.Add($"negado:{pessoaId}:{motivo}");
             public void NotificarAcessoLiberado(int duracaoSegundos = 5) => Notificacoes.Add($"acessoLiberado:{duracaoSegundos}s");
+            public void NotificarApagarDigital(int slotAs608) => Notificacoes.Add($"apagarDigital:{slotAs608}");
         }
 
         private const string PortaSerial = "COM3";

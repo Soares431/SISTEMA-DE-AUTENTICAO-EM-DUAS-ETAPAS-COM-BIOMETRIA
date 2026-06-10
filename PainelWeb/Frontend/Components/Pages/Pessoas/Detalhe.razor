@@ -612,6 +612,9 @@
         foreach (var amb in ambientesPessoa)
             AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
         await PessoaRepo.AlterarStatus(pessoa.Id, false);
+        // Inativação também libera o slot no AS608 — admin pode reativar depois e
+        // o pool aloca um slot novo se necessário.
+        try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch { /* sem slot — ignora */ }
         LogRepo.Registrar(TokenStore.AdminId, "Inativacao", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa!.Id);
@@ -672,7 +675,10 @@
             }
             catch { /* senha não localizada */ }
 
-            // 6. Auditoria + remove pessoa
+            // 6. Auditoria + remove pessoa.
+            //    Slot do AS608 (se ocupado) vira "fantasma" no sensor — não vaza no pool
+            //    porque AlocarSlotAs608Livre só conta pessoas existentes. O próximo enroll
+            //    que reusar esse slot sobrescreve o template antigo via storeModel.
             LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
             await PessoaRepo.Remover(pessoa.Id);
             Nav.NavigateTo("/pessoas");
@@ -693,6 +699,9 @@
         pessoa.biometriaCadastrada = null;
         pessoa.templateBackup = null;
         await PessoaRepo.Atualizar(pessoa);
+        // Sinaliza ao Worker apagar o template do slot no AS608 (fila assíncrona drenada
+        // pelo SincronizadorAs608Worker). Sem isso, o slot fica ocupado e o pool vaza.
+        try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch { /* sem slot — ignora */ }
         LogRepo.Registrar(TokenStore.AdminId, "ResetBiometria", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         showConfirmReset = false;

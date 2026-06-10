@@ -70,6 +70,9 @@ const byte RELAY_PIN = A1;
 // ── TIMEOUTS ─────────────────────────────────────────────────────
 const unsigned long TIMEOUT_DEDO_MS = 10000;     // tempo pra colocar o dedo
 const unsigned long DURACAO_RESULTADO_MS = 2500;
+const unsigned long TIMEOUT_INATIVIDADE_MS = 60000;  // 60s sem tecla no DIGITANDO_* → volta
+const unsigned long TIMEOUT_SERVIDOR_MS   = 15000;   // 15s sem resposta do Worker → "offline"
+const unsigned long INTERVALO_HEARTBEAT_MS = 30000;  // a cada 30s verifica sensor AS608
 
 // ── ESTADO ───────────────────────────────────────────────────────
 enum Estado {
@@ -94,6 +97,9 @@ uint16_t slotEnroll = 0;          // slot do AS608 vindo do CMD|FINGER|START_ENR
 bool dedoEstavaPresente = false;  // pra emitir PLACED/REMOVED por borda
 bool releAtivo = false;           // estado atual do relé
 unsigned long releDesligaAt = 0;  // millis() em que o relé deve desligar
+unsigned long ultimaAtividade = 0;     // última tecla ou transição de estado
+unsigned long pedidoEnviadoEm = 0;     // millis() do EVT|ID ou EVT|SENHA enviado
+unsigned long ultimoHeartbeat = 0;     // último heartbeat do AS608
 
 // ═══════════════════════════════════════════════════════════════
 // SETUP
@@ -131,9 +137,46 @@ void loop() {
   receberSerial();
   voltarSeResultadoExpirou();
   gerenciarRele();
+  gerenciarTimeouts();
+  heartbeatSensor();
   detectarTouch();
   processarEstadoBiometrico();
   lerTeclado();
+}
+
+// Timeout de inatividade — se o usuário abandonar o terminal no meio do fluxo
+// (digitando ID/senha) ou se o Worker não responder, volta pra tela inicial
+// pra liberar o terminal pro próximo usuário.
+void gerenciarTimeouts() {
+  if (estado == DIGITANDO_ID || estado == DIGITANDO_SENHA) {
+    if (millis() - ultimaAtividade > TIMEOUT_INATIVIDADE_MS) {
+      mostrarResultado("Tempo esgotado", "");
+    }
+    return;
+  }
+  if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA) {
+    if (millis() - pedidoEnviadoEm > TIMEOUT_SERVIDOR_MS) {
+      Serial.println("EVT|SERVIDOR|TIMEOUT");
+      mostrarResultado("Servidor offline", "Tente de novo");
+    }
+  }
+}
+
+// Heartbeat — periodicamente verifica se o AS608 ainda responde.
+// Worker monitora EVT|FINGER|SENSOR|OK/FAIL pra detectar desconexão do sensor.
+void heartbeatSensor() {
+  if (millis() - ultimoHeartbeat < INTERVALO_HEARTBEAT_MS) return;
+  ultimoHeartbeat = millis();
+  // só roda heartbeat se não estiver no meio de uma operação biométrica
+  if (estado == VERIFY_AGUARDANDO_DEDO
+      || estado == ENROLL_AGUARDANDO_1A_VEZ
+      || estado == ENROLL_AGUARDANDO_RETIRAR
+      || estado == ENROLL_AGUARDANDO_2A_VEZ) return;
+  if (finger.verifyPassword()) {
+    Serial.println("EVT|FINGER|SENSOR|OK");
+  } else {
+    Serial.println("EVT|FINGER|SENSOR|FAIL");
+  }
 }
 
 // Desliga o relé quando o tempo solicitado pelo Worker expira (não-bloqueante).
@@ -152,6 +195,7 @@ void telaInicial() {
   idDigitado = "";
   senhaDigitada = "";
   slotEnroll = 0;
+  ultimaAtividade = millis();
   mostrarDuasLinhas("Sistema Pronto", "Digite o ID:");
 }
 
@@ -298,6 +342,21 @@ void processarLinhaSerial(String linha) {
     digitalWrite(RELAY_PIN, HIGH);
     releAtivo = true;
     releDesligaAt = millis() + (unsigned long)dur * 1000UL;
+    return;
+  }
+
+  // CMD|FINGER|DELETE|<slot> — apaga template do AS608 e devolve EVT|FINGER|DELETED|<slot>
+  // Worker chama isso após admin resetar/inativar pessoa pra liberar o slot no sensor.
+  if (c[1] == "FINGER" && c[2] == "DELETE") {
+    if (n < 4) return;
+    int slot = c[3].toInt();
+    if (slot <= 0 || slot > 127) return;
+    uint8_t r = finger.deleteModel((uint16_t)slot);
+    if (r == FINGERPRINT_OK) {
+      Serial.print("EVT|FINGER|DELETED|"); Serial.println(slot);
+    } else {
+      Serial.print("EVT|FINGER|FAIL|DELETE|"); Serial.println(slot);
+    }
     return;
   }
 
@@ -462,11 +521,13 @@ void lerTeclado() {
       }
       Serial.println("EVT|ID|" + idDigitado);
       estado = AGUARDANDO_SERVIDOR_ID;
+      pedidoEnviadoEm = millis();
       mostrarDuasLinhas("ID enviado...", "Aguardando...");
       return;
     }
     if (idDigitado.length() < 6 && tecla >= '0' && tecla <= '9') {
       idDigitado += tecla;
+      ultimaAtividade = millis();
       String mask = "";
       for (unsigned int i = 0; i < idDigitado.length(); i++) mask += "*";
       mostrarLinha(1, "ID: " + mask);
@@ -485,11 +546,13 @@ void lerTeclado() {
       }
       Serial.println("EVT|SENHA|" + idDigitado + "|" + senhaDigitada);
       estado = AGUARDANDO_SERVIDOR_SENHA;
+      pedidoEnviadoEm = millis();
       mostrarDuasLinhas("Senha enviada...", "Aguardando...");
       return;
     }
     if (senhaDigitada.length() < 6 && tecla >= '0' && tecla <= '9') {
       senhaDigitada += tecla;
+      ultimaAtividade = millis();
       String mask = "";
       for (unsigned int i = 0; i < senhaDigitada.length(); i++) mask += "*";
       mostrarLinha(1, "Senha: " + mask);

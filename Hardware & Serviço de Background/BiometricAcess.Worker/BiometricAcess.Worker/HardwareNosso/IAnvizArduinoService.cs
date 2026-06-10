@@ -12,4 +12,8 @@ public interface IAnvizArduinoService
     // Centraliza a abertura da porta — disparado pelo EventProcessor quando o acesso
     // é confirmado (digital OK, 1º acesso concluído, ou somente_senha validada).
     void NotificarAcessoLiberado(int duracaoSegundos = 5);
+    // Pede ao Arduino pra apagar o template do slot informado no AS608.
+    // Worker chama isso quando admin reseta biometria ou inativa pessoa —
+    // libera o slot pra reuso (sensor tem só 127).
+    void NotificarApagarDigital(int slotAs608);
 }

@@ -12,6 +12,12 @@ public class ArduinoConnector : IAnvizConnector
     private EventoAcesso? _ultimoEvento;
     private int _idEmAndamento = 0;
     private string _senhaEmAndamento = "";
+    // Status do AS608 — atualizado pelos heartbeats EVT|FINGER|SENSOR|OK/FAIL.
+    private bool _sensorOnline = true;
+    private DateTime _ultimoHeartbeat = DateTime.UtcNow;
+
+    public bool SensorOnline => _sensorOnline;
+    public DateTime UltimoHeartbeat => _ultimoHeartbeat;
 
     public ArduinoConnector(string porta, int baudRate = 9600)
     {
@@ -193,6 +199,39 @@ public class ArduinoConnector : IAnvizConnector
                     MotivoNegacao = string.Empty
                 };
 
+                _idEmAndamento = 0;
+                _senhaEmAndamento = "";
+                return;
+            }
+
+            // ── EVT|FINGER|SENSOR|OK|FAIL — heartbeat do AS608 ───────
+            // Não vira EventoAcesso (não toca DB). Só atualiza estado interno —
+            // FAIL repetido sinaliza que o sensor desconectou ou está com defeito.
+            if (msg.EhEvento(Eventos.SensorOk))
+            {
+                _sensorOnline = true;
+                _ultimoHeartbeat = DateTime.UtcNow;
+                return;
+            }
+            if (msg.EhEvento(Eventos.SensorFalhou))
+            {
+                _sensorOnline = false;
+                _ultimoHeartbeat = DateTime.UtcNow;
+                Console.WriteLine("[Arduino] ALERTA — AS608 não responde (verifique fiação 3.3V/TX/RX)");
+                return;
+            }
+
+            // ── EVT|FINGER|DELETED|slot — confirmação de DELETE ──────
+            if (msg.EhEvento(Eventos.DigitalApagada))
+            {
+                Console.WriteLine($"[Arduino] Template apagado do AS608 — slot {msg.Dado}");
+                return;
+            }
+
+            // ── EVT|SERVIDOR|TIMEOUT — Arduino abortou aguardando Worker ─
+            if (msg.EhEvento(Eventos.ServidorTimeout))
+            {
+                Console.WriteLine("[Arduino] Arduino reportou timeout aguardando resposta — fluxo abortado no terminal");
                 _idEmAndamento = 0;
                 _senhaEmAndamento = "";
                 return;

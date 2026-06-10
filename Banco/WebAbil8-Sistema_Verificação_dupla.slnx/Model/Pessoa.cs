@@ -74,5 +74,15 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Required]
         [Column("dataCadastro", TypeName = "DATETIME")]
         public DateTime? dataCadastro { get; set; }
+
+        // Slot ocupado no AS608 (1-127). Alocado no enroll, liberado no reset/inativar.
+        // Permite reuso de slots quando pessoa é removida — sem isso, o sensor lota em 127.
+        [Column("slotAs608")]
+        public int? SlotAs608 { get; set; }
+
+        // Quando admin reseta biometria/inativa, o slot anterior fica aqui pra o Worker
+        // enviar CMD|FINGER|DELETE ao Arduino. Worker zera após confirmação.
+        [Column("slotAs608ParaApagar")]
+        public int? SlotAs608ParaApagar { get; set; }
     }
 }

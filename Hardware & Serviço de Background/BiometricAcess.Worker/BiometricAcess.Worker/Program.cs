@@ -90,6 +90,10 @@ builder.Services.AddHostedService<TimeSyncWorker>();
 // via Anviz SDK no hardware. §5.2 doc técnica.
 builder.Services.AddHostedService<SincronizadorT50Worker>();
 
+// Drena fila de slots a apagar no AS608 (Pessoa.SlotAs608ParaApagar). Idle quando
+// IAnvizArduinoService não está registrado (modos simulador/T50M).
+builder.Services.AddHostedService<SincronizadorAs608Worker>();
+
 var host = builder.Build();
 
 host.Run();
