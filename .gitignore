@@ -509,3 +509,6 @@ InfraestruturaBloco1/obj/project.nuget.cache
 # Gravações de câmera geradas em runtime pelo CameraService — não commitar
 **/cameras/ambiente_*/
 gravacoes/
+
+# Backups locais do banco.db — gerados por backup-banco.ps1
+backups/
