@@ -9,6 +9,7 @@
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ITentativaAcessoRepository TentativaRepo
 @inject IAmbienteRepository AmbienteRepo
+@inject IPessoaRepository PessoaRepo
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IConfiguration Config
@@ -23,14 +24,6 @@
             <button class="btn btn-outline" @onclick="ExportarPdf"><Icon Name="file-text" Size="16" /> PDF</button>
         </div>
     </div>
-
-    @if (pessoaIdFilter != null)
-    {
-        <div class="alert alert-info" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
-            <span><Icon Name="user" Size="14" /> Filtrando por pessoa: <strong>@(pessoaNomeFiltrada ?? $"ID {pessoaIdFilter}")</strong></span>
-            <button class="btn btn-ghost btn-sm" @onclick="LimparFiltroPessoa">Limpar filtro</button>
-        </div>
-    }
 
     <div class="grid grid-4">
         <div class="card"><div class="card-content pt-6"><div class="flex items-center gap-3"><div class="icon-bg icon-bg-primary"><Icon Name="history" Size="20" /></div><div><p class="stat-value">@todasTentativas.Count</p><p class="text-sm text-muted">Total de Registros</p></div></div></div></div>
@@ -179,8 +172,6 @@
     private bool sortAsc = false;
     private DateTime? dataInicio = null;
     private DateTime? dataFim = null;
-    private long? pessoaIdFilter = null;
-    private string? pessoaNomeFiltrada = null;  // só pra exibir no banner "filtrando por..."
     private List<TentativaAcesso> todasTentativas = new();
     // ambientes = todos (inclui excluídos) — usado pra resolver o nome em tentativas antigas
     private List<Ambiente> ambientes = new();
@@ -188,7 +179,7 @@
     private List<Ambiente> ambientesAtivos = new();
     private TentativaAcesso? gravacaoAberta = null;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         todasTentativas = TentativaRepo.ListarTodos()
             .OrderByDescending(t => t.DataHora)
@@ -216,14 +207,13 @@
             dataInicio = deDt.Date;
         if (qs.TryGetValue("ate", out var ate) && DateTime.TryParse(ate.ToString(), out var ateDt))
             dataFim = ateDt.Date;
+        // ?pessoaId=X vira busca textual pelo nome da pessoa — admin vê o filtro ativo
+        // no próprio campo de busca e pode editar/limpar como qualquer outra busca.
         if (qs.TryGetValue("pessoaId", out var pid) && long.TryParse(pid.ToString(), out var pidLong))
         {
-            pessoaIdFilter = pidLong;
-            // Pega o nome pra exibir no banner — busca em qualquer tentativa que tenha a pessoa carregada
-            pessoaNomeFiltrada = todasTentativas
-                .Where(t => t.PessoaId == pidLong && t.Pessoa != null)
-                .Select(t => t.Pessoa!.Nome)
-                .FirstOrDefault();
+            var pessoa = await PessoaRepo.BuscarPorId(pidLong);
+            if (pessoa != null && !string.IsNullOrWhiteSpace(pessoa.Nome))
+                search = pessoa.Nome;
         }
     }
 
@@ -236,8 +226,7 @@
         (tipoFilter == "todos" || h.TipoVerificacao == tipoFilter) &&
         (gravacaoFilter == "todos" || (gravacaoFilter == "com" ? !string.IsNullOrEmpty(h.GravacaoPath) : string.IsNullOrEmpty(h.GravacaoPath))) &&
         (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
-        (dataFim == null || h.DataHora.Date <= dataFim.Value.Date) &&
-        (pessoaIdFilter == null || h.PessoaId == pessoaIdFilter));
+        (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
 
     private void AbrirGravacao(TentativaAcesso t) => gravacaoAberta = t;
     private void FecharGravacao() => gravacaoAberta = null;
@@ -273,12 +262,6 @@
         sortColumn == coluna ? (sortAsc ? " ▲" : " ▼") : "";
 
     private void LimparDatas() { dataInicio = null; dataFim = null; }
-
-    private void LimparFiltroPessoa()
-    {
-        pessoaIdFilter = null;
-        pessoaNomeFiltrada = null;
-    }
 
     private async Task ExportarPdf()
     {
@@ -318,7 +301,6 @@
         if (gravacaoFilter != "todos")        q.Add($"gravacao={gravacaoFilter}");
         if (dataInicio != null)               q.Add($"de={dataInicio.Value:yyyy-MM-dd}");
         if (dataFim != null)                  q.Add($"ate={dataFim.Value:yyyy-MM-dd}");
-        if (pessoaIdFilter != null)           q.Add($"pessoaId={pessoaIdFilter}");
         return q.Count > 0 ? "?" + string.Join("&", q) : "";
     }
 
@@ -331,7 +313,6 @@
         if (gravacaoFilter != "todos")        s.Add($"grav-{gravacaoFilter}");
         if (dataInicio != null)               s.Add($"de-{dataInicio.Value:yyyyMMdd}");
         if (dataFim != null)                  s.Add($"ate-{dataFim.Value:yyyyMMdd}");
-        if (pessoaIdFilter != null)           s.Add($"pessoa-{pessoaIdFilter}");
         if (!string.IsNullOrEmpty(search))    s.Add($"busca-{Slug(search)}");
         return s.Count > 0 ? "_" + string.Join("_", s) : "";
     }

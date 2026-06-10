@@ -74,13 +74,6 @@
         </div>
     </div>
 
-    @if (mensagemSucesso != null)
-    {
-        <div class="alert alert-success" style="display:flex; align-items:center; gap:0.5rem;">
-            <Icon Name="check-circle" Size="16" /> @mensagemSucesso
-        </div>
-    }
-
     <div class="card">
         <div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Salvar Configurações</div></div>
         <div class="card-content flex items-center justify-between">
@@ -89,6 +82,14 @@
         </div>
     </div>
 </div>
+
+@* Toast flutuante — aparece sobre o conteúdo e some sozinho em 2.5s. Posição fixa no canto. *@
+@if (mensagemSucesso != null)
+{
+    <div style="position:fixed; top:1.25rem; right:1.25rem; z-index:9999; background:#16a34a; color:white; padding:0.75rem 1.25rem; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.2); display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; pointer-events:none;">
+        <Icon Name="check-circle" Size="16" /> <span>@mensagemSucesso</span>
+    </div>
+}
 
 @code {
     private string retencaoTentativas = "90";
@@ -135,5 +136,17 @@
         }
 
         isSaving = false;
+        StateHasChanged();
+
+        // Toast some sozinho em 2.5s sem bloquear a UI nem reordenar o layout
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(2500);
+            await InvokeAsync(() =>
+            {
+                mensagemSucesso = null;
+                StateHasChanged();
+            });
+        });
     }
 }
