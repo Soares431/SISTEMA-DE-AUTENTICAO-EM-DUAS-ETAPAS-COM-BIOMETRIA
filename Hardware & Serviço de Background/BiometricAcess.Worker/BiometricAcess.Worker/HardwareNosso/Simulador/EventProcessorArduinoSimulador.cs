@@ -89,9 +89,9 @@ public class EventProcessorArduinoSimulador : IEventProcessor
                 return Task.CompletedTask;
             }
 
-            // Senha correta — cadastra biometria
+            // Senha correta — cadastra biometria (slot fake no simulador)
             Console.WriteLine($"[ArduinoSim] Senha correta — iniciando cadastro de digital — Pessoa: {evento.PessoaID}");
-            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID);
+            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID, slotAs608: 1);
             return Task.CompletedTask;
         }
 

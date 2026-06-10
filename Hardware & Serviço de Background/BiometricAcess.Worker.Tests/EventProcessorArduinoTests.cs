@@ -19,7 +19,7 @@ namespace BiometricAcess.Worker.Tests
         {
             public List<string> Notificacoes { get; } = new();
             public void NotificarPedirSenha(int pessoaId) => Notificacoes.Add($"pedirSenha:{pessoaId}");
-            public void NotificarPrimeiroAcesso(int pessoaId) => Notificacoes.Add($"primeiroAcesso:{pessoaId}");
+            public void NotificarPrimeiroAcesso(int pessoaId, int slotAs608) => Notificacoes.Add($"primeiroAcesso:{pessoaId}:slot{slotAs608}");
             public void NotificarVerificarDigital(int pessoaId) => Notificacoes.Add($"verificarDigital:{pessoaId}");
             public void NotificarAcessoNegado(int pessoaId, string motivo) => Notificacoes.Add($"negado:{pessoaId}:{motivo}");
         }

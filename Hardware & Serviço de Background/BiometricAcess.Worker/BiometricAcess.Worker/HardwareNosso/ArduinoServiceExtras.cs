@@ -9,10 +9,10 @@ public class ArduinoServiceExtras : IAnvizArduinoService
         _connector = connector;
     }
 
-    public void NotificarPrimeiroAcesso(int pessoaId)
+    public void NotificarPrimeiroAcesso(int pessoaId, int slotAs608)
     {
-        Console.WriteLine($"[ArduinoServiceExtras] Primeiro acesso — enviando START_ENROLL para ID {pessoaId}");
-        _connector.EnviarComando($"{Comandos.DigitalCapturar}|{pessoaId}");
+        Console.WriteLine($"[ArduinoServiceExtras] Primeiro acesso — Pessoa {pessoaId} → slot AS608 {slotAs608}");
+        _connector.EnviarComando($"{Comandos.DigitalCapturar}|{slotAs608}");
     }
 
     public void NotificarVerificarDigital(int pessoaId)

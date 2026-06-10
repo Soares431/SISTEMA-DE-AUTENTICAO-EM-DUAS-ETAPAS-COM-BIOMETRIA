@@ -152,8 +152,12 @@ public class EventProcessorArduino : IEventProcessor
                 return;
             }
 
-            // Senha correta — cadastra biometria
-            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID);
+            // Senha correta — cadastra biometria.
+            // Slot do AS608 é calculado a partir do Pessoa.Id (limite do sensor: 127 templates).
+            // Em produção, se 2 pessoas colidirem no mesmo slot, a 2ª sobrescreve a 1ª no sensor.
+            // Pra muitas pessoas por Arduino, considerar coluna SlotAs608 no banco com gestão de slots livres.
+            var slot = (int)((pessoa.Id % 127) + 1);
+            _arduinoService.NotificarPrimeiroAcesso(evento.PessoaID, slot);
             return;
         }
 

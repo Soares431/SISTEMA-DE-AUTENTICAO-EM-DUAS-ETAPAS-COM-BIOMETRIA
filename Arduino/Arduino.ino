@@ -1,22 +1,36 @@
 // ═══════════════════════════════════════════════════════════════
 // Arduino — Terminal de acesso (cliente Serial do Worker .NET)
 // ═══════════════════════════════════════════════════════════════
-// Sem dados locais. O Arduino apenas:
-//   1. Coleta ID (6 dig) e senha (6 dig) pelo keypad
-//   2. Envia EVT|ID|... e EVT|SENHA|... pelo Serial
-//   3. Reage aos CMD que o Worker manda de volta
+// Sem dados locais. O Arduino:
+//   1. Coleta ID e senha pelo keypad
+//   2. Envia EVT| pelo Serial USB
+//   3. Reage aos CMD| do Worker (LCD, ASK_PASSWORD, START_VERIFY,
+//      START_ENROLL|<slot>, BUZZER, ACCESS|DENIED)
+//   4. Quando recebe START_VERIFY/START_ENROLL, controla o AS608
+//      e devolve OK/FAIL ou ENROLLED
 //
-// Quem decide tudo (existe? está ativo? tem permissão? senha bate?
-// tem biometria?) é o Worker (EventProcessorArduino.cs) lendo o banco.
+// Toda regra de negócio (existe? ativa? tem permissão? senha bate?)
+// fica no Worker (EventProcessorArduino.cs) consultando o banco.
 //
-// Digital ainda é SIMULADA — tecla A confirma sucesso, tecla B simula
-// falha. Pra integrar sensor real (FPM10A / AS608), basta substituir
-// os trechos "// [SIM-DIGITAL]" pelas chamadas do sensor.
+// ═══════════════════════════════════════════════════════════════
+// Pinagem (ver doc DOC_INTEGRACAO_ARDUINO.md):
+//   LCD I2C    : SDA=A4, SCL=A5     (endereço 0x27)
+//   Keypad 4x4 : linhas 2-5, cols 6-9
+//   AS608      : RX_sensor → pino 10, TX_sensor → pino 11, TCH → pino 12
+//                VCC do AS608 vem do AMS1117-3.3 (5V → 3.3V regulado)
+//   Buzzer     : pino A0  (opcional — se não tiver, ignora)
+//
+// Libs (Library Manager):
+//   - LiquidCrystal_I2C (Frank de Brabander)
+//   - Keypad (Mark Stanley)
+//   - Adafruit Fingerprint Sensor Library
 // ═══════════════════════════════════════════════════════════════
 
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
+#include <SoftwareSerial.h>
+#include <Adafruit_Fingerprint.h>
 
 // ── LCD ──────────────────────────────────────────────────────────
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -37,18 +51,32 @@ byte colPins[COLS] = {6, 7, 8, 9};
 
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
-// ── BUZZER (opcional — se não tiver, mantém pino solto) ──────────
-const byte BUZZER_PIN = 10;
+// ── AS608 ────────────────────────────────────────────────────────
+const byte FP_RX_PIN = 10;   // recebe do sensor (sensor TX → arduino RX)
+const byte FP_TX_PIN = 11;   // envia ao sensor (sensor RX ← arduino TX)
+const byte FP_TCH_PIN = 12;  // touch detection (HIGH quando o dedo toca)
+
+SoftwareSerial fingerSerial(FP_RX_PIN, FP_TX_PIN);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&fingerSerial);
+
+// ── BUZZER ───────────────────────────────────────────────────────
+const byte BUZZER_PIN = A0;
+
+// ── TIMEOUTS ─────────────────────────────────────────────────────
+const unsigned long TIMEOUT_DEDO_MS = 10000;     // tempo pra colocar o dedo
+const unsigned long DURACAO_RESULTADO_MS = 2500;
 
 // ── ESTADO ───────────────────────────────────────────────────────
 enum Estado {
-  DIGITANDO_ID,            // coletando 6 dígitos do ID
-  AGUARDANDO_SERVIDOR_ID,  // EVT|ID enviado, esperando CMD do Worker
-  DIGITANDO_SENHA,         // coletando 6 dígitos da senha
-  AGUARDANDO_SERVIDOR_SENHA, // EVT|SENHA enviado, esperando CMD
-  SIMULANDO_VERIFY,        // Worker pediu digital de verificação (A=OK, B=FAIL)
-  SIMULANDO_ENROLL,        // Worker pediu cadastro de digital (A=concluir)
-  MOSTRANDO_RESULTADO      // mensagem na tela por X ms antes de voltar pro início
+  DIGITANDO_ID,
+  AGUARDANDO_SERVIDOR_ID,
+  DIGITANDO_SENHA,
+  AGUARDANDO_SERVIDOR_SENHA,
+  VERIFY_AGUARDANDO_DEDO,     // CMD|FINGER|START_VERIFY recebido — espera dedo + faz fingerSearch
+  ENROLL_AGUARDANDO_1A_VEZ,   // CMD|FINGER|START_ENROLL|<slot> — 1ª captura
+  ENROLL_AGUARDANDO_RETIRAR,  // pede pra tirar o dedo
+  ENROLL_AGUARDANDO_2A_VEZ,   // 2ª captura
+  MOSTRANDO_RESULTADO         // tela final por DURACAO_RESULTADO_MS
 };
 
 Estado estado = DIGITANDO_ID;
@@ -56,7 +84,9 @@ String idDigitado = "";
 String senhaDigitada = "";
 String bufferSerial = "";
 unsigned long tempoResultado = 0;
-const unsigned long DURACAO_RESULTADO_MS = 2500;
+unsigned long tempoInicioEspera = 0;
+uint16_t slotEnroll = 0;          // slot do AS608 vindo do CMD|FINGER|START_ENROLL|<slot>
+bool dedoEstavaPresente = false;  // pra emitir PLACED/REMOVED por borda
 
 // ═══════════════════════════════════════════════════════════════
 // SETUP
@@ -70,6 +100,16 @@ void setup() {
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
+  pinMode(FP_TCH_PIN, INPUT);
+
+  // AS608 fala em 57600 (padrão Adafruit Fingerprint)
+  finger.begin(57600);
+  delay(200);
+  if (finger.verifyPassword()) {
+    Serial.println("EVT|FINGER|SENSOR|OK");
+  } else {
+    Serial.println("EVT|FINGER|SENSOR|FAIL");
+  }
 
   telaInicial();
   Serial.println("EVT|READY");
@@ -81,6 +121,8 @@ void setup() {
 void loop() {
   receberSerial();
   voltarSeResultadoExpirou();
+  detectarTouch();
+  processarEstadoBiometrico();
   lerTeclado();
 }
 
@@ -91,6 +133,7 @@ void telaInicial() {
   estado = DIGITANDO_ID;
   idDigitado = "";
   senhaDigitada = "";
+  slotEnroll = 0;
   mostrarDuasLinhas("Sistema Pronto", "Digite o ID:");
 }
 
@@ -109,7 +152,6 @@ void mostrarLinha(int linha, const String& texto) {
   lcd.print(texto.substring(0, 16));
 }
 
-// Exibe uma tela final por DURACAO_RESULTADO_MS e depois reseta.
 void mostrarResultado(const String& l1, const String& l2) {
   mostrarDuasLinhas(l1, l2);
   estado = MOSTRANDO_RESULTADO;
@@ -140,6 +182,19 @@ void beepFalha() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// TOUCH DETECT — emite EVT|FINGER|PLACED / REMOVED por borda
+// ═══════════════════════════════════════════════════════════════
+void detectarTouch() {
+  bool dedoAgora = digitalRead(FP_TCH_PIN) == HIGH;
+  if (dedoAgora && !dedoEstavaPresente) {
+    Serial.println("EVT|FINGER|PLACED");
+  } else if (!dedoAgora && dedoEstavaPresente) {
+    Serial.println("EVT|FINGER|REMOVED");
+  }
+  dedoEstavaPresente = dedoAgora;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SERIAL — RECEBE COMANDOS DO WORKER
 // ═══════════════════════════════════════════════════════════════
 void receberSerial() {
@@ -154,8 +209,6 @@ void receberSerial() {
   }
 }
 
-// Quebra "CMD|MOD|ACAO|DADO|DADO2" em campos.
-// Retorna quantos campos foram preenchidos (até 5).
 int quebrarMensagem(const String& linha, String campos[5]) {
   int n = 0;
   int inicio = 0;
@@ -176,12 +229,10 @@ void processarLinhaSerial(String linha) {
   int n = quebrarMensagem(linha, c);
   if (n < 2 || c[0] != "CMD") return;
 
-  // CMD|LCD|LINE1|texto
   if (c[1] == "LCD" && c[2] == "LINE1") { mostrarLinha(0, n >= 4 ? c[3] : ""); return; }
   if (c[1] == "LCD" && c[2] == "LINE2") { mostrarLinha(1, n >= 4 ? c[3] : ""); return; }
   if (c[1] == "LCD" && c[2] == "CLEAR") { lcd.clear(); return; }
 
-  // CMD|ASK|PASSWORD — Worker pede senha pra essa pessoa
   if (c[1] == "ASK" && c[2] == "PASSWORD") {
     estado = DIGITANDO_SENHA;
     senhaDigitada = "";
@@ -189,36 +240,163 @@ void processarLinhaSerial(String linha) {
     return;
   }
 
-  // CMD|FINGER|START_VERIFY — Worker pede pra verificar digital
   if (c[1] == "FINGER" && c[2] == "START_VERIFY") {
-    estado = SIMULANDO_VERIFY;
-    mostrarDuasLinhas("Coloque o dedo", "A=OK  B=Falha");
+    estado = VERIFY_AGUARDANDO_DEDO;
+    tempoInicioEspera = millis();
+    mostrarDuasLinhas("Coloque o dedo", "no sensor");
     return;
   }
 
-  // CMD|FINGER|START_ENROLL — Worker pede pra cadastrar digital
   if (c[1] == "FINGER" && c[2] == "START_ENROLL") {
-    estado = SIMULANDO_ENROLL;
-    mostrarDuasLinhas("Cadastrando dig", "A=Confirmar");
+    // CMD|FINGER|START_ENROLL|<slot>
+    slotEnroll = (n >= 4) ? (uint16_t)c[3].toInt() : 1;
+    if (slotEnroll == 0 || slotEnroll > 127) slotEnroll = 1;
+    estado = ENROLL_AGUARDANDO_1A_VEZ;
+    tempoInicioEspera = millis();
+    mostrarDuasLinhas("Cadastrar dig.", "Coloque o dedo");
     return;
   }
 
-  // CMD|FINGER|CANCEL — Worker cancela operação biométrica
   if (c[1] == "FINGER" && c[2] == "CANCEL") {
+    Serial.println("EVT|FINGER|CANCEL");
     mostrarResultado("Cancelado", "");
     return;
   }
 
-  // CMD|BUZZER|OK
-  if (c[1] == "BUZZER" && c[2] == "OK") { beepOk(); return; }
-  // CMD|BUZZER|FAIL
-  if (c[1] == "BUZZER" && c[2] == "FAIL") { beepFalha(); return; }
+  if (c[1] == "BUZZER" && c[2] == "OK") {
+    beepOk();
+    mostrarResultado("Acesso Liberado!", "Bem vindo!");
+    return;
+  }
+  if (c[1] == "BUZZER" && c[2] == "FAIL") {
+    beepFalha();
+    return;
+  }
 
-  // CMD|ACCESS|DENIED|motivo
   if (c[1] == "ACCESS" && c[2] == "DENIED") {
     beepFalha();
     String motivo = n >= 4 ? c[3] : "negado";
     mostrarResultado("Acesso Negado!", motivo);
+    return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAQUINA DE ESTADOS BIOMETRICA
+// ═══════════════════════════════════════════════════════════════
+void processarEstadoBiometrico() {
+  // ── VERIFY 1:N ──────────────────────────────────────────────
+  if (estado == VERIFY_AGUARDANDO_DEDO) {
+    if (millis() - tempoInicioEspera > TIMEOUT_DEDO_MS) {
+      Serial.println("EVT|FINGER|FAIL|TIMEOUT_IMAGEM");
+      mostrarResultado("Tempo esgotado", "");
+      return;
+    }
+    uint8_t p = finger.getImage();
+    if (p == FINGERPRINT_NOFINGER) return;  // ainda sem dedo, segue esperando
+    Serial.print("DBG|GETIMG|"); Serial.println(p);
+    if (p != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|IMG");
+      mostrarResultado("Falha leitura", "Tente de novo");
+      return;
+    }
+    uint8_t t = finger.image2Tz(1);
+    Serial.print("DBG|IMG2TZ|"); Serial.println(t);
+    if (t != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|TZ");
+      mostrarResultado("Falha leitura", "Tente de novo");
+      return;
+    }
+    uint8_t s = finger.fingerSearch();
+    Serial.print("DBG|SEARCH|"); Serial.print(s);
+    Serial.print("|fid="); Serial.println(finger.fingerID);
+    if (s == FINGERPRINT_OK) {
+      // Devolve o ID que o usuário digitou (CodigoUsuario) — o Worker
+      // já validou pessoa+permissão antes de chamar START_VERIFY, então
+      // o match aqui só confirma que tem digital cadastrada.
+      Serial.print("EVT|FINGER|OK|"); Serial.println(idDigitado);
+    } else {
+      Serial.println("EVT|FINGER|FAIL|NAO_RECONHECIDO");
+      mostrarResultado("Nao reconhecido", "");
+    }
+    return;
+  }
+
+  // ── ENROLL — 1ª captura ────────────────────────────────────
+  if (estado == ENROLL_AGUARDANDO_1A_VEZ) {
+    if (millis() - tempoInicioEspera > TIMEOUT_DEDO_MS) {
+      Serial.println("EVT|FINGER|FAIL|TIMEOUT_IMAGEM");
+      mostrarResultado("Tempo esgotado", "");
+      return;
+    }
+    uint8_t p = finger.getImage();
+    if (p == FINGERPRINT_NOFINGER) return;
+    Serial.print("DBG|GETIMG1|"); Serial.println(p);
+    if (p != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|IMG");
+      mostrarResultado("Falha leitura", "Tente de novo");
+      return;
+    }
+    uint8_t t = finger.image2Tz(1);
+    Serial.print("DBG|IMG2TZ1|"); Serial.println(t);
+    if (t != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|TZ");
+      mostrarResultado("Falha leitura", "Tente de novo");
+      return;
+    }
+    estado = ENROLL_AGUARDANDO_RETIRAR;
+    mostrarDuasLinhas("Tire o dedo", "");
+    return;
+  }
+
+  if (estado == ENROLL_AGUARDANDO_RETIRAR) {
+    if (finger.getImage() == FINGERPRINT_NOFINGER) {
+      estado = ENROLL_AGUARDANDO_2A_VEZ;
+      tempoInicioEspera = millis();
+      mostrarDuasLinhas("Coloque dedo", "novamente");
+    }
+    return;
+  }
+
+  if (estado == ENROLL_AGUARDANDO_2A_VEZ) {
+    if (millis() - tempoInicioEspera > TIMEOUT_DEDO_MS) {
+      Serial.println("EVT|FINGER|FAIL|TIMEOUT_IMAGEM");
+      mostrarResultado("Tempo esgotado", "");
+      return;
+    }
+    uint8_t p = finger.getImage();
+    if (p == FINGERPRINT_NOFINGER) return;
+    Serial.print("DBG|GETIMG2|"); Serial.println(p);
+    if (p != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|IMG");
+      mostrarResultado("Falha leitura", "Tente de novo");
+      return;
+    }
+    uint8_t t = finger.image2Tz(2);
+    Serial.print("DBG|IMG2TZ2|"); Serial.println(t);
+    if (t != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|TZ");
+      mostrarResultado("Falha leitura", "Tente de novo");
+      return;
+    }
+    uint8_t m = finger.createModel();
+    Serial.print("DBG|CREATE|"); Serial.println(m);
+    if (m != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|MISMATCH");
+      mostrarResultado("Digitais", "diferentes");
+      return;
+    }
+    uint8_t st = finger.storeModel(slotEnroll);
+    Serial.print("DBG|STORE|"); Serial.print(st);
+    Serial.print("|slot="); Serial.println(slotEnroll);
+    if (st != FINGERPRINT_OK) {
+      Serial.println("EVT|FINGER|FAIL|STORE");
+      mostrarResultado("Erro ao salvar", "");
+      return;
+    }
+    Serial.print("EVT|FINGER|ENROLLED|"); Serial.println(idDigitado);
+    beepOk();
+    mostrarResultado("Digital", "cadastrada!");
     return;
   }
 }
@@ -229,45 +407,31 @@ void processarLinhaSerial(String linha) {
 void lerTeclado() {
   if (estado == MOSTRANDO_RESULTADO) return;
   if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA) return;
+  if (estado == VERIFY_AGUARDANDO_DEDO
+      || estado == ENROLL_AGUARDANDO_1A_VEZ
+      || estado == ENROLL_AGUARDANDO_RETIRAR
+      || estado == ENROLL_AGUARDANDO_2A_VEZ) {
+    // Permite cancelar durante leitura biométrica com #
+    char t = keypad.getKey();
+    if (t == '#') {
+      Serial.println("EVT|FINGER|CANCEL");
+      mostrarResultado("Cancelado", "");
+    }
+    return;
+  }
 
   char tecla = keypad.getKey();
   if (tecla == NO_KEY) return;
 
-  // ── Verify de digital (simulada): A confirma, B nega ──────────
-  if (estado == SIMULANDO_VERIFY) {
-    if (tecla == 'A') {
-      Serial.println("EVT|FINGER|OK|" + idDigitado);
-      beepOk();
-      mostrarResultado("Acesso Liberado", "Bem vindo!");
-    } else if (tecla == 'B') {
-      Serial.println("EVT|FINGER|FAIL");
-      beepFalha();
-      mostrarResultado("Digital falhou", "Tente novamente");
-    }
-    return;
-  }
-
-  // ── Enroll de digital (simulada): A conclui cadastro ───────────
-  if (estado == SIMULANDO_ENROLL) {
-    if (tecla == 'A') {
-      Serial.println("EVT|FINGER|ENROLLED|" + idDigitado);
-      beepOk();
-      mostrarResultado("Digital", "Cadastrada!");
-    }
-    return;
-  }
-
-  // ── Digitando ID ───────────────────────────────────────────────
   if (estado == DIGITANDO_ID) {
-    if (tecla == '#') { telaInicial(); return; }   // cancela
-    if (tecla == '*') {                            // confirma
+    if (tecla == '#') { telaInicial(); return; }
+    if (tecla == '*') {
       if (idDigitado.length() != 6) {
         mostrarLinha(0, "ID: 6 digitos!");
         delay(1200);
         mostrarDuasLinhas("Sistema Pronto", "Digite o ID:");
         return;
       }
-      // Envia ID pro Worker — ele decide o próximo passo
       Serial.println("EVT|ID|" + idDigitado);
       estado = AGUARDANDO_SERVIDOR_ID;
       mostrarDuasLinhas("ID enviado...", "Aguardando...");
@@ -282,7 +446,6 @@ void lerTeclado() {
     return;
   }
 
-  // ── Digitando senha (após CMD|ASK|PASSWORD) ────────────────────
   if (estado == DIGITANDO_SENHA) {
     if (tecla == '#') { telaInicial(); return; }
     if (tecla == '*') {
