@@ -512,3 +512,8 @@ gravacoes/
 
 # Backups locais do banco.db — gerados por backup-banco.ps1
 backups/
+
+# Cópias avulsas/temporárias do banco (ex.: recuperados, zerados, scripts ad-hoc)
+banco_recuperado*
+banco_zerado*
+diagnostico_banco.csx
