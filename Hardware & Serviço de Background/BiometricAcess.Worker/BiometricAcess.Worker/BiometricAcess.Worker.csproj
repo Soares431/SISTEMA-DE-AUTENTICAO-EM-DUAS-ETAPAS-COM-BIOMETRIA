@@ -5,6 +5,9 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>dotnet-BiometricAcess.Worker-3939cc0a-1a43-4a27-8dea-7d0e623a4594</UserSecretsId>
+		<!-- Resolve NETSDK1152: Worker e Int1 (ProjectReference) tem appsettings*.json
+		     com mesmo nome — em publish, MSBuild reclama de duplicata. -->
+		<ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
 	</PropertyGroup>
 
 	<ItemGroup>

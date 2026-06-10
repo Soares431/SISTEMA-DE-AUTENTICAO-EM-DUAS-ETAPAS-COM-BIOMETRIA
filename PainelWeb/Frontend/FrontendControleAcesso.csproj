@@ -6,6 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>FrontendControleAcesso</RootNamespace>
     <AssemblyName>FrontendControleAcesso</AssemblyName>
+    <!-- Resolve NETSDK1152 ao publicar: Int3 e Int1 (ProjectReference) tem appsettings*.json
+         com mesmo nome. Em publish, MSBuild reclama de duplicata. Esta flag faz o publish
+         do projeto principal vencer (appsettings do Int1 referenciado e descartado). -->
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <ItemGroup>
