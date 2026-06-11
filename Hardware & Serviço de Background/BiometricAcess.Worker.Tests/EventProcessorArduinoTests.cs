@@ -18,7 +18,7 @@ namespace BiometricAcess.Worker.Tests
         private class FakeArduinoService : IAnvizArduinoService
         {
             public List<string> Notificacoes { get; } = new();
-            public void NotificarPedirSenha(int pessoaId) => Notificacoes.Add($"pedirSenha:{pessoaId}");
+            public void NotificarPedirSenha(int pessoaId, bool primeiroAcesso) => Notificacoes.Add($"pedirSenha:{pessoaId}:{(primeiroAcesso ? "1" : "0")}");
             public void NotificarPrimeiroAcesso(int pessoaId, int slotAs608) => Notificacoes.Add($"primeiroAcesso:{pessoaId}:slot{slotAs608}");
             public void NotificarVerificarDigital(int pessoaId) => Notificacoes.Add($"verificarDigital:{pessoaId}");
             public void NotificarAcessoNegado(int pessoaId, string motivo) => Notificacoes.Add($"negado:{pessoaId}:{motivo}");
@@ -71,21 +71,21 @@ namespace BiometricAcess.Worker.Tests
             db.SaveChanges();
 
             var arduino = new FakeArduinoService();
-            // O fire-and-forget de gravação ONVIF é assíncrono e não bloqueia o fluxo testado;
-            // basta um scope factory que devolva algum scope válido (cria um provider mínimo).
-            var sp = new ServiceCollection().BuildServiceProvider();
+            // Refactor: EventProcessorArduino agora resolve repos por scope (foi Singleton consumindo
+            // Scoped — captive dependency). Registramos o AppDbContext como Singleton aqui pra que
+            // todos os scopes compartilhem o mesmo banco em memória que o teste verifica.
+            var services = new ServiceCollection();
+            services.AddSingleton(db);
+            services.AddSingleton<IConfiguration>(CriarConfiguration());
+            services.AddScoped<IPessoaRepository>(s => new PessoaImplemetions(s.GetRequiredService<AppDbContext>(), s.GetRequiredService<IConfiguration>()));
+            services.AddScoped<IAmbientePessoaRepository>(s => new AmbientePessoaImplemetions(s.GetRequiredService<AppDbContext>()));
+            services.AddScoped<IDispositivoT50Repository>(s => new DispositivoT50Implemetions(s.GetRequiredService<AppDbContext>()));
+            services.AddScoped<IAmbienteRepository>(s => new AmbienteImplementions(s.GetRequiredService<AppDbContext>()));
+            services.AddScoped<ITentativaAcessoRepository>(s => new TentativaAcessoImplemetions(s.GetRequiredService<AppDbContext>()));
+            services.AddScoped<IConfiguracaoRepository>(s => new ConfiguracaoImplemetions(s.GetRequiredService<AppDbContext>()));
+            var sp = services.BuildServiceProvider();
             var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-            var processor = new EventProcessorArduino(
-                new PessoaImplemetions(db, CriarConfiguration()),
-                new AmbientePessoaImplemetions(db),
-                new DispositivoT50Implemetions(db),
-                new AmbienteImplementions(db),
-                new TentativaAcessoImplemetions(db),
-                new ConfiguracaoImplemetions(db),
-                arduino,
-                CriarConfiguration(),
-                scopeFactory
-            );
+            var processor = new EventProcessorArduino(arduino, CriarConfiguration(), scopeFactory);
             return (processor, arduino, db, amb, disp);
         }
 
@@ -189,7 +189,8 @@ namespace BiometricAcess.Worker.Tests
                 DataHora = DateTime.UtcNow
             });
 
-            Assert.Contains($"pedirSenha:{p.Id}", arduino.Notificacoes);
+            // Pessoa digital_e_senha sem biometria = primeiro acesso → flag "1" no CMD|ASK|PASSWORD
+            Assert.Contains(arduino.Notificacoes, s => s == $"pedirSenha:{p.Id}:1");
             // Não registra tentativa ainda — só pede senha
             Assert.Empty(db.TentativasAcesso.ToList());
         }
@@ -315,6 +316,7 @@ namespace BiometricAcess.Worker.Tests
             {
                 PessoaID = (int)p.Id,
                 TipoVerificacao = "primeiro_acesso",
+                AcessoLiberado = true,  // ENROLLED do Arduino vem com sucesso (Connector seta)
                 IpDispositivo = PortaSerial,
                 DataHora = DateTime.UtcNow
             });
@@ -338,6 +340,7 @@ namespace BiometricAcess.Worker.Tests
             {
                 PessoaID = (int)p.Id,
                 TipoVerificacao = "digital",
+                AcessoLiberado = true,  // FINGER|OK do Arduino vem com sucesso
                 IpDispositivo = PortaSerial,
                 DataHora = DateTime.UtcNow
             });
@@ -370,6 +373,7 @@ namespace BiometricAcess.Worker.Tests
             {
                 PessoaID = (int)p.Id,
                 TipoVerificacao = "digital",
+                AcessoLiberado = true,
                 IpDispositivo = "COM4", // evento do disp2
                 DataHora = DateTime.UtcNow
             });

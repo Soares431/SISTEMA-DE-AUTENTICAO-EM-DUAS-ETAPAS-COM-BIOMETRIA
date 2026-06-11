@@ -27,10 +27,11 @@ public class ArduinoServiceExtras : IAnvizArduinoService
         _connector.EnviarComando($"{Comandos.AccessDenied}|{motivo}");
     }
 
-    public void NotificarPedirSenha(int pessoaId)
+    public void NotificarPedirSenha(int pessoaId, bool primeiroAcesso)
     {
-        Console.WriteLine($"[ArduinoServiceExtras] Pedindo senha — ID {pessoaId}");
-        _connector.EnviarComando(Comandos.PedirSenha);
+        var flag = primeiroAcesso ? "1" : "0";
+        Console.WriteLine($"[ArduinoServiceExtras] Pedindo senha — ID {pessoaId} (primeiroAcesso={primeiroAcesso})");
+        _connector.EnviarComando($"{Comandos.PedirSenha}|{flag}");
     }
 
     public void NotificarAcessoLiberado(int duracaoSegundos = 5)

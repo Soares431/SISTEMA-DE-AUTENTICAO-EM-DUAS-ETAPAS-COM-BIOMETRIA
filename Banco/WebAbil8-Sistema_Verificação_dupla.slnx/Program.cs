@@ -58,6 +58,7 @@ builder.Services.AddHangfireServer();
 //builder.Services.AddDatabaseConfiguration(builder.Configuration);
 builder.Services.AddDataBaseConfiguration(builder.Configuration);
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
 builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
 builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
@@ -359,6 +360,26 @@ using (var scope = app.Services.CreateScope())
                 sincronizado         INTEGER NOT NULL DEFAULT 0,
                 tentativasFalhas     INTEGER NOT NULL DEFAULT 0,
                 erroUltimaTentativa  VARCHAR(500) NULL
+            )";
+        createCmd.ExecuteNonQuery();
+    }
+
+    // Migração inline — fila de slots AS608 órfãos (pessoa deletada mas template segue no sensor).
+    // SincronizadorAs608Worker drena também esta tabela: envia DELETE ao Arduino e apaga o registro.
+    bool slotOrfaoExiste;
+    using (var checkCmd = conn.CreateCommand())
+    {
+        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='SlotAs608Orfao'";
+        slotOrfaoExiste = checkCmd.ExecuteScalar() != null;
+    }
+    if (!slotOrfaoExiste)
+    {
+        using var createCmd = conn.CreateCommand();
+        createCmd.CommandText = @"
+            CREATE TABLE SlotAs608Orfao (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                slot     INTEGER NOT NULL,
+                criadoEm TEXT NOT NULL
             )";
         createCmd.ExecuteNonQuery();
     }

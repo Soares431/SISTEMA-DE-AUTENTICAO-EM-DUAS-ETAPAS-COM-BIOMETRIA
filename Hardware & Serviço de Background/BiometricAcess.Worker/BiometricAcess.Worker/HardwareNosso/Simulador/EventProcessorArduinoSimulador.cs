@@ -61,9 +61,9 @@ public class EventProcessorArduinoSimulador : IEventProcessor
 
             if (!pessoa.TemBiometria)
             {
-                // Primeiro acesso — pede senha
+                // Primeiro acesso — pede senha (simulador só tem digital_e_senha)
                 Console.WriteLine($"[ArduinoSim] Primeiro acesso — pedindo senha — Pessoa: {evento.PessoaID}");
-                _arduinoService.NotificarPedirSenha(evento.PessoaID);
+                _arduinoService.NotificarPedirSenha(evento.PessoaID, true);
                 return Task.CompletedTask;
             }
 

@@ -10,6 +10,7 @@
 @inject IDispositivoT50Repository DispositivoRepo
 @inject ICodigoRepository CodigoRepo
 @inject ISenhaRepository SenhaRepo
+@inject ISlotAs608OrfaoRepository SlotOrfaoRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject NavigationManager Nav
@@ -582,13 +583,26 @@
     private async Task HandleRemoverAcesso(int ambienteId)
     {
         if (pessoa == null) return;
+        var tinhaBiometria = pessoa.biometriaCadastrada != null;
+        // Captura o T50 do ambiente removido pra decrementar o contador (se tinha biometria).
+        var ambRemovido = ambientesPessoa.FirstOrDefault(a => a.Id == ambienteId);
         AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoa.Id);
         LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
+        if (tinhaBiometria && ambRemovido != null)
+        {
+            var dispositivo = DispositivoRepo.BuscarPorId(ambRemovido.DispositivoT50Id);
+            if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+            {
+                dispositivo.DigitaisCadastradas--;
+                DispositivoRepo.Atualizar(dispositivo);
+            }
+        }
         ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
-        // Se ficou sem nenhum ambiente, inativa a pessoa
+        // Se ficou sem nenhum ambiente, inativa a pessoa e libera o slot do AS608.
         if (ambientesPessoa.Count == 0 && pessoa.Status == "ativo")
         {
             await PessoaRepo.AlterarStatus(pessoa.Id, false);
+            try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch { /* sem slot */ }
             pessoa.Status = "inativo";
         }
     }
@@ -609,12 +623,28 @@
     private async Task HandleConfirmarInativar()
     {
         if (pessoa == null) return;
-        foreach (var amb in ambientesPessoa)
+        var tinhaBiometria = pessoa.biometriaCadastrada != null;
+        // Snapshot dos ambientes ANTES de remover vínculos — precisamos pra decrementar T50.
+        var ambientesSnap = ambientesPessoa.ToList();
+        foreach (var amb in ambientesSnap)
             AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
         await PessoaRepo.AlterarStatus(pessoa.Id, false);
         // Inativação também libera o slot no AS608 — admin pode reativar depois e
         // o pool aloca um slot novo se necessário.
         try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch { /* sem slot — ignora */ }
+        // Decrementa contador dos T50s — a biometria sai do AS608 via sincronizador.
+        if (tinhaBiometria)
+        {
+            foreach (var amb in ambientesSnap)
+            {
+                var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
+                if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+                {
+                    dispositivo.DigitaisCadastradas--;
+                    DispositivoRepo.Atualizar(dispositivo);
+                }
+            }
+        }
         LogRepo.Registrar(TokenStore.AdminId, "Inativacao", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa!.Id);
@@ -675,10 +705,16 @@
             }
             catch { /* senha não localizada */ }
 
-            // 6. Auditoria + remove pessoa.
-            //    Slot do AS608 (se ocupado) vira "fantasma" no sensor — não vaza no pool
-            //    porque AlocarSlotAs608Livre só conta pessoas existentes. O próximo enroll
-            //    que reusar esse slot sobrescreve o template antigo via storeModel.
+            // 6. Slot AS608 — enfileira como órfão ANTES de remover a pessoa.
+            //    Sem isso o template fica fantasma no sensor (a pessoa some, perde-se
+            //    a referência do slot). SincronizadorAs608Worker drena SlotAs608Orfao.
+            if (pessoa.SlotAs608 != null)
+            {
+                try { await SlotOrfaoRepo.Adicionar(pessoa.SlotAs608.Value); }
+                catch { /* falha não impede deleção — slot fica fantasma no pior caso */ }
+            }
+
+            // 7. Auditoria + remove pessoa.
             LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
             await PessoaRepo.Remover(pessoa.Id);
             Nav.NavigateTo("/pessoas");
@@ -696,12 +732,27 @@
     private async Task HandleConfirmarReset()
     {
         if (pessoa == null) return;
+        var tinhaBiometria = pessoa.biometriaCadastrada != null;
         pessoa.biometriaCadastrada = null;
         pessoa.templateBackup = null;
         await PessoaRepo.Atualizar(pessoa);
         // Sinaliza ao Worker apagar o template do slot no AS608 (fila assíncrona drenada
         // pelo SincronizadorAs608Worker). Sem isso, o slot fica ocupado e o pool vaza.
         try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch { /* sem slot — ignora */ }
+        // Decrementa o contador de digitais em cada T50 cujo ambiente a pessoa tinha acesso.
+        // O incremento ocorre no enroll (EventProcessorArduino) — o reset desfaz semanticamente.
+        if (tinhaBiometria)
+        {
+            foreach (var amb in ambientesPessoa)
+            {
+                var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
+                if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+                {
+                    dispositivo.DigitaisCadastradas--;
+                    DispositivoRepo.Atualizar(dispositivo);
+                }
+            }
+        }
         LogRepo.Registrar(TokenStore.AdminId, "ResetBiometria", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         showConfirmReset = false;

@@ -29,6 +29,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
+builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
 builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
 builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
@@ -54,9 +55,9 @@ builder.Services.AddScoped<CameraService>();
 // Grava TentativasAcesso no SQLite — o painel exibe os dados em tempo real
 // Requer pelo menos um Ambiente cadastrado no painel
 // ═══════════════════════════════════════════════════════════════
-builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
-builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-builder.Services.AddSingleton<IEventProcessor, EventProcessorSimuladorBanco>();
+//builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
+//builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
+//builder.Services.AddSingleton<IEventProcessor, EventProcessorSimuladorBanco>();
 
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
@@ -64,16 +65,16 @@ builder.Services.AddSingleton<IEventProcessor, EventProcessorSimuladorBanco>();
 // Antes de ativar: ajuste a porta COM no ArduinoConnector
 // ═══════════════════════════════════════════════════════════════
 
-//var arduinoConnector = new ArduinoConnector(porta: "COM3"); // ← ajuste a porta
-//builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
-//builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
-//builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
+var arduinoConnector = new ArduinoConnector(porta: "COM5"); // ← ajuste a porta (USB-SERIAL CH340 = Arduino)
+builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
+builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
+builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
 
 // OPÇÃO 2A — banco vazio / dados mockados
 //builder.Services.AddSingleton<IEventProcessor, EventProcessorArduinoSimulador>();
 
 // OPÇÃO 2B — banco real
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
+builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
 
 // ═══════════════════════════════════════════════════════════════
 

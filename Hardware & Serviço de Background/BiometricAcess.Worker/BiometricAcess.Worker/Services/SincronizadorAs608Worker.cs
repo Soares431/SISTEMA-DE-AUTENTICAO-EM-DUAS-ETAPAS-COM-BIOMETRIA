@@ -42,7 +42,9 @@ namespace BiometricAcess.Worker.Services
 
                     using var scope = _scopeFactory.CreateScope();
                     var pessoaRepo = scope.ServiceProvider.GetRequiredService<IPessoaRepository>();
+                    var orfaoRepo = scope.ServiceProvider.GetRequiredService<ISlotAs608OrfaoRepository>();
 
+                    // 1) Pessoas vivas com slot marcado pra apagar (reset/inativação).
                     var pendentes = await pessoaRepo.ListarSlotsPendentesApagar();
                     foreach (var p in pendentes)
                     {
@@ -53,6 +55,14 @@ namespace BiometricAcess.Worker.Services
                         // É aceitável: o pool considera ocupado só quem tem SlotAs608 != null
                         // numa pessoa ativa, então o slot fantasma libera no próximo enroll.
                         await pessoaRepo.LimparSlotPendenteApagar(p.Id);
+                    }
+
+                    // 2) Slots órfãos (pessoa já foi DELETADA — o registro sobrevive aqui).
+                    var orfaos = await orfaoRepo.ListarTodos();
+                    foreach (var o in orfaos)
+                    {
+                        arduinoService.NotificarApagarDigital(o.Slot);
+                        await orfaoRepo.Remover(o.Id);
                     }
                 }
                 catch (Exception ex)
