@@ -77,4 +77,20 @@ public static class FormatHelper
         }
         return true;
     }
+
+    // Porta serial Windows: "COM" + 1..3 dígitos (COM1..COM256). Case-insensitive.
+    public static bool PortaSerialValida(string? porta)
+    {
+        if (string.IsNullOrWhiteSpace(porta)) return false;
+        var p = porta.Trim().ToUpperInvariant();
+        if (!p.StartsWith("COM")) return false;
+        var num = p.Substring(3);
+        if (num.Length == 0 || num.Length > 3) return false;
+        if (!num.All(char.IsDigit)) return false;
+        return int.TryParse(num, out var n) && n >= 1 && n <= 256;
+    }
+
+    // Endereço aceito pelo Worker para um T50: IPv4 (T50M/Simulador) ou porta serial (Arduino).
+    public static bool EnderecoT50Valido(string? endereco) =>
+        IpValido(endereco) || PortaSerialValida(endereco);
 }
