@@ -6,14 +6,14 @@
 #   .\backup-banco.ps1 -Restaurar      # lista backups e pergunta qual restaurar
 #   .\backup-banco.ps1 -Listar         # so lista os backups existentes
 #
-# Mantem os ultimos 30 backups por padrao (ajustavel via -MaxBackups N).
+# Mantem os ultimos 3 backups por padrao (ajustavel via -MaxBackups N).
 # Pula a copia se houver processo travando o banco (banco.db-wal ativo).
 # ============================================================
 
 param(
     [switch]$Restaurar,
     [switch]$Listar,
-    [int]$MaxBackups = 30
+    [int]$MaxBackups = 3
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
