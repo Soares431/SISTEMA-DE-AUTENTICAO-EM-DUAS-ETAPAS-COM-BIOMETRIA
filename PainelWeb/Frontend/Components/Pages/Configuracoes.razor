@@ -6,79 +6,172 @@
    ============================================================================= *@
 @page "/configuracoes"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
+@using Frontend.Data.Services
 @inject IConfiguracaoRepository ConfigRepo
 @inject ITentativaAcessoRepository TentativaRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject BackupBancoService BackupService
 
 <div class="space-y">
-    <div><h1 class="text-2xl font-bold">Configurações</h1><p class="text-muted">Gerencie as configurações globais do sistema</p></div>
+    <div>
+        <h1 class="text-2xl font-bold">Configurações</h1>
+        <p class="text-muted">Parâmetros globais do sistema, retenção de dados e manutenção</p>
+    </div>
 
-    <div class="grid grid-2">
-        <div class="card">
-            <div class="card-header"><div class="card-title"><Icon Name="database" Size="20" /> Retenção de Dados</div><p class="card-description">Configure por quanto tempo os dados serão armazenados no sistema</p></div>
-            <div class="card-content space-y-sm">
+    @* Métricas resumo no topo (estilo dashboard) — dá visão rápida do estado *@
+    <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+        <div class="card" style="padding: 1rem;">
+            <div class="flex items-center" style="gap: 0.75rem;">
+                <div style="background: rgba(59,130,246,0.1); padding: 0.5rem; border-radius: 8px; display: flex;"><Icon Name="shield" Size="20" CssClass="text-primary" /></div>
+                <div>
+                    <p class="text-muted text-sm">Registros de Acesso</p>
+                    <p class="text-xl font-bold">@totalTentativas</p>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="padding: 1rem;">
+            <div class="flex items-center" style="gap: 0.75rem;">
+                <div style="background: rgba(168,85,247,0.1); padding: 0.5rem; border-radius: 8px; display: flex;"><Icon Name="file-text" Size="20" CssClass="text-primary" /></div>
+                <div>
+                    <p class="text-muted text-sm">Logs do Sistema</p>
+                    <p class="text-xl font-bold">@totalLogs</p>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="padding: 1rem;">
+            <div class="flex items-center" style="gap: 0.75rem;">
+                <div style="background: rgba(22,163,74,0.1); padding: 0.5rem; border-radius: 8px; display: flex;"><Icon Name="clock" Size="20" CssClass="text-warning" /></div>
+                <div>
+                    <p class="text-muted text-sm">Retenção Tentativas</p>
+                    <p class="text-xl font-bold">@retencaoTentativas <span class="text-sm text-muted">dias</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Card 1 — Retenção de Dados (largura total, grid interno 2 colunas) *@
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><Icon Name="database" Size="20" /> Retenção de Dados</div>
+            <p class="card-description">Por quanto tempo cada tipo de dado permanece armazenado antes da limpeza automática</p>
+        </div>
+        <div class="card-content space-y-sm">
+            <div class="grid grid-2" style="gap: 1.25rem;">
                 <div class="form-group">
-                    <label class="form-label">Retenção de Tentativas de Acesso</label>
+                    <label class="form-label">Tentativas de Acesso</label>
                     <select class="form-select" @bind="retencaoTentativas">
                         <option value="30">30 dias</option>
                         <option value="60">60 dias</option>
                         <option value="90">90 dias</option>
                         <option value="180">180 dias (máximo)</option>
                     </select>
-                    <p class="text-sm text-muted">Tentativas de acesso mais antigas serão removidas automaticamente</p>
+                    <p class="text-sm text-muted">Eventos de acesso liberado/negado mais antigos são removidos</p>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Retenção de Logs de Auditoria</label>
+                    <label class="form-label">Logs de Auditoria</label>
                     <select class="form-select" @bind="retencaoLogs">
                         <option value="90">90 dias</option>
                         <option value="180">180 dias</option>
                         <option value="365">1 ano (máximo)</option>
                     </select>
-                    <p class="text-sm text-muted">Logs administrativos mais antigos serão removidos automaticamente</p>
-                </div>
-                <div class="alert alert-warning"><Icon Name="alert-triangle" Size="16" CssClass="text-warning" /><div><p class="alert-title">Atenção</p><p class="alert-desc">Reduzir o período de retenção pode resultar na perda permanente de dados históricos.</p></div></div>
-                <hr class="separator" />
-                <div>
-                    <label class="form-label">Estatísticas de Armazenamento</label>
-                    <div class="grid grid-2" style="gap: 0.75rem;">
-                        <div class="info-row"><div><p class="text-muted text-sm">Registros de Acesso</p><p class="text-xl font-bold">@totalTentativas</p></div></div>
-                        <div class="info-row"><div><p class="text-muted text-sm">Logs do Sistema</p><p class="text-xl font-bold">@totalLogs</p></div></div>
-                        <div class="info-row" style="grid-column: span 2;"><div><p class="text-muted text-sm">Retenção Tentativas</p><p class="text-xl font-bold">@retencaoTentativas dias</p></div></div>
-                    </div>
+                    <p class="text-sm text-muted">Logs de ações administrativas (login, edição, exclusão)</p>
                 </div>
             </div>
+            <div class="alert alert-warning">
+                <Icon Name="alert-triangle" Size="16" CssClass="text-warning" />
+                <div><p class="alert-title">Atenção</p><p class="alert-desc">Reduzir a retenção pode causar perda permanente de dados históricos no próximo ciclo de limpeza (03:00 UTC).</p></div>
+            </div>
         </div>
+    </div>
 
-        <div class="card">
-            <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Comportamento do Sistema</div><p class="card-description">Configure o tempo de espera de gravação e o período de inativação automática</p></div>
-            <div class="card-content space-y-sm">
+    @* Card 2 — Comportamento do Sistema (largura total, grid interno 2 colunas) *@
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><Icon Name="clock" Size="20" /> Comportamento do Sistema</div>
+            <p class="card-description">Tempo de gravação ONVIF e período de inativação automática</p>
+        </div>
+        <div class="card-content space-y-sm">
+            <div class="grid grid-2" style="gap: 1.25rem;">
                 <div class="form-group">
-                    <label class="form-label">Tempo de Espera de Gravação (segundos)</label>
-                    <input type="number" class="form-input" min="30" max="120" @bind="tempoEsperaGravacao" />
-                    <p class="text-sm text-muted">Tempo padrão que o sistema aguarda a câmera ONVIF capturar a gravação após um acesso liberado (30-120s). Pode ser sobrescrito por ambiente.</p>
+                    <label class="form-label">Tempo de Espera de Gravação</label>
+                    <div class="flex items-center" style="gap: 0.5rem;">
+                        <input type="number" class="form-input" min="30" max="120" @bind="tempoEsperaGravacao" style="max-width: 8rem;" />
+                        <span class="text-muted text-sm">segundos (30–120)</span>
+                    </div>
+                    <p class="text-sm text-muted">Tempo que o sistema aguarda a câmera ONVIF gravar após acesso liberado</p>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Período de Inativação Automática</label>
+                    <label class="form-label">Inativação Automática</label>
                     <select class="form-select" @bind="periodoInativacaoMeses">
                         <option value="3">3 meses</option>
                         <option value="6">6 meses</option>
                         <option value="12">12 meses (1 ano)</option>
                         <option value="18">18 meses</option>
-                        <option value="24">24 meses (2 anos — padrão)</option>
+                        <option value="24">24 meses (padrão)</option>
                     </select>
-                    <p class="text-sm text-muted">Pessoas sem acesso por este período serão inativadas automaticamente e removidas de todos os ambientes</p>
+                    <p class="text-sm text-muted">Pessoas sem acesso neste período são inativadas e removidas dos ambientes</p>
                 </div>
-                <div class="alert alert-info"><Icon Name="info" Size="16" CssClass="text-primary" /><div><p class="alert-title">Informação</p><p class="alert-desc">A inativação automática executa diariamente às 03:00. Pessoas inativadas precisam ser adicionadas a um ambiente novamente para reativar o acesso.</p></div></div>
+            </div>
+            <div class="alert alert-info">
+                <Icon Name="info" Size="16" CssClass="text-primary" />
+                <div><p class="alert-title">Informação</p><p class="alert-desc">A inativação executa diariamente às 03:00. Reativar uma pessoa exige adicioná-la a um ambiente novamente.</p></div>
             </div>
         </div>
     </div>
 
+    @* CTA salvar — linha simples sem card desperdiçando espaço *@
+    <div class="flex items-center justify-between" style="padding: 0.5rem 0.25rem;">
+        <p class="text-muted text-sm">Alterações nos cards acima só entram em vigor após salvar</p>
+        <button class="btn btn-primary" @onclick="HandleSave" disabled="@isSaving">
+            <Icon Name="save" Size="16" /> @(isSaving ? "Salvando..." : "Salvar Configurações")
+        </button>
+    </div>
+
+    @* Separador visual antes da seção de manutenção (escopo diferente) *@
+    <hr class="separator" style="margin: 0.5rem 0;" />
+
+    @* Manutenção — backup e snapshot *@
     <div class="card">
-        <div class="card-header"><div class="card-title"><Icon Name="settings" Size="20" /> Salvar Configurações</div></div>
-        <div class="card-content flex items-center justify-between">
-            <p class="text-muted">Clique no botão para salvar todas as alterações realizadas nas configurações</p>
-            <button class="btn btn-primary" @onclick="HandleSave" disabled="@isSaving"><Icon Name="save" Size="16" /> @(isSaving ? "Salvando..." : "Salvar Configurações")</button>
+        <div class="card-header">
+            <div class="card-title"><Icon Name="download" Size="20" /> Manutenção do Banco</div>
+            <p class="card-description">Snapshot manual do banco.db (mantém os 3 mais recentes em <code>backups/</code>)</p>
+        </div>
+        <div class="card-content">
+            <div class="flex items-center justify-between" style="gap: 1.5rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 16rem;">
+                    @if (ultimoBackup != null)
+                    {
+                        <div class="info-row" style="margin-bottom: 0.5rem;">
+                            <div>
+                                <p class="text-muted text-sm">Último backup criado</p>
+                                <p class="font-bold"><Icon Name="check-circle" Size="14" CssClass="text-success" /> @ultimoBackup.NomeArquivo</p>
+                                <p class="text-sm text-muted">
+                                    @ultimoBackup.TamanhoMB MB · @ultimoBackup.BackupsAtuais backup(s) em disco
+                                    @if (ultimoBackup.BackupsApagados > 0)
+                                    {
+                                        <span> · @ultimoBackup.BackupsApagados antigo(s) removido(s)</span>
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-muted">Use antes de mudanças sensíveis no banco. O <code>iniciar.ps1</code> também gera um backup no boot do sistema.</p>
+                    }
+                </div>
+                <button class="btn btn-primary" @onclick="HandleBackup" disabled="@isBackupRodando">
+                    <Icon Name="download" Size="16" /> @(isBackupRodando ? "Gerando..." : "Fazer Backup Agora")
+                </button>
+            </div>
+            @if (erroBackup != null)
+            {
+                <div class="alert alert-danger" style="margin-top: 1rem;">
+                    <Icon Name="alert-triangle" Size="16" />
+                    <div><p class="alert-title">Falha no backup</p><p class="alert-desc">@erroBackup</p></div>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -101,6 +194,9 @@
     private int totalTentativas = 0;
     private int totalLogs = 0;
     private Configuracao? config = null;
+    private bool isBackupRodando = false;
+    private BackupResultado? ultimoBackup = null;
+    private string? erroBackup = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -148,5 +244,37 @@
                 StateHasChanged();
             });
         });
+    }
+
+    private async Task HandleBackup()
+    {
+        if (isBackupRodando) return;
+        isBackupRodando = true;
+        erroBackup = null;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            // Executa fora da thread do circuito (cópia de ~75MB pode bloquear).
+            var resultado = await Task.Run(() => BackupService.Executar());
+            ultimoBackup = resultado;
+            LogRepo.Registrar(TokenStore.AdminId, "Backup", "Sistema", null);
+            mensagemSucesso = $"Backup criado: {resultado.NomeArquivo} ({resultado.TamanhoMB} MB)";
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(3500);
+                await InvokeAsync(() => { mensagemSucesso = null; StateHasChanged(); });
+            });
+        }
+        catch (Exception ex)
+        {
+            erroBackup = ex.Message;
+        }
+        finally
+        {
+            isBackupRodando = false;
+            StateHasChanged();
+        }
     }
 }

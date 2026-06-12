@@ -30,6 +30,9 @@ Console.WriteLine($"[INT3 DB] {dbPath}");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
+// Backup manual do banco.db pelo painel (botão em Configurações).
+builder.Services.AddSingleton(new Frontend.Data.Services.BackupBancoService(dbPath));
+
 // Repositórios do Int1
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
 builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
