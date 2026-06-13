@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
@@ -9,16 +9,16 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Key]
         [Column("senha", TypeName = "varchar(6)")]
         [MaxLength(6)]
-        public string Senha { get; set; } // PK
+        public string Senha { get; set; }
 
         [Column("emUso")]
         public bool EmUso { get; set; }
 
         [Column("pessoaId")]
-        public long? PessoaId { get; set; } // NULL se não atribuída
+        public long? PessoaId { get; set; }
 
-        // Navegação
         [ForeignKey("PessoaId")]
         public Pessoa? Pessoa { get; set; }
     }
 }
+

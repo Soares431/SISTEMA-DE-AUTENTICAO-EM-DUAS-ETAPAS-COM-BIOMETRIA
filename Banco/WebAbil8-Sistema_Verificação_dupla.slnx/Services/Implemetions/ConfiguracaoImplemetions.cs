@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +16,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public async Task<Configuracao> BuscarPorChave()
         {
-            // Sempre retorna o registro único de configuração (Id = 1)
+
             return await _context.Configuracoes.FirstOrDefaultAsync();
         }
 
@@ -30,3 +30,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         }
     }
 }
+

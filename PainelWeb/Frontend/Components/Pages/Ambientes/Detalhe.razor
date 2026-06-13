@@ -453,17 +453,17 @@
     private bool isSalvandoConfig = false;
     private bool isAdicionandoCamera = false;
     private bool isAdicionandoPessoa = false;
-    // Multi-T50: lista de T50s vinculados ao ambiente + lista global de T50s
+
     private List<DispositivoT50> t50sVinculados = new();
     private List<DispositivoT50> todosT50 = new();
-    // Mapa T50.Id → quantas pessoas DESTE ambiente estão cadastradas nele
+
     private Dictionary<int, int> pessoasNosT50 = new();
     private bool showAddT50 = false;
     private bool isAdicionandoT50 = false;
     private string? errAddT50 = null;
     private int novoT50ParaAdicionarId = 0;
-    private int showConfirmRemoverT50 = 0; // ID do T50 a remover (0 = modal fechado)
-    // Modal "Adicionar Pessoa(s)" — busca + chips multi-seleção
+    private int showConfirmRemoverT50 = 0;
+
     private string buscaPessoa = "";
     private HashSet<long> pessoasSelecionadas = new();
     private bool capacidadeOk = true;
@@ -473,7 +473,7 @@
     {
         todosT50 = DispositivoRepo.ListarTodos();
         t50sVinculados = AmbienteT50Repo.ListarT50sDoAmbiente(Id);
-        // Para cada T50 do ambiente, conta quantas pessoas deste ambiente estão cadastradas nele
+
         var pessoasDoAmb = pessoas.Select(p => p.Id).ToHashSet();
         pessoasNosT50 = t50sVinculados.ToDictionary(
             t => t.Id,
@@ -498,7 +498,7 @@
         await Task.Yield();
         try
         {
-            // O repo agora copia as pessoas do ambiente e valida capacidade
+
             AmbienteT50Repo.Adicionar(ambiente.Id, novoT50ParaAdicionarId, ehPrincipal: false);
             LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "AmbienteT50", ambiente.Id);
             ambiente = AmbienteRepo.BuscarPorId(Id);
@@ -523,7 +523,6 @@
         showConfirmRemoverT50 = 0;
     }
 
-    // Computed: pessoas que casam com a busca e que ainda não foram selecionadas
     private IEnumerable<Pessoa> PessoasFiltradas => pessoasDisponiveis
         .Where(p => !pessoasSelecionadas.Contains(p.Id))
         .Where(p => string.IsNullOrWhiteSpace(buscaPessoa)
@@ -616,8 +615,7 @@
 
     private async Task HandleRemoverPessoa(long pessoaId)
     {
-        // Antes de remover do ambiente, descobre quais T50s a pessoa só usa por causa DESTE ambiente.
-        // Em outros ambientes que usam o mesmo T50, a digital deve permanecer.
+
         var ambientesDaPessoaAntes = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId).Select(a => a.Id).ToList();
         var outrosAmbientes = ambientesDaPessoaAntes.Where(aid => aid != Id).ToList();
         var t50sEmOutrosAmbientes = outrosAmbientes
@@ -628,8 +626,6 @@
         LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoaId);
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
 
-        // Para cada T50 vinculado a este ambiente: se a pessoa não está em outro ambiente que usa esse T50,
-        // remove a biometria dela desse T50 (decrementa contador).
         foreach (var t50 in t50sVinculados)
         {
             if (!t50sEmOutrosAmbientes.Contains(t50.Id))
@@ -639,7 +635,6 @@
             }
         }
 
-        // Inativa a pessoa se ficou sem nenhum ambiente
         var ambientesDaPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId);
         if (ambientesDaPessoa.Count == 0)
             await PessoaRepo.AlterarStatus(pessoaId, false);
@@ -657,8 +652,7 @@
         await Task.Yield();
         try
         {
-            // Pré-valida capacidade: para cada T50 do ambiente, quantas pessoas com digital
-            // serão adicionadas (descontando as que já estão lá). Bloqueia tudo se algum não couber.
+
             var pessoasObjs = pessoasSelecionadas
                 .Select(pid => pessoasDisponiveis.FirstOrDefault(x => x.Id == pid))
                 .Where(p => p != null).Select(p => p!).ToList();
@@ -674,10 +668,9 @@
                 }
             }
 
-            // Processa cada pessoa selecionada
             foreach (var pessoaId in pessoasSelecionadas.ToList())
             {
-                // Idempotente: pula se já está no ambiente
+
                 if (AmbientePessoaRepo.PessoaTemAcesso(Id, pessoaId)) continue;
 
                 AmbientePessoaRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = Id, PessoaId = pessoaId });
@@ -687,10 +680,9 @@
                 var pessoaAdd = await PessoaRepo.BuscarPorId(pessoaId);
                 if (pessoaAdd == null) continue;
 
-                // Modo definido no perfil da pessoa — não escolhido aqui
                 if (pessoaAdd.modoAcesso == "digital_e_senha")
                 {
-                    // Propaga para TODOS os T50 do ambiente automaticamente
+
                     foreach (var t50 in t50sVinculados)
                     {
                         if (!PessoaT50Repo.EstaCadastrada(pessoaAdd.Id, t50.Id))
@@ -700,7 +692,6 @@
                         }
                     }
 
-                    // Reativação: se tem template de backup, marca biometria como cadastrada
                     if (pessoaAdd.templateBackup != null
                         && pessoaAdd.templateBackup.Length > 0
                         && pessoaAdd.biometriaCadastrada == null)
@@ -709,7 +700,7 @@
                         LogRepo.Registrar(TokenStore.AdminId, "RestauracaoBiometria", "Pessoa", (int)pessoaAdd.Id);
                     }
                 }
-                // somente_senha: pessoa vinculada ao ambiente sem digital em nenhum T50
+
             }
 
             pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
@@ -775,25 +766,19 @@
             var ambienteId = ambiente.Id;
             var ambienteNome = ambiente.Nome;
 
-            // Snapshot das pessoas vinculadas antes de remover — para inativar órfãs depois
             var pessoasVinculadas = AmbientePessoaRepo.ListarPessoasDoAmbiente(ambienteId)
                 .Select(p => p.Id).ToList();
 
-            // 1. Remove todas as câmeras do ambiente
             foreach (var cam in cameras)
                 await CameraRepo.Remover(cam.Id);
 
-            // 2. Remove todos os vínculos AmbientePessoa
             foreach (var pessoaId in pessoasVinculadas)
                 AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoaId);
 
-            // 3. Remove todas as tentativas de acesso do ambiente
-            // (FK obrigatória — sem remover, o delete do ambiente falha)
             var tentativas = TentativaRepo.ListarPorAmbiente(ambienteId);
             foreach (var t in tentativas)
                 TentativaRepo.Remover(t.Id);
 
-            // 4. Inativa pessoas que ficaram sem nenhum ambiente
             foreach (var pessoaId in pessoasVinculadas)
             {
                 var aindaTemAmbiente = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoaId).Any();
@@ -801,7 +786,6 @@
                     await PessoaRepo.AlterarStatus(pessoaId, false);
             }
 
-            // 5. Remove o próprio ambiente
             AmbienteRepo.Remover(ambienteId);
             LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Ambiente", ambienteId);
 
@@ -824,3 +808,4 @@
     }
 
 }
+

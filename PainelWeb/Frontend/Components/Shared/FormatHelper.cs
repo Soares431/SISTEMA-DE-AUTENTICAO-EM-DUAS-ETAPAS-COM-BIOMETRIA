@@ -2,22 +2,19 @@ using System.Text.RegularExpressions;
 
 namespace FrontendControleAcesso.Components.Shared;
 
-// Validações e formatações reutilizáveis para os formulários do painel.
 public static class FormatHelper
 {
     private static readonly Regex _emailRegex =
         new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
 
-    // Remove tudo que não for dígito.
     public static string SoDigitos(string? s) =>
         string.IsNullOrEmpty(s) ? "" : new string(s.Where(char.IsDigit).ToArray());
 
-    // CPF válido = 11 dígitos + checksum + não pode ser 11 dígitos iguais.
     public static bool CpfValido(string? cpf)
     {
         var d = SoDigitos(cpf);
         if (d.Length != 11) return false;
-        if (d.Distinct().Count() == 1) return false; // "00000000000", "11111111111" etc.
+        if (d.Distinct().Count() == 1) return false;
 
         int Soma(int len, int peso)
         {
@@ -32,7 +29,6 @@ public static class FormatHelper
         return dig2 == d[10] - '0';
     }
 
-    // Formata CPF: "12345678901" → "123.456.789-01"; outros tamanhos retornam input limpo.
     public static string FormatarCpf(string? cpf)
     {
         var d = SoDigitos(cpf);
@@ -40,7 +36,6 @@ public static class FormatHelper
         return $"{d.Substring(0,3)}.{d.Substring(3,3)}.{d.Substring(6,3)}-{d.Substring(9,2)}";
     }
 
-    // Telefone: "11987654321" → "(11) 98765-4321"; "1133334444" → "(11) 3333-4444".
     public static string FormatarTelefone(string? telefone)
     {
         var d = SoDigitos(telefone);
@@ -55,14 +50,12 @@ public static class FormatHelper
     public static bool EmailValido(string? email) =>
         !string.IsNullOrWhiteSpace(email) && email.Length <= 150 && _emailRegex.IsMatch(email);
 
-    // Telefone válido: 10 ou 11 dígitos (com DDD).
     public static bool TelefoneValido(string? telefone)
     {
         var d = SoDigitos(telefone);
         return d.Length == 10 || d.Length == 11;
     }
 
-    // IPv4 válido: 4 octetos 0-255 separados por ponto. Rejeita zeros à esquerda inválidos ("01") e octetos vazios.
     public static bool IpValido(string? ip)
     {
         if (string.IsNullOrWhiteSpace(ip)) return false;
@@ -78,7 +71,6 @@ public static class FormatHelper
         return true;
     }
 
-    // Porta serial Windows: "COM" + 1..3 dígitos (COM1..COM256). Case-insensitive.
     public static bool PortaSerialValida(string? porta)
     {
         if (string.IsNullOrWhiteSpace(porta)) return false;
@@ -90,7 +82,7 @@ public static class FormatHelper
         return int.TryParse(num, out var n) && n >= 1 && n <= 256;
     }
 
-    // Endereço aceito pelo Worker para um T50: IPv4 (T50M/Simulador) ou porta serial (Arduino).
     public static bool EnderecoT50Valido(string? endereco) =>
         IpValido(endereco) || PortaSerialValida(endereco);
 }
+

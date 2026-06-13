@@ -33,14 +33,14 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
                 AmbienteId = amb.Id,
                 DataHora = DateTime.UtcNow.AddDays(-200),
                 AcessoLiberado = true,
-                DataExpiracao = DateTime.UtcNow.AddDays(-10) // EXPIRADO
+                DataExpiracao = DateTime.UtcNow.AddDays(-10)
             });
             db.TentativasAcesso.Add(new TentativaAcesso
             {
                 AmbienteId = amb.Id,
                 DataHora = DateTime.UtcNow,
                 AcessoLiberado = true,
-                DataExpiracao = DateTime.UtcNow.AddDays(90) // VÁLIDO
+                DataExpiracao = DateTime.UtcNow.AddDays(90)
             });
             db.SaveChanges();
 
@@ -64,7 +64,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
                 Acao = "Login",
                 EntidadeAfetada = "Administrador",
                 DataHora = DateTime.UtcNow.AddDays(-300),
-                DataExpiracao = DateTime.UtcNow.AddDays(-1) // EXPIRADO
+                DataExpiracao = DateTime.UtcNow.AddDays(-1)
             });
             db.LogsAdmin.Add(new LogAdmin
             {
@@ -72,7 +72,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
                 Acao = "Login",
                 EntidadeAfetada = "Administrador",
                 DataHora = DateTime.UtcNow,
-                DataExpiracao = DateTime.UtcNow.AddDays(180) // VÁLIDO
+                DataExpiracao = DateTime.UtcNow.AddDays(180)
             });
             db.SaveChanges();
 
@@ -116,3 +116,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
 {
@@ -8,3 +8,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         Task<Configuracao> Atualizar(Configuracao configuracao);
     }
 }
+

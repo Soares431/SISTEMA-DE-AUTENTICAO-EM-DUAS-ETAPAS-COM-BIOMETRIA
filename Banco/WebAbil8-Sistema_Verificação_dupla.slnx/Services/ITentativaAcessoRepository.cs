@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
 {
@@ -14,8 +14,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         List<TentativaAcesso> ListarPorPessoa(long pessoaId);
         List<TentativaAcesso> ListarPorAmbiente(int ambienteId);
 
-        // Persiste a URL/path da gravação ONVIF associada a uma tentativa já registrada.
-        // Chamado pelo CameraService.MonitorarNovoArquivo após o tempo de espera configurado.
         int AtualizarGravacaoPath(int tentativaId, string gravacaoPath);
     }
 }
+

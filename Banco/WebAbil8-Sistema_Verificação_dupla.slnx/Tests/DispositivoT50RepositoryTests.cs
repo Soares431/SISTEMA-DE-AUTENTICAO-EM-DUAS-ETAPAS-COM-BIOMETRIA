@@ -1,4 +1,3 @@
-﻿// Tests/DispositivoT50RepositoryTests.cs
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
@@ -111,7 +110,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         public void EstaOnline_ComHeartbeatAntigo_DeveSerFalse()
         {
             var dispositivo = CriarDispositivo("T50-Antigo");
-            dispositivo.UltimaConexao = DateTime.UtcNow.AddMinutes(-5); // > 2 min threshold
+            dispositivo.UltimaConexao = DateTime.UtcNow.AddMinutes(-5);
             Assert.False(dispositivo.EstaOnline);
         }
 

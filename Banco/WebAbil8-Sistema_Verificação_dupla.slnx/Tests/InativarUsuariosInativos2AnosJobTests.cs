@@ -121,7 +121,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var job = new InativarUsuariosInativos2AnosJob(db, NullLogger<InativarUsuariosInativos2AnosJob>.Instance);
             job.Executar();
 
-            // status continua inativo (não muda); o teste é só pra garantir que não quebra
             Assert.Equal("inativo", db.Pessoas.Find(p.Id)!.Status);
         }
 
@@ -141,3 +140,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
     }
 }
+

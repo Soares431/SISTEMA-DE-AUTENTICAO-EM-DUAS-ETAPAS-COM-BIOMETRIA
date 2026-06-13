@@ -1,10 +1,3 @@
-@* =============================================================================
-   Cameras.razor - Gerenciamento de câmeras de vigilância
-   Features: Grid de câmeras com preview, filtros (busca, status, ambiente),
-             modal de visualização ao vivo (RTSP), modal de cadastro de câmera,
-             indicador de gravação (REC), estado online/offline
-   Rota: /cameras
-   ============================================================================= *@
 @page "/cameras"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ICameraRepository CameraRepo
@@ -44,8 +37,7 @@
                 <div class="camera-preview" style="position:relative; aspect-ratio:16/9; background:#000;">
                     @if (cam.Ativa && !string.IsNullOrEmpty(cam.UrlHLS))
                     {
-                        @* Player HLS pequeno autoplay mute como preview no card.
-                           IDs únicos por câmera para que vários cards possam tocar em paralelo. *@
+
                         <video id="@($"camPreview_{cam.Id}")"
                                style="width:100%; height:100%; object-fit:cover; display:block;"
                                muted autoplay playsinline></video>
@@ -246,8 +238,6 @@
         ambientes = AmbienteRepo.ListarTodos();
         if (ambientes.Any()) novoAmbienteId = ambientes.First().Id;
 
-        // Pré-aplica filtro de ambiente vindo na URL (?ambienteId=X) — usado pelo link
-        // da tab "Câmeras" no detalhe do ambiente
         var uri = new Uri(Nav.Uri);
         var qs = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
         if (qs.TryGetValue("ambienteId", out var amb) && !string.IsNullOrEmpty(amb))
@@ -259,7 +249,7 @@
     private void OpenLiveView(Camera cam)
     {
         liveCamera = cam;
-        hlsAtivo = false; // será iniciado em OnAfterRenderAsync quando o <video> existir
+        hlsAtivo = false;
     }
 
     private async Task FecharLiveView()
@@ -276,14 +266,13 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Quando o modal abre e a câmera tem URL HLS, dispara o player ampliado.
+
         if (liveCamera != null && !string.IsNullOrEmpty(liveCamera.UrlHLS) && !hlsAtivo)
         {
             hlsAtivo = true;
             await JS.InvokeVoidAsync("iniciarHls", "liveVideo", liveCamera.UrlHLS);
         }
-        // Dispara HLS pequeno em todos os cards de câmeras que têm URL HLS e ainda não rodam.
-        // Cada card tem ID camPreview_{id} — verificado/inicializado individualmente.
+
         foreach (var cam in Filtered)
         {
             if (cam.Ativa && !string.IsNullOrEmpty(cam.UrlHLS) && !previewsAtivos.Contains(cam.Id))
@@ -297,7 +286,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        // Garante que o stream HLS (player ampliado + previews dos cards) é parado quando o usuário sai.
+
         if (hlsAtivo)
         {
             try { await JS.InvokeVoidAsync("pararHls", "liveVideo"); } catch { }
@@ -363,7 +352,7 @@
 
     private void AbrirEdicao(Camera cam)
     {
-        // Cópia para o admin poder cancelar sem mutar a referência da listagem
+
         editandoCamera = new Camera
         {
             Id = cam.Id,

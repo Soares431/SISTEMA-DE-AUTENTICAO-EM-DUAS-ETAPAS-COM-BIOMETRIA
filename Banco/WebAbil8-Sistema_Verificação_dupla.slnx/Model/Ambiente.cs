@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
@@ -20,13 +20,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public int DispositivoT50Id { get; set; }
 
         [Column("tempoEsperaGravacaoSeg")]
-        public int TempoEsperaGravacaoSeg { get; set; } = 60; // padrão 60
+        public int TempoEsperaGravacaoSeg { get; set; } = 60;
 
         [Column("dataCriacao")]
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
 
-        // Soft-delete: ambiente excluído continua no banco para preservar histórico de tentativas.
-        // Limpeza física ocorre no job de retenção, junto com as tentativas vinculadas.
         [Column("excluido")]
         public bool Excluido { get; set; } = false;
 
@@ -34,3 +32,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public DateTime? DataExclusao { get; set; }
     }
 }
+

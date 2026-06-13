@@ -14,7 +14,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public CodigoDisponivel? BuscarDisponivel()
         {
-            // Range 100000-999999, sem zeros à esquerda — mesma lógica de SenhaImplemetions
+
             return _context.CodigosDisponiveis
                 .Where(c => !c.EmUso && c.PessoaId == null)
                 .AsEnumerable()
@@ -54,3 +54,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         }
     }
 }
+

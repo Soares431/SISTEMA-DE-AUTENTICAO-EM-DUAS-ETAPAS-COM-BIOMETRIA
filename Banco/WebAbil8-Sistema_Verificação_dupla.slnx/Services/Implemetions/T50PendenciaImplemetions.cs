@@ -29,8 +29,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<T50Pendencia> ListarPendentes(int max = 50)
         {
-            // Mais antigos primeiro — preserva ordem de operações (adicionar antes de remover).
-            // Limita 5 retentativas falhas pra não congestionar a fila com pendências quebradas.
+
             return _context.T50Pendencias
                 .Where(p => !p.Sincronizado && p.TentativasFalhas < 5)
                 .OrderBy(p => p.CriadoEm)
@@ -57,3 +56,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         }
     }
 }
+

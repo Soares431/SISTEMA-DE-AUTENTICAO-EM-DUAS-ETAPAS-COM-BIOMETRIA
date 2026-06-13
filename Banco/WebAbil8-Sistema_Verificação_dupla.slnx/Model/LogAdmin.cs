@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
@@ -33,8 +33,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Column("dataExpiracao")]
         public DateTime? DataExpiracao { get; set; }
 
-        // Navegação
         [ForeignKey("AdminId")]
         public Administrador Administrador { get; set; }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
 {
@@ -7,7 +7,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options) { }
 
-        // Todos os DbSets
         public DbSet<Pessoa> Pessoas { get; set; }
         public DbSet<Ambiente> Ambientes { get; set; }
         public DbSet<AmbientePessoa> AmbientesPessoas { get; set; }
@@ -24,21 +23,19 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         public DbSet<T50Pendencia> T50Pendencias { get; set; }
         public DbSet<SlotAs608Orfao> SlotsAs608Orfaos { get; set; }
 
-        // Relacionamento muitos-para-muitos (se você ainda usar essa entidade)
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AmbientePessoa>()
                 .HasKey(ap => new { ap.AmbienteId, ap.PessoaId });
 
-            // Garante que a mesma combinação ambiente+T50 não se repita
             modelBuilder.Entity<AmbienteT50>()
                 .HasIndex(at => new { at.AmbienteId, at.DispositivoT50Id })
                 .IsUnique();
 
-            // Mesma pessoa não pode ser cadastrada duas vezes no mesmo T50
             modelBuilder.Entity<PessoaT50>()
                 .HasIndex(pt => new { pt.PessoaId, pt.DispositivoT50Id })
                 .IsUnique();
         }
     }
 }
+

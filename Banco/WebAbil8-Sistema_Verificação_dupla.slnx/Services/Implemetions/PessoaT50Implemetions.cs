@@ -26,7 +26,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             };
             _context.PessoasT50.Add(vinculo);
 
-            // Mantém o contador escalar do T50 em sincronia com a contagem real
             var t50 = _context.DispositivosT50.Find(t50Id);
             if (t50 != null) t50.DigitaisCadastradas++;
 
@@ -77,3 +76,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         }
     }
 }
+

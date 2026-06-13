@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
@@ -35,13 +35,13 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public List<Ambiente> ListarTodos()
         {
-            // Filtra ambientes excluídos do uso operacional (Index, Detalhe, dropdowns).
+
             return _context.Ambientes.Where(a => !a.Excluido).ToList();
         }
 
         public List<Ambiente> ListarTodosIncluindoExcluidos()
         {
-            // Usado pelo Histórico para resolver nome de ambientes de tentativas antigas.
+
             return _context.Ambientes.ToList();
         }
 
@@ -49,13 +49,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         {
             var existing = _context.Ambientes.Find(id);
             if (existing == null) throw new ArgumentNullException("Ambiente não encontrado");
-            // Soft-delete: preserva FK das tentativas. Limpeza física fica a cargo
-            // do LimparDadosExpiradosJob, que purga ambientes excluídos sem tentativas vivas.
+
             existing.Excluido = true;
             existing.DataExclusao = DateTime.UtcNow;
             _context.SaveChanges();
         }
-
 
     }
 }

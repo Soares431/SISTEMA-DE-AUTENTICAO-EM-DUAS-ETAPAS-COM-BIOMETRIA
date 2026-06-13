@@ -4,13 +4,6 @@
 @inject ILogAdminRepository LogRepo
 @inject NavigationManager Nav
 
-@*
-   Tela apenas-leitura. Por decisão de segurança (projeto militar):
-   - Edição de dados, troca de senha e criação de admin são feitas SOMENTE via SQL direto no banco.
-   - O painel não expõe Login (vetor de ataque dispensável).
-   - Esta tela existe para auditoria: ver dados básicos + últimos logs.
-*@
-
 @if (admin == null)
 {
     <div class="card"><div class="card-content pt-6"><p class="text-muted">Administrador não encontrado.</p></div></div>
@@ -100,3 +93,4 @@ else
         _ => "badge-muted"
     };
 }
+

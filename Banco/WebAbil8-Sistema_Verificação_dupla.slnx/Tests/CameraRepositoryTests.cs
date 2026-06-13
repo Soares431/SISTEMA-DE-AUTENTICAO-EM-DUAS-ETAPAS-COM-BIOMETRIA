@@ -16,7 +16,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var context = new AppDbContext(options);
             context.Database.OpenConnection();
             context.Database.EnsureCreated();
-            // Seed de ambientes 1 e 2 — Camera tem FK obrigatória pra Ambiente
+
             context.Ambientes.Add(new Ambiente { Id = 1, Nome = "Sala 1", TempoEsperaGravacaoSeg = 60, DataCriacao = DateTime.UtcNow });
             context.Ambientes.Add(new Ambiente { Id = 2, Nome = "Sala 2", TempoEsperaGravacaoSeg = 60, DataCriacao = DateTime.UtcNow });
             context.SaveChanges();
@@ -125,3 +125,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
     }
 }
+

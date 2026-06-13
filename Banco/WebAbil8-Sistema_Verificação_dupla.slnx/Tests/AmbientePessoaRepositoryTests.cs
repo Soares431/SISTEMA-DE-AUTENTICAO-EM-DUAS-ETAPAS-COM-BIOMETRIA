@@ -7,7 +7,7 @@ using Xunit;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
 {
-    // Cobre AmbientePessoaRepository e o fluxo de reativação (doc_tecnica §5.9).
+
     public class AmbientePessoaRepositoryTests
     {
         private static IConfiguration CriarConfiguration() => new ConfigurationBuilder().Build();
@@ -85,12 +85,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         [Fact]
         public async Task Reativacao_PessoaComTemplate_DeveMarcarBiometriaCadastrada()
         {
-            // Simula doc_tecnica §5.9: ao re-adicionar pessoa que tinha templateBackup,
-            // o sistema marca biometriaCadastrada (no flow real o Worker faz upload no T50).
+
             using var db = CriarContexto();
             var (pessoa, ambiente) = await SetupPessoaEAmbiente(db);
 
-            // Configura: pessoa com templateBackup, biometria zerada
             pessoa.templateBackup = new byte[] { 1, 2, 3, 4 };
             pessoa.biometriaCadastrada = null;
             db.Pessoas.Update(pessoa);
@@ -99,7 +97,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var pessoaRepo = new PessoaImplemetions(db, CriarConfiguration());
             var apRepo = new AmbientePessoaImplemetions(db);
 
-            // Fluxo: adiciona ao ambiente + restaura biometria (lógica que está no Handle do Razor)
             apRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = ambiente.Id, PessoaId = pessoa.Id });
             var pAtual = await pessoaRepo.BuscarPorId(pessoa.Id);
             if (pAtual.templateBackup?.Length > 0 && pAtual.biometriaCadastrada == null)
@@ -112,7 +109,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         [Fact]
         public async Task T50Cheio_AdicionarPessoaEmSomenteSenha_NaoIncrementaDigitais()
         {
-            // doc_tecnica §5.2 passo 3: T50 cheio → cadastrar em somente_senha sem incrementar contador
+
             using var db = CriarContexto();
             var (pessoa, ambiente) = await SetupPessoaEAmbiente(db);
 
@@ -123,7 +120,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var pessoaRepo = new PessoaImplemetions(db, CriarConfiguration());
             var apRepo = new AmbientePessoaImplemetions(db);
 
-            // Simula o handler: cheio → força somente_senha, NÃO incrementa DigitaisCadastradas
             apRepo.AdicionarPessoa(new AmbientePessoa { AmbienteId = ambiente.Id, PessoaId = pessoa.Id });
             var p = await pessoaRepo.BuscarPorId(pessoa.Id);
             p.modoAcesso = "somente_senha";
@@ -137,3 +133,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
     }
 }
+

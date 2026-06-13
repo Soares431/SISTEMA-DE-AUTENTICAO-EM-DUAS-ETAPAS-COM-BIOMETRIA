@@ -1,4 +1,3 @@
-﻿// Tests/PessoaRepositoryTests.cs
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
@@ -106,11 +105,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             await repo.AtualizarSenha(pessoa.Id, "999000", "novoHash");
 
             var resultado = await repo.BuscarPorId(pessoa.Id);
-            // senhaClear não pode ser igual ao plain ("999000") — tem que estar criptografado
+
             Assert.NotEqual("999000", resultado.senhaClear);
             Assert.Equal("novoHash", resultado.senhaHash);
 
-            // E descriptografando com a mesma chave volta ao plain
             var key = "5cta-aes-key-senha-segura-32char";
             Assert.Equal("999000", Services.AesHelper.Decrypt(resultado.senhaClear, key));
         }
@@ -127,7 +125,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         [Fact]
         public void AesHelper_EncryptComKeysIguais_GeraCiphersDiferentes()
         {
-            // IV é aleatório a cada chamada — mesmo texto gera ciphers diferentes
+
             const string key = "5cta-aes-key-senha-segura-32char";
             var c1 = Services.AesHelper.Encrypt("abc", key);
             var c2 = Services.AesHelper.Encrypt("abc", key);

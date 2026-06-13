@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 {
@@ -18,7 +18,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Required]
         [Column("senhaHash", TypeName = "varchar(255)")]
         [MaxLength(255)]
-        public string SenhaHash { get; set; } // BCrypt — nunca texto claro
+        public string SenhaHash { get; set; }
 
         [Required]
         [Column("nomeCompleto", TypeName = "varchar(100)")]
@@ -45,3 +45,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }
 }
+

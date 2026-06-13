@@ -5,8 +5,7 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
 {
-    // Endpoint público de health check — útil pra monitoramento e oncall.
-    // Não exige autenticação pra permitir verificação externa simples.
+
     [ApiController]
     [Route("health")]
     public class HealthController : ControllerBase
@@ -24,7 +23,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             var checks = new Dictionary<string, object>();
             bool ok = true;
 
-            // Banco
             try
             {
                 var conn = _db.Database.GetDbConnection();
@@ -40,7 +38,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 checks["banco"] = new { status = "fail", erro = ex.Message };
             }
 
-            // FFmpeg — validação inline (Int1 não referencia InfraestruturaBloco1 por restrição de dependência circular)
             var ffmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH") ?? "ffmpeg";
             try
             {
@@ -68,7 +65,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 checks["ffmpeg"] = new { status = "fail", erro = ex.Message, path = ffmpegPath };
             }
 
-            // SMTP — só reporta config, não tenta conectar
             var smtpHost = Environment.GetEnvironmentVariable("SMTP_HOST");
             checks["smtp"] = new
             {
@@ -76,7 +72,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 host = smtpHost ?? "(vazio — fallback console)"
             };
 
-            // Pools de senha e código
             try
             {
                 var senhasLivres = _db.SenhasDisponiveis.Count(s => !s.EmUso);
@@ -101,3 +96,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
         }
     }
 }
+

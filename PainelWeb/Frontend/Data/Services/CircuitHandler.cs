@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 
 namespace FrontendControleAcesso.Services;
 
@@ -13,7 +13,7 @@ public class AuthCircuitHandler : CircuitHandler
 
     public override Task OnCircuitClosedAsync(Circuit circuit, CancellationToken cancellationToken)
     {
-        // Limpa a sessão quando o navegador fecha ou desconecta
+
         _tokenStore.Token = null;
         _tokenStore.AdminId = 0;
         _tokenStore.NomeCompleto = "";

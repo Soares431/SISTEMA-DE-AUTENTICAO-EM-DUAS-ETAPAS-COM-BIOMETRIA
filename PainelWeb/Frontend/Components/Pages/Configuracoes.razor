@@ -1,9 +1,3 @@
-@* =============================================================================
-   Configuracoes.razor - Configurações globais do sistema
-   Features: Retenção de dados (período e estatísticas de armazenamento),
-             Período de inativação automática, alertas, botão de salvar.
-   Rota: /configuracoes
-   ============================================================================= *@
 @page "/configuracoes"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @using Frontend.Data.Services
@@ -19,7 +13,6 @@
         <p class="text-muted">Parâmetros globais do sistema, retenção de dados e manutenção</p>
     </div>
 
-    @* Métricas resumo no topo (estilo dashboard) — dá visão rápida do estado *@
     <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
         <div class="card" style="padding: 1rem;">
             <div class="flex items-center" style="gap: 0.75rem;">
@@ -50,7 +43,6 @@
         </div>
     </div>
 
-    @* Card 1 — Retenção de Dados (largura total, grid interno 2 colunas) *@
     <div class="card">
         <div class="card-header">
             <div class="card-title"><Icon Name="database" Size="20" /> Retenção de Dados</div>
@@ -85,7 +77,6 @@
         </div>
     </div>
 
-    @* Card 2 — Comportamento do Sistema (largura total, grid interno 2 colunas) *@
     <div class="card">
         <div class="card-header">
             <div class="card-title"><Icon Name="clock" Size="20" /> Comportamento do Sistema</div>
@@ -120,7 +111,6 @@
         </div>
     </div>
 
-    @* CTA salvar — linha simples sem card desperdiçando espaço *@
     <div class="flex items-center justify-between" style="padding: 0.5rem 0.25rem;">
         <p class="text-muted text-sm">Alterações nos cards acima só entram em vigor após salvar</p>
         <button class="btn btn-primary" @onclick="HandleSave" disabled="@isSaving">
@@ -128,10 +118,8 @@
         </button>
     </div>
 
-    @* Separador visual antes da seção de manutenção (escopo diferente) *@
     <hr class="separator" style="margin: 0.5rem 0;" />
 
-    @* Manutenção — backup e snapshot *@
     <div class="card">
         <div class="card-header">
             <div class="card-title"><Icon Name="download" Size="20" /> Manutenção do Banco</div>
@@ -176,7 +164,6 @@
     </div>
 </div>
 
-@* Toast flutuante — aparece sobre o conteúdo e some sozinho em 2.5s. Posição fixa no canto. *@
 @if (mensagemSucesso != null)
 {
     <div style="position:fixed; top:1.25rem; right:1.25rem; z-index:9999; background:#16a34a; color:white; padding:0.75rem 1.25rem; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.2); display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; pointer-events:none;">
@@ -234,7 +221,6 @@
         isSaving = false;
         StateHasChanged();
 
-        // Toast some sozinho em 2.5s sem bloquear a UI nem reordenar o layout
         _ = Task.Run(async () =>
         {
             await Task.Delay(2500);
@@ -256,7 +242,7 @@
 
         try
         {
-            // Executa fora da thread do circuito (cópia de ~75MB pode bloquear).
+
             var resultado = await Task.Run(() => BackupService.Executar());
             ultimoBackup = resultado;
             LogRepo.Registrar(TokenStore.AdminId, "Backup", "Sistema", null);
@@ -278,3 +264,4 @@
         }
     }
 }
+

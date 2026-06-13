@@ -7,16 +7,6 @@
     <RootNamespace>WebAbil8_Sistema_Verificação_dupla.slnx</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Migrations\MSSQLContextModelSnapshot.cs" />
-    <Compile Remove="Services\MathService.cs" />
-    <Compile Remove="Utils\NumberHelper.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Services\Implemetions\.editorconfig" />
-  </ItemGroup>
-
 	<ItemGroup>
 		<PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
 		<PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
@@ -52,8 +42,6 @@
 
   <ItemGroup>
     <Folder Include="Migrations\" />
-    <Folder Include="Model\Script\" />
-    <Folder Include="Utils\" />
   </ItemGroup>
 
 </Project>

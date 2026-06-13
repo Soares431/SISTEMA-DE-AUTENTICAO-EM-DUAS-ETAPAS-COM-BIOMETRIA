@@ -1,4 +1,3 @@
-﻿// Jobs/LimparDadosExpiradosJob.cs
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
@@ -37,8 +36,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
 
             _context.SaveChanges();
 
-            // Purga física de ambientes soft-deletados que já não têm tentativas vivas.
-            // Mantém o histórico do Histórico até o último registro expirar.
             var ambientesPurgar = _context.Ambientes
                 .Where(a => a.Excluido && !_context.TentativasAcesso.Any(t => t.AmbienteId == a.Id))
                 .ToList();

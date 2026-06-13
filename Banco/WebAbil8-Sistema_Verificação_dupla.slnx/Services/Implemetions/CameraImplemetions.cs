@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -34,9 +34,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public async Task<bool> Atualizar(Camera camera)
         {
-            // Usa Find pra pegar a entity já tracked (DbContext do Blazor Server é Scoped pelo
-            // circuit). Marcar uma nova instância como Modified com PK conflitante causa
-            // InvalidOperationException no SaveChanges porque já existe outra tracked com mesmo Id.
+
             var existing = await _context.Cameras.FindAsync(camera.Id);
             if (existing == null) return false;
             _context.Entry(existing).CurrentValues.SetValues(camera);
@@ -62,3 +60,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
     }
 
 }
+

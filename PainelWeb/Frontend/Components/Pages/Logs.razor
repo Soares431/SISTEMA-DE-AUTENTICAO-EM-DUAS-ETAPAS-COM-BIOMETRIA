@@ -1,11 +1,3 @@
-@* =============================================================================
-   Logs.razor - Logs de auditoria do sistema
-   Features: Filtros por categoria, usuário e busca textual,
-             tabela de logs com badges coloridos por tipo de ação,
-             ícones dinâmicos por categoria, botão de exportar,
-             ordenação por coluna, navegação clicável para entidades
-   Rota: /logs
-   ============================================================================= *@
 @page "/logs"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ILogAdminRepository LogRepo
@@ -221,3 +213,4 @@
     private static string Slug(string s) =>
         new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }
+

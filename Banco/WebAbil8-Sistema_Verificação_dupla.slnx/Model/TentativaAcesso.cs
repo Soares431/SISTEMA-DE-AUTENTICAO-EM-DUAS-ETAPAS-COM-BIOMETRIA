@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
@@ -13,7 +13,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 
         [Column("pessoaId")]
         [ForeignKey("Pessoa")]
-        public long? PessoaId { get; set; } // NULL se não cadastrada
+        public long? PessoaId { get; set; }
 
         [Column("ambienteId")]
         [ForeignKey("Ambiente")]
@@ -31,7 +31,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 
         [Column("tipoVerificacao", TypeName = "varchar(15)")]
         [MaxLength(15)]
-        public string? TipoVerificacao { get; set; } // 'digital_id' ou 'senha_id'
+        public string? TipoVerificacao { get; set; }
 
         [Column("gravacaoPath", TypeName = "varchar(255)")]
         [MaxLength(255)]
@@ -40,7 +40,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Column("dataExpiracao")]
         public DateTime? DataExpiracao { get; set; }
 
-        // Navegação
         public Pessoa? Pessoa { get; set; }
         public Ambiente Ambiente { get; set; } = null!;
     }

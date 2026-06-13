@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 {
@@ -14,7 +14,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Column("dataAdicionado")]
         public DateTime DataAdicionado { get; set; } = DateTime.UtcNow;
 
-        // Navegação
         [ForeignKey("AmbienteId")]
         public Ambiente Ambiente { get; set; }
 
@@ -22,3 +21,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public Pessoa Pessoa{ get; set; }
     }
 }
+

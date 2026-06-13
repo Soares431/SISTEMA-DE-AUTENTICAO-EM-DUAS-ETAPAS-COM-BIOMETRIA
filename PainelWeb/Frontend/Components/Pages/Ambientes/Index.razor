@@ -153,7 +153,7 @@
     private void AbrirDialog()
     {
         erroDialog = null;
-        // Re-carrega dispositivos pra refletir se admin acabou de cadastrar um T50
+
         dispositivos = DispositivoRepo.ListarTodos();
         if (dispositivos.Any() && novoT50Id == 0) novoT50Id = dispositivos.First().Id;
         showDialog = true;
@@ -205,7 +205,7 @@
             DataCriacao = DateTime.UtcNow
         };
         AmbienteRepo.Adicionar(ambiente);
-        // Cria vínculo na tabela N-N marcando este T50 como principal
+
         AmbienteT50Repo.Adicionar(ambiente.Id, novoT50Id, ehPrincipal: true);
         LogRepo.Registrar(TokenStore.AdminId, "Adicionar", "Ambiente", ambiente.Id);
         todosAmbientes = AmbienteRepo.ListarTodos();

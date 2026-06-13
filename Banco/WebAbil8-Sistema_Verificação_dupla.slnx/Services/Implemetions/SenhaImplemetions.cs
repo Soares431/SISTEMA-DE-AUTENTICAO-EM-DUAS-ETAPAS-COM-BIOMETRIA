@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
@@ -35,15 +35,14 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public SenhaDisponivel BuscarDisponivel()
         {
-            // Garante range 100000 a 999999 — sem zeros à esquerda
+
             return _context.SenhasDisponiveis
              .Where(s => !s.EmUso && s.PessoaId == null)
-             .AsEnumerable() // ← executa o Where acima no banco, resto em memória
+             .AsEnumerable()
              .Where(s => int.TryParse(s.Senha, out var n) && n >= 100000 && n <= 999999)
-             .OrderBy(s => Guid.NewGuid()) // aleatório
+             .OrderBy(s => Guid.NewGuid())
              .FirstOrDefault();
         }
-
 
         public SenhaDisponivel Liberar(string senha)
         {
@@ -73,3 +72,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         }
     }
 }
+

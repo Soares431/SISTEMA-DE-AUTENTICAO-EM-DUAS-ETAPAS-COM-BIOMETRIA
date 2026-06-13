@@ -1,10 +1,3 @@
-@* =============================================================================
-   Ajuda.razor - Central de Ajuda > Manual do Usuário
-   Features: Guia detalhado com seções expansíveis (accordion) por funcionalidade,
-             card de boas-vindas, dicas de segurança (senhas, biometria, gravações),
-             ícones dinâmicos por seção via GetSectionIcon()
-   Rota: /ajuda
-   ============================================================================= *@
 @page "/ajuda"
 
 @{ var secoes = new[] {
@@ -60,3 +53,4 @@
     private void ToggleSection(string id) => openSection = openSection == id ? null : id;
     private string GetSectionIcon(string id) => id switch { "dashboard" => "settings", "ambientes" => "building", "pessoas" => "users", "cameras" => "camera", "historico" => "history", "logs" => "file-text", "config" => "settings", _ => "help-circle" };
 }
+

@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
@@ -17,11 +17,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             var pessoa = await _context.Pessoas.FindAsync(pessoaId);
             if (pessoa == null) throw new ArgumentNullException("Pessoa não encontrada");
 
-            // Verifica se a pessoa tem pelo menos um ambiente associado
             var temAmbiente = _context.AmbientesPessoas
                 .Any(ap => ap.PessoaId == pessoaId);
 
-            // Ativo se tem ambiente, inativo se foi removido de todos
             pessoa.Status = temAmbiente ? "ativo" : "inativo"; ;
 
             _context.Pessoas.Update(pessoa);

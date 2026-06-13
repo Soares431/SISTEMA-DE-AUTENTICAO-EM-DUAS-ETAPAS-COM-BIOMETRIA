@@ -12,3 +12,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         bool LoginExiste(string login, int? ignorarId = null);
     }
 }
+

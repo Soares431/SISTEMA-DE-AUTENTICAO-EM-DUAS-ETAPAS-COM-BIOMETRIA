@@ -1,10 +1,3 @@
-@* =============================================================================
-   Home.razor - Página Dashboard (Página Inicial)
-   Features: 4 cards de estatísticas, gráfico de acessos por hora (Chart.js,
-             24h completas, auto-refresh 30s + botão manual), painel de
-             alertas T50, tabela de últimos acessos negados
-   Rota: / (raiz da aplicação)
-   ============================================================================= *@
 @page "/"
 @implements IDisposable
 @inject IJSRuntime JS
@@ -20,7 +13,6 @@
         <p class="text-muted">Resumo do dia - @DateTime.Now.ToString("dd/MM/yyyy")</p>
     </div>
 
-    <!-- Stats -->
     <div class="grid grid-4">
         <div class="card">
             <div class="card-header card-header-row">
@@ -64,7 +56,6 @@
         </div>
     </div>
 
-    <!-- Chart + Alerts -->
     <div class="grid grid-2">
         <div class="card">
             <div class="card-header card-header-row">
@@ -82,7 +73,7 @@
                     </p>
                 </div>
                 <div class="flex items-center gap-2" style="flex-wrap: wrap;">
-                    @* Picker de data: permite visualizar gráficos de dias anteriores *@
+
                     <input type="date" class="form-input" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;"
                            max="@DateTime.Now.ToString("yyyy-MM-dd")"
                            value="@dataGrafico.ToString("yyyy-MM-dd")"
@@ -91,7 +82,7 @@
                     {
                         <button class="btn btn-outline btn-sm" @onclick="VoltarParaHoje" title="Voltar para hoje">Hoje</button>
                     }
-                    @* Relógio ao vivo — atualizado por JS a cada 1s, sem re-render do Blazor *@
+
                     <span id="dashboard-clock" class="text-xs text-muted" style="font-variant-numeric: tabular-nums; min-width: 7ch;"></span>
                     @if (_ultimaAtualizacao != default)
                     {
@@ -139,7 +130,6 @@
         </div>
     </div>
 
-    <!-- Recent Denied -->
     <div class="card">
         <div class="card-header card-header-row">
             <div>
@@ -186,13 +176,11 @@
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.TentativaAcesso> ultimosNegados = new();
     private List<WebAbil8_Sistema_Verificação_dupla.slnx.Model.DispositivoT50> alertasT50 = new();
 
-    // Auto-refresh a cada 30 segundos
     private System.Threading.Timer? _refreshTimer;
     private DateTime _ultimaAtualizacao;
     private bool _carregando = false;
     private bool _chartInicializado = false;
 
-    // Data selecionada pelo picker — default hoje, permite ver dias anteriores
     private DateTime dataGrafico = DateHelper.Local(DateTime.UtcNow).Date;
     private bool IsHoje => dataGrafico.Date == DateHelper.Local(DateTime.UtcNow).Date;
 
@@ -216,15 +204,12 @@
         await CarregarDados();
     }
 
-    // Carrega todos os dados do dashboard — reutilizado no auto-refresh e no refresh manual
     private async Task CarregarDados()
     {
-        // Reseta os arrays antes de recarregar para não acumular contagens antigas
+
         permitidosPorHora = new int[24];
         negadosPorHora    = new int[24];
 
-        // Data selecionada no picker (default = hoje local).
-        // Converte meia-noite local → UTC para filtrar no banco (armazena em UTC).
         var diaLocal     = dataGrafico.Date;
         var diaUtcInicio = DateTime.SpecifyKind(diaLocal, DateTimeKind.Local).ToUniversalTime();
         var diaUtcFim    = diaUtcInicio.AddDays(1);
@@ -233,10 +218,6 @@
         totalPermitidos = tentativasDia.Count(t => t.AcessoLiberado);
         totalNegados    = tentativasDia.Count(t => !t.AcessoLiberado);
 
-        // Agrupa por hora LOCAL para o gráfico.
-        // Atenção: SQLite retorna Kind=Unspecified — usar DateHelper.Local() para garantir
-        // conversão correta de UTC → local (t.DataHora.ToLocalTime() não converte no Windows
-        // quando Kind=Unspecified, pois o runtime assume que já é horário local).
         foreach (var t in tentativasDia)
         {
             var hora = DateHelper.Local(t.DataHora).Hour;
@@ -253,7 +234,7 @@
         totalPessoas = pessoas.Count(p => p.Status == "ativo");
 
         var dispositivos = DispositivoRepo.ListarTodos();
-        // Alerta = capacidade crítica (>=950 digitais) OU offline
+
         alertasT50   = dispositivos.Where(d => d.DigitaisCadastradas >= 950 || !d.EstaOnline).ToList();
         totalAlertas = alertasT50.Count;
 
@@ -267,7 +248,6 @@
         _ => "badge-muted"
     };
 
-    // Refresh manual acionado pelo botão na barra do gráfico
     private async Task HandleRefresh()
     {
         _carregando = true;
@@ -285,13 +265,9 @@
         {
             _chartInicializado = true;
             await JS.InvokeVoidAsync("renderDashboardChart", "dashboardChart", permitidosPorHora, negadosPorHora);
-            // Inicia o relógio ao vivo via JS (setInterval 1s) — zero re-renders do Blazor,
-            // se auto-limpa quando o elemento some do DOM ao navegar para outra página
+
             await JS.InvokeVoidAsync("startDashboardClock", "dashboard-clock");
 
-            // Dispara auto-refresh a cada 30 segundos:
-            // recarrega dados do banco e atualiza o gráfico sem recriar o canvas (sem flash).
-            // Auto-refresh é pulado quando o usuário está vendo um dia anterior (IsHoje = false).
             _refreshTimer = new System.Threading.Timer(async _ =>
             {
                 if (!IsHoje) return;
@@ -306,10 +282,10 @@
         }
     }
 
-    // IDisposable: cancela o timer quando o componente é desmontado (navegação para outra página)
     public void Dispose()
     {
         _chartInicializado = false;
         _refreshTimer?.Dispose();
     }
 }
+

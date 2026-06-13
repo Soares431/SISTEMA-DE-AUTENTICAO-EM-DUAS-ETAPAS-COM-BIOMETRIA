@@ -1,9 +1,3 @@
-@* =============================================================================
-   Icon.razor - Componente reutilizável de ícones SVG inline
-   Substitui bibliotecas externas (Lucide, Feather) por SVGs embutidos.
-   Parâmetros: Name (nome do ícone), Size (tamanho em px), CssClass (classes CSS)
-   Baseado nos ícones do Lucide Icons (https://lucide.dev)
-   ============================================================================= *@
 <svg width="@Size" height="@Size" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="@CssClass">
     @((MarkupString)GetPath())
 </svg>
@@ -64,3 +58,4 @@
         _ => ""
     };
 }
+

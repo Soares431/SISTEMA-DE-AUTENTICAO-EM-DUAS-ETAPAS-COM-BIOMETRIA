@@ -1,10 +1,3 @@
-@* =============================================================================
-   DispositivosT50/Index.razor - Gerenciamento de Dispositivos T50
-   Features: Listagem dos T50 cadastrados, criar novo (nome/IP/porta),
-             indicador de capacidade biométrica (0-1000),
-             alerta visual quando capacidade ≥ 950
-   Rota: /dispositivos
-   ============================================================================= *@
 @page "/dispositivos"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject IDispositivoT50Repository DispositivoRepo
@@ -157,11 +150,9 @@
         if (!FormatHelper.EnderecoT50Valido(novoIP)) { erroDialog = "Endereço inválido — use IP (ex: 192.168.0.218) ou porta serial (ex: COM5)."; return; }
         if (novaPorta < 1 || novaPorta > 65535) { erroDialog = "Porta inválida (1 a 65535)."; return; }
 
-        // Normaliza: COM em uppercase pra evitar duplicata por capitalização
         var enderecoNorm = novoIP.Trim();
         if (FormatHelper.PortaSerialValida(enderecoNorm)) enderecoNorm = enderecoNorm.ToUpperInvariant();
 
-        // Bloqueia endereço duplicado para evitar polling em dispositivo errado
         if (dispositivos.Any(d => d.EnderecoIP == enderecoNorm))
         {
             erroDialog = "Já existe um T50 cadastrado com este endereço.";
@@ -181,3 +172,4 @@
         FecharDialog();
     }
 }
+

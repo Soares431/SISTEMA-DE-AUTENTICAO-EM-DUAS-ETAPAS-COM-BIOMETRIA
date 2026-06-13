@@ -108,7 +108,7 @@
     private async Task ExportarCsv()
     {
         var sb = new System.Text.StringBuilder();
-        // Por segurança: NÃO exporta Login.
+
         sb.AppendLine("Nome Completo,CPF,Cargo,Email,Telefone,Cadastro");
         foreach (var a in Sorted)
         {
@@ -123,3 +123,4 @@
     private static string Slug(string s) =>
         new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }
+

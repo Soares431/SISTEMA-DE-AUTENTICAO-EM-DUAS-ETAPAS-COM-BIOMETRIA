@@ -1,4 +1,3 @@
-﻿// DispositivoT50Implemetions.cs
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
@@ -58,13 +57,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         {
             var dispositivo = _context.DispositivosT50.Find(dispositivoId);
             if (dispositivo == null) throw new ArgumentNullException("Dispositivo não encontrado");
-            return dispositivo.DigitaisCadastradas < 1000; // T50 suporta até 1000 digitais
+            return dispositivo.DigitaisCadastradas < 1000;
         }
 
         public void RegistrarHeartbeat(string enderecoIP)
         {
-            // No-op silencioso se o dispositivo não está cadastrado — pode acontecer durante
-            // primeira inicialização ou troca de IP. Não queremos quebrar o Worker por isso.
+
             var dispositivo = _context.DispositivosT50.FirstOrDefault(d => d.EnderecoIP == enderecoIP);
             if (dispositivo == null) return;
             dispositivo.UltimaConexao = DateTime.UtcNow;

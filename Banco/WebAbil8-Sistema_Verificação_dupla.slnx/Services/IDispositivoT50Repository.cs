@@ -1,4 +1,4 @@
-﻿using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
 {
@@ -13,8 +13,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         int ContarDigitaisCadastradas(int dispositivoId);
         bool TemVagaDigital(int dispositivoId);
 
-        // Heartbeat: o Worker chama isso ao conectar/receber evento para marcar o dispositivo como online.
-        // Busca por IP em vez de Id porque o Worker conhece IP, não Id.
         void RegistrarHeartbeat(string enderecoIP);
     }
 }
+

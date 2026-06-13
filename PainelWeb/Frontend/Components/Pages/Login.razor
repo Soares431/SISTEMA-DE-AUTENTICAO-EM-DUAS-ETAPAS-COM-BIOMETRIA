@@ -1,10 +1,3 @@
-@* =============================================================================
-   Login.razor - Página de autenticação do sistema
-   Features: Formulário de login (email + senha), toggle de visibilidade da senha,
-             loading state no botão, redirecionamento para dashboard após login
-   Usa LoginLayout (sem sidebar) como layout alternativo
-   Rota: /login
-   ============================================================================= *@
 @page "/login"
 @layout LoginLayout
 @inject NavigationManager Nav
@@ -92,7 +85,7 @@
                 TokenStore.Token = result?.Token;
                 TokenStore.AdminId = result?.AdminId ?? 0;
                 TokenStore.NomeCompleto = result?.NomeCompleto ?? "";
-                // Persiste no sessionStorage para restaurar em caso de reconexão do circuito
+
                 await JS.InvokeVoidAsync("authStorage.save",
                     result?.Token ?? "",
                     result?.AdminId ?? 0,

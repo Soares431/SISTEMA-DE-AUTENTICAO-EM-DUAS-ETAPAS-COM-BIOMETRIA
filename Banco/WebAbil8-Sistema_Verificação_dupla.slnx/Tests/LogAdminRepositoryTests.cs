@@ -55,7 +55,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             var log = repo.Registrar(admin.Id, "Login", "Administrador", admin.Id);
 
             Assert.NotNull(log.DataExpiracao);
-            // ~365 dias entre DataHora e DataExpiracao
+
             var dias = (log.DataExpiracao!.Value - log.DataHora).TotalDays;
             Assert.InRange(dias, 364.9, 365.1);
         }
@@ -125,7 +125,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             };
             db.LogsAdmin.Add(antigo);
             db.SaveChanges();
-            repo.Registrar(admin.Id, "Login", "Administrador", admin.Id); // hoje
+            repo.Registrar(admin.Id, "Login", "Administrador", admin.Id);
 
             var ultimos7 = repo.ListarComFiltros(null, null, null,
                 DateTime.UtcNow.AddDays(-7), null);
@@ -147,3 +147,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
     }
 }
+

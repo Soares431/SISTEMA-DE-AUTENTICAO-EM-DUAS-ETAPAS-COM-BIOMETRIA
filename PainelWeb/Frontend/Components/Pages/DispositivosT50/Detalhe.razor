@@ -1,9 +1,3 @@
-@* =============================================================================
-   DispositivosT50/Detalhe.razor - Detalhes e edição de um T50
-   Features: Editar nome/IP/porta, visualizar capacidade biométrica,
-             listar ambientes vinculados, excluir T50 (bloqueado se há ambientes)
-   Rota: /dispositivos/{id}
-   ============================================================================= *@
 @page "/dispositivos/{Id:int}"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject IDispositivoT50Repository DispositivoRepo
@@ -221,11 +215,9 @@
         if (!FormatHelper.EnderecoT50Valido(editIP)) { erro = "Endereço inválido — use IP (ex: 192.168.0.218) ou porta serial (ex: COM5)."; return; }
         if (editPorta < 1 || editPorta > 65535) { erro = "Porta inválida (1 a 65535)."; return; }
 
-        // Normaliza COM em uppercase
         var enderecoNorm = editIP.Trim();
         if (FormatHelper.PortaSerialValida(enderecoNorm)) enderecoNorm = enderecoNorm.ToUpperInvariant();
 
-        // Bloqueia endereço duplicado (exceto o próprio dispositivo)
         var ipDuplicado = DispositivoRepo.ListarTodos()
             .Any(d => d.Id != dispositivo!.Id && d.EnderecoIP == enderecoNorm);
         if (ipDuplicado) { erro = "Já existe outro T50 com este endereço."; return; }
@@ -258,3 +250,4 @@
         catch (Exception ex) { erro = ex.Message; showConfirmExcluir = false; }
     }
 }
+

@@ -1,4 +1,3 @@
-﻿// TentativaAcessoImplemetions.cs
 using Microsoft.EntityFrameworkCore;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
@@ -92,7 +91,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public void Remover(int id)
         {
-            var existing = _context.TentativasAcesso.Find(id); // ← cast para int
+            var existing = _context.TentativasAcesso.Find(id);
             if (existing == null) throw new ArgumentNullException("Tentativa não encontrada");
             _context.TentativasAcesso.Remove(existing);
             _context.SaveChanges();
@@ -100,8 +99,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
 
         public int AtualizarGravacaoPath(int tentativaId, string gravacaoPath)
         {
-            // UPDATE direto via ExecuteUpdate evita o bug anterior de tracking onde
-            // SetValues+SaveChanges era no-op para registros já carregados pela mesma instância.
+
             return _context.TentativasAcesso
                 .Where(t => t.Id == tentativaId)
                 .ExecuteUpdate(s => s.SetProperty(t => t.GravacaoPath, gravacaoPath));

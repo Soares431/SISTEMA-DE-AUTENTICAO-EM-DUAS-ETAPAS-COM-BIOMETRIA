@@ -23,14 +23,10 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 if (cpfExistente)
                     throw new InvalidOperationException("CPF já cadastrado.");
 
-                // §5.1/§6.3 doc técnica: Senha não pode ser igual ao ID — vetor de adivinhação trivial.
-                // Validação na camada de serviço (a doc também exige no DB, mas como SenhaClear é
-                // criptografada na hora seguinte, a constraint UNIQUE não ajuda — validamos aqui).
                 if (!string.IsNullOrEmpty(pessoa.senhaClear) && !string.IsNullOrEmpty(pessoa.CodigoUsuario)
                     && pessoa.senhaClear == pessoa.CodigoUsuario)
                     throw new InvalidOperationException("A senha não pode ser igual ao ID da pessoa.");
 
-                // Criptografa senhaClear com AES antes de persistir (bug #4)
                 if (!string.IsNullOrEmpty(pessoa.senhaClear))
                     pessoa.senhaClear = AesHelper.Encrypt(pessoa.senhaClear, _aesKey);
 
@@ -111,7 +107,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 var pessoa = await _context.Pessoas.FindAsync(pessoaId);
                 if (pessoa == null) throw new ArgumentNullException("Usuário inexistente.");
 
-                // §5.1/§6.3 doc técnica: Senha não pode ser igual ao ID, mesmo em troca de senha.
                 if (!string.IsNullOrEmpty(novaSenhaClear) && !string.IsNullOrEmpty(pessoa.CodigoUsuario)
                     && novaSenhaClear == pessoa.CodigoUsuario)
                     throw new InvalidOperationException("A senha não pode ser igual ao ID da pessoa.");
@@ -157,7 +152,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
             {
                 var pessoa = await _context.Pessoas.FindAsync(pessoaId);
                 if (pessoa == null) throw new ArgumentNullException("Usuário inexistente.");
-                // Só enfileira se realmente havia slot ocupado.
+
                 if (pessoa.SlotAs608 != null)
                 {
                     pessoa.SlotAs608ParaApagar = pessoa.SlotAs608;
@@ -184,3 +179,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
         }
 
     }
+

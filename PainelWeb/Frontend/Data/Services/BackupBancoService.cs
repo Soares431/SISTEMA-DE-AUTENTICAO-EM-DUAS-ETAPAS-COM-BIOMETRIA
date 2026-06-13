@@ -1,9 +1,6 @@
 namespace Frontend.Data.Services
 {
-    // Faz backup manual do banco.db a partir do painel (botão em Configurações).
-    // Mesma lógica do backup-banco.ps1: copia pra ../../backups/ + rotação automática.
-    // SQLite em WAL permite leitura concorrente — backup com sistema ligado pode capturar
-    // estado levemente atrás do WAL, mas é aceitável pra snapshot manual.
+
     public class BackupBancoService
     {
         private readonly string _dbPath;
@@ -13,8 +10,7 @@ namespace Frontend.Data.Services
         public BackupBancoService(string dbPath)
         {
             _dbPath = dbPath;
-            // backups/ na raiz do repo (mesmo dir que o backup-banco.ps1 usa).
-            // dbPath é tipo: <raiz>/Banco/WebAbil8.../banco.db → sobe 3 níveis.
+
             var bancoDir = Path.GetDirectoryName(_dbPath) ?? "";
             var pastaBanco = Path.GetDirectoryName(bancoDir) ?? "";
             var raiz = Path.GetDirectoryName(pastaBanco) ?? "";
@@ -39,19 +35,13 @@ namespace Frontend.Data.Services
             }
 
             File.Copy(_dbPath, destino);
-            // File.Copy herda LastWriteTime do source — força "agora" pro novo arquivo
-            // não empatar com os antigos (empate confundia a rotação e apagava o recém-criado).
+
             File.SetLastWriteTime(destino, DateTime.Now);
 
-            // Captura info ANTES da rotação (rotação não pode apagar este; o nome é único,
-            // mas mantemos a leitura defensiva caso algum outro processo mexa).
             var info = new FileInfo(destino);
             var nomeArquivo = info.Name;
             var tamanhoMB = Math.Round(info.Length / 1024.0 / 1024.0, 2);
 
-            // Rotação: mantém só os MaxBackups mais recentes, exceto PRE-RESTORE.
-            // Ordena pelo NOME (que contém o timestamp YYYY-MM-DD-HHmm) — robusto a empates
-            // de LastWriteTime e ao caso do File.Copy herdar mtime do source.
             var todos = new DirectoryInfo(_backupsDir)
                 .GetFiles("banco-*.db")
                 .Where(f => !f.Name.Contains("PRE-RESTORE"))
@@ -62,7 +52,7 @@ namespace Frontend.Data.Services
             foreach (var antigo in todos.Skip(MaxBackups))
             {
                 try { antigo.Delete(); apagados++; }
-                catch { /* arquivo em uso ou permissão — ignora */ }
+                catch {  }
             }
 
             return new BackupResultado
@@ -83,3 +73,4 @@ namespace Frontend.Data.Services
         public int BackupsAtuais { get; set; }
     }
 }
+

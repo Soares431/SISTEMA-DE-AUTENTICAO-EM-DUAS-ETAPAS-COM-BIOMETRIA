@@ -3,13 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
 {
-    // Fila de comandos pendentes para o hardware T50 — escrita pelo Frontend
-    // (quando admin adiciona/remove pessoa de um T50) e consumida pelo Worker,
-    // que executa via Anviz SDK e marca como sincronizado.
-    //
-    // Existe porque o Frontend (Blazor Server) não tem acesso direto ao hardware.
-    // A doc §5.2 manda cadastrar a pessoa no T50 ao adicionar a um ambiente —
-    // sem essa fila, o vínculo só existia no banco e nunca no firmware do T50.
+
     [Table("t50Pendencia")]
     public class T50Pendencia
     {
@@ -21,7 +15,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Required]
         [Column("acao", TypeName = "varchar(20)")]
         [MaxLength(20)]
-        public string Acao { get; set; } = ""; // "adicionar" | "remover"
+        public string Acao { get; set; } = "";
 
         [Column("pessoaId")]
         public long PessoaId { get; set; }
@@ -46,3 +40,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public string? ErroUltimaTentativa { get; set; }
     }
 }
+

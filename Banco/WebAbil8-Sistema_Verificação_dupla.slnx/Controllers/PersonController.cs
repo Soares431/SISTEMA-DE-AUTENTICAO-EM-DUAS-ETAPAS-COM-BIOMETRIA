@@ -1,4 +1,4 @@
-﻿using MailKit.Net.Smtp;
+using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -78,7 +78,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                // Validações da camada de serviço (CPF duplicado, Senha == ID, etc).
+
                 return BadRequest(new { erro = ex.Message });
             }
         }
@@ -104,10 +104,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             }
         }
 
-        // DELETE /api/person/{id}
-        // Remoção definitiva — libera CodigoUsuario e Senha de volta aos pools, remove vínculos
-        // de ambientes e auditoria. Use com cuidado: ação irreversível.
-        // Para revogar acesso temporariamente, use o endpoint de inativação.
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(long id)
         {
@@ -115,15 +111,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             var pessoa = await _pessoaRepository.BuscarPorId(id);
             if (pessoa == null) return NotFound();
 
-            // 1. Snapshot dos ambientes ANTES de remover (necessário pra decrementar T50)
             var ambientes = _ambientePessoaRepository.ListarAmbientesDaPessoa(id);
             var tinhaBiometria = pessoa.biometriaCadastrada != null;
 
-            // 2. Remove vínculos com ambientes
             foreach (var amb in ambientes)
                 _ambientePessoaRepository.RemoverPessoa(amb.Id, id);
 
-            // 3. Decrementa DigitaisCadastradas do T50 de cada ambiente que a pessoa frequentava
             if (tinhaBiometria)
             {
                 foreach (var amb in ambientes)
@@ -137,14 +130,12 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 }
             }
 
-            // 4. Libera CodigoUsuario de volta ao pool
             if (!string.IsNullOrEmpty(pessoa.CodigoUsuario))
             {
                 try { _codigoRepository.Liberar(pessoa.CodigoUsuario); }
                 catch (Exception ex) { _logger.LogWarning(ex, "Falha ao liberar código {c}", pessoa.CodigoUsuario); }
             }
 
-            // 5. Libera a senha de volta ao pool (busca por PessoaId)
             try
             {
                 var senhas = _senhaRepository.ListarTodos();
@@ -157,10 +148,8 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             }
             catch (Exception ex) { _logger.LogWarning(ex, "Falha ao liberar senha da pessoa {id}", id); }
 
-            // 6. Remove a pessoa
             await _pessoaRepository.Remover(id);
 
-            // 7. Registra auditoria
             var adminIdClaim = User.FindFirst("adminId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (int.TryParse(adminIdClaim, out var adminId))
                 _logRepository.Registrar(adminId, "Remocao", "Pessoa", (int)id);
@@ -169,8 +158,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return NoContent();
         }
 
-        // INT-02 — Reenvio de credenciais (ID + senha) por email
-        // Aceita os dois paths: /reenviar-senha (legado) e /reenviar-credenciais (novo)
         [HttpPost("{id}/reenviar-senha")]
         [HttpPost("{id}/reenviar-credenciais")]
         public async Task<IActionResult> ReenviarCredenciais(long id)
@@ -236,7 +223,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 Console.WriteLine($"[FALLBACK] Erro SMTP. Credenciais de {pessoa.Email}: ID={idMostrar} Senha={senhaPlain}");
             }
 
-            // Registra auditoria
             var adminIdClaim = User.FindFirst("adminId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (int.TryParse(adminIdClaim, out var adminId))
                 _logRepository.Registrar(adminId, "ReenvioCredenciais", "Pessoa", (int)id);
@@ -246,3 +232,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
     }
 
 }
+

@@ -10,3 +10,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         void RegistrarErro(int id, string erro);
     }
 }
+

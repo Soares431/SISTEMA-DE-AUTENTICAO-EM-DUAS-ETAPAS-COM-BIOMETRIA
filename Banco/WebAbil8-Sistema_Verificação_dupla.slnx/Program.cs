@@ -15,25 +15,16 @@ using WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Banco — força caminho absoluto na pasta do projeto Int1.
-// Em Docker, DB_PATH aponta pro volume compartilhado (ex.: /data/banco.db).
 var dbPath = Environment.GetEnvironmentVariable("DB_PATH");
 if (string.IsNullOrWhiteSpace(dbPath))
     dbPath = Path.Combine(builder.Environment.ContentRootPath, "banco.db");
 builder.Configuration["SQLiteConnection:SQLiteConnectionString"] = $"Data Source={dbPath}";
 Console.WriteLine($"[INT1 DB] {dbPath}");
 
-// Add services to the container.
-
-// Scoped é usado para criar uma nova instância do serviço para cada solicitação HTTP. Isso é útil para serviços que possuem estado ou que precisam ser isolados por solicitação, como um serviço de pessoa neste caso  
-// Scoped é instanciado uma vez por solicitação HTTP
-// É injentado a instancia do serviço em toda a solicitação, ou seja, em todos os controladores ou outras classes que dependem dele durante a mesma solicitação.
-
 builder.AddSeriLogLogging();
 
 builder.Services.AddControllers();
 
-// JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -51,11 +42,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddHangfire(config =>
-    config.UseMemoryStorage()); // ou UseStorage para persistir os jobs
+    config.UseMemoryStorage());
 
 builder.Services.AddHangfireServer();
 
-//builder.Services.AddDatabaseConfiguration(builder.Configuration);
 builder.Services.AddDataBaseConfiguration(builder.Configuration);
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
 builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
@@ -80,8 +70,6 @@ builder.Services.AddScoped<LimparDadosExpiradosJob>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS — permite que o Frontend (porta 8080) faça fetch autenticado para esta API (porta 5018).
-// Sem isso, downloads de PDF feitos pelo JS interop falham com erro CORS no browser.
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(p => p
@@ -90,12 +78,10 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod());
 });
 
-// ✅ Build() APENAS aqui, depois de todos os serviços registrados
 var app = builder.Build();
 
 app.UseHangfireDashboard("/hangfire");
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -107,7 +93,6 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 
-    // Migração inline — adiciona colunas novas ao administrador sem perder dados existentes
     var conn = db.Database.GetDbConnection();
     if (conn.State == System.Data.ConnectionState.Closed) conn.Open();
     var colsExistentes = new HashSet<string>();
@@ -132,7 +117,6 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Migração inline — adiciona periodoInativacaoMeses à configuracao
     var configColsExistentes = new HashSet<string>();
     using (var pragmaCmd2 = conn.CreateCommand())
     {
@@ -147,7 +131,6 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — adiciona ultimaConexao ao dispositivoT50 (status online/offline)
     var dispColsExistentes = new HashSet<string>();
     using (var pragmaCmd3 = conn.CreateCommand())
     {
@@ -162,7 +145,6 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — coluna urlHLS opcional na câmera para streaming HLS no painel.
     var cameraColsExistentes = new HashSet<string>();
     using (var pragmaCam = conn.CreateCommand())
     {
@@ -177,8 +159,6 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — soft-delete de ambiente preserva histórico de tentativas.
-    // Sem isto, deletar um ambiente apagaria também todo o histórico vinculado (FK CASCADE).
     var ambColsExistentes = new HashSet<string>();
     using (var pragmaAmb = conn.CreateCommand())
     {
@@ -199,8 +179,6 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — tabela N-N ambienteT50 para suportar múltiplos T50 por ambiente.
-    // Backfill: cada ambiente vira uma linha com seu DispositivoT50Id atual como principal.
     bool ambT50Existe;
     using (var checkCmd = conn.CreateCommand())
     {
@@ -226,11 +204,6 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Backfill defensivo: roda SEMPRE (não só na criação da tabela). Cobre o caso de
-    // ambientes pré-existentes que não foram migrados na primeira execução depois do refactor.
-    // É idempotente — o WHERE NOT EXISTS evita duplicação.
-    // Também ignora ambientes cujo dispositivoT50Id aponta para um T50 que já não existe
-    // (FK orfã herdada de excluir T50 sem cascade) — isso travava o startup com SQLite Error 19.
     using (var backfillCmd = conn.CreateCommand())
     {
         backfillCmd.CommandText = @"
@@ -243,10 +216,6 @@ using (var scope = app.Services.CreateScope())
         backfillCmd.ExecuteNonQuery();
     }
 
-    // Ambientes cujo dispositivoT50Id aponta para T50 deletado:
-    // (a) se há outro T50 vinculado em ambienteT50, aponta pra ele
-    // (b) se não há nenhum, marca como excluido (soft-delete) — não dá pra setar
-    //     dispositivoT50Id=NULL porque a coluna é NOT NULL no schema antigo
     using (var fixDangling = conn.CreateCommand())
     {
         fixDangling.CommandText = @"
@@ -268,10 +237,6 @@ using (var scope = app.Services.CreateScope())
         softDeleteOrfaos.ExecuteNonQuery();
     }
 
-    // (cleanup de gravações removido — feature de gravação foi descontinuada)
-
-    // Migração inline — tabela pessoaT50 (qual pessoa está cadastrada em qual T50).
-    // Permite múltiplos T50 por ambiente onde admin escolhe em quais a pessoa fica.
     bool pessoaT50Existe;
     using (var checkCmd = conn.CreateCommand())
     {
@@ -294,10 +259,6 @@ using (var scope = app.Services.CreateScope())
         createCmd.ExecuteNonQuery();
     }
 
-    // Backfill defensivo da pessoaT50 — para cada (pessoa, ambiente) em ambiente_pessoa,
-    // cadastra a pessoa nos T50s desse ambiente. Idempotente via WHERE NOT EXISTS.
-    // Só roda se ambiente_pessoa existir (não é o caso em DB recém-criado pelo EnsureCreated
-    // se não houver Pessoa registrada — proteção defensiva).
     bool ambPessoaExiste;
     using (var checkAP = conn.CreateCommand())
     {
@@ -319,8 +280,6 @@ using (var scope = app.Services.CreateScope())
         backfillP.ExecuteNonQuery();
     }
 
-    // Re-sincroniza dispositivoT50.DigitaisCadastradas com a contagem real de pessoaT50.
-    // Importante após backfill para o contador ficar consistente.
     bool dispExiste;
     using (var checkD = conn.CreateCommand())
     {
@@ -338,8 +297,6 @@ using (var scope = app.Services.CreateScope())
         sync.ExecuteNonQuery();
     }
 
-    // Migração inline — fila de pendências T50 (frontend enfileira, Worker consome via SDK).
-    // §5.2 doc técnica: ao adicionar pessoa a um T50, o sistema cadastra no hardware.
     bool t50PendenciaExiste;
     using (var checkCmd = conn.CreateCommand())
     {
@@ -364,8 +321,6 @@ using (var scope = app.Services.CreateScope())
         createCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — fila de slots AS608 órfãos (pessoa deletada mas template segue no sensor).
-    // SincronizadorAs608Worker drena também esta tabela: envia DELETE ao Arduino e apaga o registro.
     bool slotOrfaoExiste;
     using (var checkCmd = conn.CreateCommand())
     {
@@ -384,7 +339,6 @@ using (var scope = app.Services.CreateScope())
         createCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — cria tabela codigoDisponivel se não existir (pool de IDs 100000-999999)
     bool codigoTabelaExiste;
     using (var checkCmd = conn.CreateCommand())
     {
@@ -403,7 +357,6 @@ using (var scope = app.Services.CreateScope())
         createCmd.ExecuteNonQuery();
     }
 
-    // Migração inline — adiciona codigoUsuario à pessoa
     var pessoaColsExistentes = new HashSet<string>();
     using (var pragmaCmd4 = conn.CreateCommand())
     {
@@ -418,14 +371,13 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
-    // Slot ocupado no AS608 (1-127) — pool de slots livres pra contornar limite do sensor.
     if (!pessoaColsExistentes.Contains("slotAs608"))
     {
         using var alterCmd = conn.CreateCommand();
         alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN slotAs608 INTEGER NULL";
         alterCmd.ExecuteNonQuery();
     }
-    // Fila de slots pendentes de delete no AS608 — Worker drena periodicamente.
+
     if (!pessoaColsExistentes.Contains("slotAs608ParaApagar"))
     {
         using var alterCmd = conn.CreateCommand();
@@ -433,7 +385,6 @@ using (var scope = app.Services.CreateScope())
         alterCmd.ExecuteNonQuery();
     }
 
-    // Índice unique para garantir códigos distintos
     using (var idxCmd = conn.CreateCommand())
     {
         idxCmd.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS idx_pessoa_codigoUsuario ON pessoa(codigoUsuario)";
@@ -460,8 +411,6 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 
-    // Pool de CodigoUsuario (ID exibido p/ usuário e usado como EmployeeId no T50M)
-    // Mesma faixa 100000-999999, sem bloqueio de "triviais" — ID não é segredo.
     if (!db.CodigosDisponiveis.Any())
     {
         var codigos = Enumerable.Range(100000, 900000)
@@ -475,7 +424,6 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 
-    // Fora do if anterior
     if (!db.Administradores.Any())
     {
         db.Administradores.Add(new Administrador
@@ -502,7 +450,7 @@ using (var scope = app.Services.CreateScope())
 
 using (var scope = app.Services.CreateScope())
 {
-    // Roda uma vez por dia às 03:00 UTC conforme especificado na doc técnica
+
     RecurringJob.AddOrUpdate<InativarUsuariosInativos2AnosJob>(
         "inativar-usuarios-inativos",
         job => job.Executar(),
@@ -514,11 +462,6 @@ using (var scope = app.Services.CreateScope())
         "0 3 * * *");
 }
 
-// UseHttpsRedirection removido — Int1 é API interna (localhost apenas).
-// O redirect HTTP→HTTPS fazia o HttpClient do Int3 falhar no certificado dev.
-
-// Diagnóstico de variáveis críticas de ambiente — loga warning no startup se faltarem.
-// Não bloqueia a subida do serviço; só facilita troubleshooting na entrega ao cliente.
 {
     var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
 
@@ -539,7 +482,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
-app.UseAuthentication(); // ← adicionado
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

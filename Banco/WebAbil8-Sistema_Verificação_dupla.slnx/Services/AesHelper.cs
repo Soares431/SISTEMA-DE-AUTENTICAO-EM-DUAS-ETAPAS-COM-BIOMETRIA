@@ -4,14 +4,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
 {
-    // Helper AES usado para criptografar/descriptografar senhaClear no Int1.
-    // Não está no Int4 (AesService) porque Int1 não pode referenciá-lo (Int4 já referencia Int1).
+
     public static class AesHelper
     {
-        // §7 doc técnica: chave AES deve vir de variável de ambiente em produção.
-        // Ordem de resolução: env AES_KEY → appsettings AesKey → fallback hardcoded (dev).
-        // O fallback hardcoded NÃO deve ser usado em produção — appsettings.Production.template
-        // já documenta isso.
+
         public static string ResolverChave(IConfiguration? configuration = null)
         {
             var env = Environment.GetEnvironmentVariable("AES_KEY");
@@ -60,3 +56,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         }
     }
 }
+

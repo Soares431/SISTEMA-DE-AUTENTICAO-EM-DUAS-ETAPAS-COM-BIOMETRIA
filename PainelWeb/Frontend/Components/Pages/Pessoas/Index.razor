@@ -212,7 +212,6 @@
     private string? erroDialog = null;
     private bool isCadastrando = false;
 
-    // Mensagens de erro por campo (validação inline ao perder foco)
     private string? errNome = null;
     private string? errEmail = null;
     private string? errCpf = null;
@@ -240,7 +239,7 @@
         var e = (novoEmail ?? "").Trim();
         if (string.IsNullOrEmpty(e)) { errEmail = "Email é obrigatório."; return; }
         if (!FormatHelper.EmailValido(e)) { errEmail = "Email inválido."; return; }
-        // Duplicidade — busca local na lista já carregada (case-insensitive)
+
         if (todasPessoas.Any(p => string.Equals(p.Email, e, StringComparison.OrdinalIgnoreCase)))
         {
             errEmail = "Já existe uma pessoa cadastrada com este email.";
@@ -310,33 +309,29 @@
         if (string.IsNullOrWhiteSpace(novoNome) || string.IsNullOrWhiteSpace(novoEmail) ||
             string.IsNullOrWhiteSpace(novoCpf) || string.IsNullOrWhiteSpace(novoCargo)) return;
 
-        // Roda toda a bateria de validações inline antes de bloquear o envio.
-        // Isto cobre o caso do usuário ter clicado em "Cadastrar" sem nunca ter perdido foco em algum campo.
         ValidarNome();
         ValidarEmail();
         ValidarCpf();
         ValidarCargo();
         if (errNome != null || errEmail != null || errCpf != null || errCargo != null)
         {
-            erroDialog = null; // erros já visíveis abaixo dos campos
+            erroDialog = null;
             return;
         }
 
         isCadastrando = true;
         erroDialog = null;
-        // Força repintura do DOM com o overlay de loading antes do trabalho síncrono pesado
-        // (BCrypt + busca código + AES + 2 SaveChanges). Sem isto a UI só atualizaria no fim.
+
         StateHasChanged();
         await Task.Yield();
 
-        // Validações de formato (doc_tecnica §4.1)
         if (!FormatHelper.CpfValido(novoCpf))
         {
             erroDialog = "CPF inválido — verifique os dígitos.";
             isCadastrando = false;
             return;
         }
-        novoCpf = FormatHelper.SoDigitos(novoCpf); // normaliza para apenas dígitos
+        novoCpf = FormatHelper.SoDigitos(novoCpf);
 
         if (!FormatHelper.EmailValido(novoEmail))
         {
@@ -354,7 +349,7 @@
 
         try
         {
-            // Pega código do pool (100000-999999) — vira CodigoUsuario, exibido na UI e enviado ao T50M
+
             var codigoDisp = CodigoRepo.BuscarDisponivel();
             if (codigoDisp == null)
             {
@@ -362,7 +357,6 @@
                 return;
             }
 
-            // Pega senha do pool — diferente do código pra evitar ID=senha
             var senhaDisp = SenhaRepo.BuscarDisponivel();
             if (senhaDisp == null)
             {
@@ -370,7 +364,6 @@
                 return;
             }
 
-            // Garante senha ≠ código (ambos do range 100000-999999)
             int tentSenha = 0;
             while (senhaDisp.Senha == codigoDisp.Codigo && tentSenha < 5)
             {
@@ -396,7 +389,6 @@
 
             var pessoaSalva = await PessoaRepo.Adicionar(pessoa);
 
-            // Marca código e senha como EmUso vinculados à pessoa
             CodigoRepo.MarcarEmUso(codigoDisp.Codigo, true, pessoaSalva.Id);
             senhaDisp.EmUso = true;
             senhaDisp.PessoaId = pessoaSalva.Id;
@@ -434,7 +426,7 @@
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Nome Completo,CPF,Cargo");
-        foreach (var p in Sorted) // Sorted já aplica todos os filtros ativos
+        foreach (var p in Sorted)
         {
             sb.AppendLine($"\"{p.Nome}\",\"{FormatarCpf(p.Cpf)}\",\"{p.Cargo}\"");
         }

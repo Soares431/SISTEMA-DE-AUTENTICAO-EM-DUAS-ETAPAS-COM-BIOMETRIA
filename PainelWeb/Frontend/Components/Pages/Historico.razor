@@ -1,10 +1,3 @@
-@* =============================================================================
-   Historico.razor - Histórico completo de tentativas de acesso
-   Features: cards de resumo, filtros (busca, status, ambiente, período),
-             tabela com data/hora, pessoa, status (Permitido/Negado),
-             motivo da negação, ordenação por coluna, navegação clicável.
-   Rota: /historico
-   ============================================================================= *@
 @page "/historico"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ITentativaAcessoRepository TentativaRepo
@@ -14,7 +7,6 @@
 @inject NavigationManager Nav
 @inject IConfiguration Config
 @inject ITokenStore TokenStore
-@* TokenStore mantido por causa do ExportarPdf que envia Bearer no header. *@
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -173,9 +165,9 @@
     private DateTime? dataInicio = null;
     private DateTime? dataFim = null;
     private List<TentativaAcesso> todasTentativas = new();
-    // ambientes = todos (inclui excluídos) — usado pra resolver o nome em tentativas antigas
+
     private List<Ambiente> ambientes = new();
-    // ambientesAtivos = só não-excluídos — usado no dropdown de filtro
+
     private List<Ambiente> ambientesAtivos = new();
     private TentativaAcesso? gravacaoAberta = null;
 
@@ -185,12 +177,11 @@
             .OrderByDescending(t => t.DataHora)
             .Take(500)
             .ToList();
-        // Mantém lista completa pra resolver nome em tentativas antigas (soft-delete preserva FK).
+
         ambientes = AmbienteRepo.ListarTodosIncluindoExcluidos();
-        // Dropdown de filtro só mostra ambientes operacionais (não excluídos).
+
         ambientesAtivos = AmbienteRepo.ListarTodos();
 
-        // Pré-aplica filtros vindos pela URL (ex: /historico?ambienteId=3 ao chegar do "Ver no Histórico")
         var uri = new Uri(Nav.Uri);
         var qs = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
         if (qs.TryGetValue("ambienteId", out var amb) && !string.IsNullOrEmpty(amb))
@@ -207,8 +198,7 @@
             dataInicio = deDt.Date;
         if (qs.TryGetValue("ate", out var ate) && DateTime.TryParse(ate.ToString(), out var ateDt))
             dataFim = ateDt.Date;
-        // ?pessoaId=X vira busca textual pelo nome da pessoa — admin vê o filtro ativo
-        // no próprio campo de busca e pode editar/limpar como qualquer outra busca.
+
         if (qs.TryGetValue("pessoaId", out var pid) && long.TryParse(pid.ToString(), out var pidLong))
         {
             var pessoa = await PessoaRepo.BuscarPorId(pidLong);
@@ -231,7 +221,6 @@
     private void AbrirGravacao(TentativaAcesso t) => gravacaoAberta = t;
     private void FecharGravacao() => gravacaoAberta = null;
 
-    // Esconde a senha do URL RTSP (rtsp://user:pass@host/...) ao exibir no modal.
     private static string MascararSenhaUrl(string url)
     {
         try
@@ -277,7 +266,7 @@
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Data/Hora,Pessoa,Ambiente,Status,Motivo,Gravacao");
-        foreach (var item in Sorted) // Sorted já aplica todos os filtros ativos
+        foreach (var item in Sorted)
         {
             var pessoa = item.Pessoa?.Nome ?? $"ID {item.Pessoa?.CodigoUsuario ?? item.PessoaId.ToString()}";
             var amb = item.Ambiente?.Nome ?? ambientes.FirstOrDefault(a => a.Id == item.AmbienteId)?.Nome ?? $"Ambiente {item.AmbienteId}";
@@ -320,3 +309,4 @@
     private static string Slug(string s) =>
         new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }
+

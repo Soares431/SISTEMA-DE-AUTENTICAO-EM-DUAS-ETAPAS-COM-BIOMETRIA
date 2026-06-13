@@ -73,9 +73,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
             using var db = CriarContexto();
             var repo = new AdministradorImplemetions(db);
             var adm = repo.Adicionar(CriarAdmin("admin", "Admin"));
-            // Quando ignora o próprio Id, o login dele não conta como duplicata
+
             Assert.False(repo.LoginExiste("admin", ignorarId: adm.Id));
-            // Mas conta para os demais
+
             Assert.True(repo.LoginExiste("admin", ignorarId: 999));
         }
 
@@ -120,3 +120,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Tests
         }
     }
 }
+

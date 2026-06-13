@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
@@ -14,3 +14,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context
         }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -14,9 +14,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
 
-        // Código de 6 dígitos (100000-999999) exibido na UI e usado como EmployeeId no T50M.
-        // Vindo do pool CodigoDisponivel. Nullable para compatibilidade com cadastros antigos
-        // (que serão preenchidos por migração de dados).
         [Column("codigoUsuario", TypeName = "varchar(6)")]
         [MaxLength(6)]
         public string? CodigoUsuario { get; set; }
@@ -56,7 +53,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [MaxLength(15)]
         public string modoAcesso { get; set; }
 
-    
         [Column("biometriaCadastrada", TypeName = "DATETIME")]
         public DateTime? biometriaCadastrada { get; set; }
 
@@ -75,14 +71,11 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Column("dataCadastro", TypeName = "DATETIME")]
         public DateTime? dataCadastro { get; set; }
 
-        // Slot ocupado no AS608 (1-127). Alocado no enroll, liberado no reset/inativar.
-        // Permite reuso de slots quando pessoa é removida — sem isso, o sensor lota em 127.
         [Column("slotAs608")]
         public int? SlotAs608 { get; set; }
 
-        // Quando admin reseta biometria/inativa, o slot anterior fica aqui pra o Worker
-        // enviar CMD|FINGER|DELETE ao Arduino. Worker zera após confirmação.
         [Column("slotAs608ParaApagar")]
         public int? SlotAs608ParaApagar { get; set; }
     }
 }
+

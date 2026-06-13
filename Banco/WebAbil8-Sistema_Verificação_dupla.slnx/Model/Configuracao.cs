@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
@@ -12,15 +12,16 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         public int Id { get; set; }
 
         [Column("retencaoGravacoesTentativasDias")]
-        public int RetencaoGravacoesTentativasDias { get; set; } = 90; // padrão 90, min 30, max 180
+        public int RetencaoGravacoesTentativasDias { get; set; } = 90;
 
         [Column("retencaoLogsDias")]
-        public int RetencaoLogsDias { get; set; } = 180; // padrão 180, min 90, max 365
+        public int RetencaoLogsDias { get; set; } = 180;
 
         [Column("tempoEsperaGravacaoSeg")]
-        public int TempoEsperaGravacaoSeg { get; set; } = 60; // padrão 60, min 30, max 120
+        public int TempoEsperaGravacaoSeg { get; set; } = 60;
 
         [Column("periodoInativacaoMeses")]
-        public int PeriodoInativacaoMeses { get; set; } = 24; // padrão 24, min 3, max 24
+        public int PeriodoInativacaoMeses { get; set; } = 24;
     }
 }
+

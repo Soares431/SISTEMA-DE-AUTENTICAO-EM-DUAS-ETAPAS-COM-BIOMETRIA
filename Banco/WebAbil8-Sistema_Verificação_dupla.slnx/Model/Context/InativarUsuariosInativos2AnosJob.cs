@@ -1,4 +1,3 @@
-﻿// Jobs/InativarUsuariosInativos2AnosJob.cs
 using WebAbil8_Sistema_Verificação_dupla.slnx.Model.Context;
 
 namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
@@ -34,7 +33,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
             foreach (var usuario in usuarios)
             {
                 usuario.Status = "inativo";
-                // Remove de todos os ambientes (bug #27)
+
                 var vinculos = _context.AmbientesPessoas
                     .Where(ap => ap.PessoaId == usuario.Id)
                     .ToList();

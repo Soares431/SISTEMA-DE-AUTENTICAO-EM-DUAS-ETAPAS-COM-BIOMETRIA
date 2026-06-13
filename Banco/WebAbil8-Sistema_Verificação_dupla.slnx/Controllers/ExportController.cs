@@ -21,7 +21,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
 
         static ExportController()
         {
-            // QuestPDF community license — necessário rodar uma vez no startup do processo
+
             QuestPDF.Settings.License = LicenseType.Community;
         }
 
@@ -41,7 +41,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             _adminRepo = adminRepo;
         }
 
-        // GET /api/export/historico.pdf?search=&status=&ambienteId=&tipo=&gravacao=&de=&ate=
         [HttpGet("historico.pdf")]
         public IActionResult HistoricoPdf(
             [FromQuery] string? search,
@@ -91,7 +90,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 (!ate.HasValue || h.DataHora.Date <= ate.Value.Date));
         }
 
-        // GET /api/export/logs.pdf?search=&acao=&entidade=&adminId=
         [HttpGet("logs.pdf")]
         public IActionResult LogsPdf(
             [FromQuery] string? search,
@@ -123,7 +121,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return PdfFile("Logs de Auditoria", cabecalhos, linhas, "logs.pdf");
         }
 
-        // GET /api/export/pessoas.pdf?search=&status=&modo=&biometria=
         [HttpGet("pessoas.pdf")]
         public async Task<IActionResult> PessoasPdf(
             [FromQuery] string? search,
@@ -154,8 +151,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return PdfFile("Pessoas Cadastradas", cabecalhos, linhas, "pessoas.pdf");
         }
 
-        // GET /api/export/admins.pdf?search=
-        // Por decisão de segurança: NÃO exporta Login (vetor de ataque dispensável).
         [HttpGet("admins.pdf")]
         public IActionResult AdminsPdf([FromQuery] string? search)
         {
@@ -180,9 +175,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
             return PdfFile("Administradores", cabecalhos, linhas, "admins.pdf");
         }
 
-        // GET /api/export/relatorio-ambiente.pdf?ambienteId=X&de=Y&ate=Z
-        // §6.2 doc técnica: relatório completo do ambiente — pessoas com acesso, câmeras
-        // e entradas do período selecionado, em PDF.
         [HttpGet("relatorio-ambiente.pdf")]
         public async Task<IActionResult> RelatorioAmbientePdf(
             [FromQuery] int ambienteId,
@@ -323,3 +315,4 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
         }
     }
 }
+

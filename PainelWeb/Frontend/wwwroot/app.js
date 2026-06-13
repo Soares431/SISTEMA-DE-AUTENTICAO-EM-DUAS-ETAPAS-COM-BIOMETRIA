@@ -1,49 +1,22 @@
-// =============================================================================
-// app.js - Interoperabilidade JavaScript (JS Interop) do Blazor
-// Sistema de Controle de Acesso Biométrico do 5° CTA
-// Responsável por: gerenciamento de tema (dark/light) e renderização do gráfico
-// =============================================================================
-
-// -----------------------------------------------------------------------------
-// Gerenciador de Tema (Dark/Light Mode)
-// Utiliza localStorage para persistência e respeita preferência do sistema.
-// Chamado pelo componente MainLayout.razor via IJSRuntime.
-// -----------------------------------------------------------------------------
 window.themeManager = {
-    /**
-     * Define o tema ativo e persiste no localStorage.
-     * @param {string} theme - "dark" ou "light"
-     */
+
     setTheme: function(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
     },
 
-    /**
-     * Retorna o tema atual. Prioriza localStorage, depois preferência do SO.
-     * @returns {string} "dark" ou "light"
-     */
     getTheme: function() {
         return localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     },
 
-    /**
-     * Inicializa o tema ao carregar a página (chamado automaticamente).
-     */
     initTheme: function() {
         const theme = this.getTheme();
         document.documentElement.setAttribute('data-theme', theme);
     }
 };
 
-// Inicializa o tema imediatamente ao carregar o script
 window.themeManager.initTheme();
 
-// -----------------------------------------------------------------------------
-// Persistência de autenticação no sessionStorage
-// Usado para restaurar o token JWT se o circuito Blazor reconectar durante a sessão.
-// sessionStorage é limpo automaticamente ao fechar a aba/navegador.
-// -----------------------------------------------------------------------------
 window.authStorage = {
     save: function(token, adminId, nome) {
         sessionStorage.setItem('cta_token', token);
@@ -66,30 +39,20 @@ window.authStorage = {
     }
 };
 
-// -----------------------------------------------------------------------------
-// HLS player — exibe stream HLS ao vivo em um <video> existente.
-// Browsers não falam RTSP nativamente; o admin precisa rodar um conversor RTSP→HLS
-// (ex: MediaMTX que já gera HLS automaticamente em :8888) e cadastrar a URL .m3u8
-// no campo "URL HLS" da câmera. Safari toca HLS nativamente; Chrome/Firefox/Edge
-// usam hls.js (carregado no App.razor).
-// -----------------------------------------------------------------------------
 window._hlsInstances = window._hlsInstances || {};
 
 window.iniciarHls = function(videoElementId, urlHls) {
     var video = document.getElementById(videoElementId);
     if (!video) return false;
 
-    // Para player anterior antes de iniciar novo
     window.pararHls(videoElementId);
 
-    // Safari/iOS tem suporte nativo a HLS
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = urlHls;
-        video.play().catch(function(){ /* autoplay bloqueado é OK — usuário pode clicar play */ });
+        video.play().catch(function(){  });
         return true;
     }
 
-    // Demais browsers — usa hls.js
     if (typeof Hls === 'undefined' || !Hls.isSupported()) {
         console.error('hls.js não carregado ou não suportado neste browser');
         return false;
@@ -99,7 +62,7 @@ window.iniciarHls = function(videoElementId, urlHls) {
     hls.loadSource(urlHls);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, function() {
-        video.play().catch(function(){ /* idem */ });
+        video.play().catch(function(){  });
     });
     hls.on(Hls.Events.ERROR, function(event, data) {
         console.warn('HLS error:', data.type, data.details, 'fatal=' + data.fatal);
@@ -122,7 +85,6 @@ window.pararHls = function(videoElementId) {
     }
 };
 
-// Baixa um arquivo PDF autenticado e dispara download no navegador.
 window.baixarPdf = async function(url, token, filename) {
     try {
         var resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
@@ -144,13 +106,6 @@ window.baixarPdf = async function(url, token, filename) {
     }
 };
 
-// -----------------------------------------------------------------------------
-// Máscaras de input — formatação em tempo real conforme o usuário digita
-// Uso: <input @oninput="..." onkeyup="window.maskCpf(this)" /> + maxlength="14"
-// Blazor lê o input.value já formatado quando @bind dispara.
-// -----------------------------------------------------------------------------
-
-// CPF: 999.999.999-99 — limita a 11 dígitos
 window.maskCpf = function(el) {
     var v = (el.value || '').replace(/\D/g, '').slice(0, 11);
     var out = v;
@@ -160,7 +115,6 @@ window.maskCpf = function(el) {
     el.value = out;
 };
 
-// Telefone: (99) 99999-9999 ou (99) 9999-9999 — limita 11 dígitos
 window.maskTelefone = function(el) {
     var v = (el.value || '').replace(/\D/g, '').slice(0, 11);
     var out = v;
@@ -171,12 +125,10 @@ window.maskTelefone = function(el) {
     el.value = out;
 };
 
-// Bloqueia caracteres não-numéricos em campos de ID/senha/código (6 dígitos)
 window.maskSomenteDigitos = function(el, max) {
     el.value = (el.value || '').replace(/\D/g, '').slice(0, max || 11);
 };
 
-// Sanitiza nome/cargo — letras, acentos, espaço, apóstrofo e hífen
 window.maskTextoSeguro = function(el, max) {
     el.value = (el.value || '').replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '').slice(0, max || 100);
 };
@@ -467,3 +419,4 @@ window.startDashboardClock = function(elementId) {
     tick(); // Atualização imediata (sem esperar 1s)
     _clockInterval = setInterval(tick, 1000);
 };
+
