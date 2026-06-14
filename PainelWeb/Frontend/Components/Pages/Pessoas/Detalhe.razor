@@ -575,20 +575,25 @@
     private async Task HandleRemoverAcesso(int ambienteId)
     {
         if (pessoa == null) return;
-        var tinhaBiometria = pessoa.biometriaCadastrada != null;
 
-        var ambRemovido = ambientesPessoa.FirstOrDefault(a => a.Id == ambienteId);
+        var t50sDoAmbRemovido = AmbienteT50Repo.ListarT50sDoAmbiente(ambienteId).Select(t => t.Id).ToList();
+        var outrosAmbientes = ambientesPessoa.Where(a => a.Id != ambienteId).Select(a => a.Id).ToList();
+        var t50sEmOutrosAmbientes = outrosAmbientes
+            .SelectMany(aid => AmbienteT50Repo.ListarT50sDoAmbiente(aid).Select(t => t.Id))
+            .ToHashSet();
+
         AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoa.Id);
         LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
-        if (tinhaBiometria && ambRemovido != null)
+
+        foreach (var t50Id in t50sDoAmbRemovido)
         {
-            var dispositivo = DispositivoRepo.BuscarPorId(ambRemovido.DispositivoT50Id);
-            if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+            if (!t50sEmOutrosAmbientes.Contains(t50Id) && PessoaT50Repo.EstaCadastrada(pessoa.Id, t50Id))
             {
-                dispositivo.DigitaisCadastradas--;
-                DispositivoRepo.Atualizar(dispositivo);
+                PessoaT50Repo.Remover(pessoa.Id, t50Id);
+                T50PendenciaRepo.Enfileirar("remover", pessoa.Id, t50Id);
             }
         }
+
         ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
 
         if (ambientesPessoa.Count == 0 && pessoa.Status == "ativo")
@@ -615,27 +620,29 @@
     private async Task HandleConfirmarInativar()
     {
         if (pessoa == null) return;
-        var tinhaBiometria = pessoa.biometriaCadastrada != null;
 
         var ambientesSnap = ambientesPessoa.ToList();
+        var t50sUnicos = ambientesSnap
+            .SelectMany(a => AmbienteT50Repo.ListarT50sDoAmbiente(a.Id))
+            .Select(t => t.Id)
+            .Distinct()
+            .ToList();
+
         foreach (var amb in ambientesSnap)
             AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
-        await PessoaRepo.AlterarStatus(pessoa.Id, false);
 
-        try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
-
-        if (tinhaBiometria)
+        foreach (var t50Id in t50sUnicos)
         {
-            foreach (var amb in ambientesSnap)
+            if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50Id))
             {
-                var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
-                if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
-                {
-                    dispositivo.DigitaisCadastradas--;
-                    DispositivoRepo.Atualizar(dispositivo);
-                }
+                PessoaT50Repo.Remover(pessoa.Id, t50Id);
+                T50PendenciaRepo.Enfileirar("remover", pessoa.Id, t50Id);
             }
         }
+
+        await PessoaRepo.AlterarStatus(pessoa.Id, false);
+        try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
+
         LogRepo.Registrar(TokenStore.AdminId, "Inativacao", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa!.Id);
@@ -656,21 +663,22 @@
         {
 
             var ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
-            var tinhaBiometria = pessoa.biometriaCadastrada != null;
+
+            var t50sUnicos = ambientesPessoa
+                .SelectMany(a => AmbienteT50Repo.ListarT50sDoAmbiente(a.Id))
+                .Select(t => t.Id)
+                .Distinct()
+                .ToList();
 
             foreach (var amb in ambientesPessoa)
                 AmbientePessoaRepo.RemoverPessoa(amb.Id, pessoa.Id);
 
-            if (tinhaBiometria)
+            foreach (var t50Id in t50sUnicos)
             {
-                foreach (var amb in ambientesPessoa)
+                if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50Id))
                 {
-                    var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
-                    if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
-                    {
-                        dispositivo.DigitaisCadastradas--;
-                        DispositivoRepo.Atualizar(dispositivo);
-                    }
+                    PessoaT50Repo.Remover(pessoa.Id, t50Id);
+                    T50PendenciaRepo.Enfileirar("remover", pessoa.Id, t50Id);
                 }
             }
 
@@ -714,25 +722,12 @@
     private async Task HandleConfirmarReset()
     {
         if (pessoa == null) return;
-        var tinhaBiometria = pessoa.biometriaCadastrada != null;
         pessoa.biometriaCadastrada = null;
         pessoa.templateBackup = null;
         await PessoaRepo.Atualizar(pessoa);
 
         try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
 
-        if (tinhaBiometria)
-        {
-            foreach (var amb in ambientesPessoa)
-            {
-                var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
-                if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
-                {
-                    dispositivo.DigitaisCadastradas--;
-                    DispositivoRepo.Atualizar(dispositivo);
-                }
-            }
-        }
         LogRepo.Registrar(TokenStore.AdminId, "ResetBiometria", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         showConfirmReset = false;

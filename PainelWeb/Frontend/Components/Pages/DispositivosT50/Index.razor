@@ -4,6 +4,7 @@
 @inject IAmbienteRepository AmbienteRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
+@inject IConfiguration Config
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -87,11 +88,21 @@
                     <input class="form-input" maxlength="50" placeholder="Ex: T50-Entrada-Principal" @bind="novoNome" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Endereço (IP ou porta serial)</label>
-                    <input class="form-input" maxlength="15" placeholder="192.168.0.218 ou COM5"
+                    <label class="form-label">@(arduinoSuportado ? "Endereço (IP ou porta serial)" : "Endereço IP")</label>
+                    <input class="form-input" maxlength="15"
+                           placeholder="@(arduinoSuportado ? "192.168.0.218 ou COM5" : "192.168.0.218")"
                            onkeyup="window.maskEnderecoT50(this)"
                            @bind="novoIP" @bind:event="oninput" />
-                    <p class="text-sm text-muted">IP do T50/Simulador na rede (0-255.0-255.0-255.0-255) ou porta serial do Arduino (COM1-COM256)</p>
+                    <p class="text-sm text-muted">
+                        @if (arduinoSuportado)
+                        {
+                            <text>IP do T50/Simulador na rede (0-255.0-255.0-255.0-255) ou porta serial do Arduino (COM1-COM256)</text>
+                        }
+                        else
+                        {
+                            <text>IP do T50 na rede (0-255.0-255.0-255.0-255)</text>
+                        }
+                    </p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Porta TCP</label>
@@ -116,9 +127,11 @@
     private string? erroDialog = null;
     private List<DispositivoT50> dispositivos = new();
     private List<Ambiente> ambientes = new();
+    private bool arduinoSuportado = true;
 
     protected override void OnInitialized()
     {
+        arduinoSuportado = Config.GetValue<bool?>("ArduinoSuportado") ?? false;
         Carregar();
     }
 
@@ -147,7 +160,13 @@
         erroDialog = null;
         if (string.IsNullOrWhiteSpace(novoNome)) { erroDialog = "Informe o nome do dispositivo."; return; }
         if (string.IsNullOrWhiteSpace(novoIP)) { erroDialog = "Informe o endereço."; return; }
-        if (!FormatHelper.EnderecoT50Valido(novoIP)) { erroDialog = "Endereço inválido — use IP (ex: 192.168.0.218) ou porta serial (ex: COM5)."; return; }
+        if (!FormatHelper.EnderecoT50Valido(novoIP, arduinoSuportado))
+        {
+            erroDialog = arduinoSuportado
+                ? "Endereço inválido — use IP (ex: 192.168.0.218) ou porta serial (ex: COM5)."
+                : "Endereço inválido — use IP (ex: 192.168.0.218).";
+            return;
+        }
         if (novaPorta < 1 || novaPorta > 65535) { erroDialog = "Porta inválida (1 a 65535)."; return; }
 
         var enderecoNorm = novoIP.Trim();

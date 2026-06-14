@@ -8,11 +8,7 @@ Esta pasta contém o script auxiliar para gerar a senha criptografada exigida pe
 
 ## 1. Pré-requisito
 
-Instale o `dotnet-script` (uma única vez no servidor):
-
-```powershell
-dotnet tool install -g dotnet-script
-```
+Apenas o .NET 8 SDK. Nenhuma ferramenta extra precisa ser instalada — o gerador roda direto com `dotnet run`.
 
 ---
 
@@ -21,13 +17,13 @@ dotnet tool install -g dotnet-script
 ### 2.1 Gerar o hash da senha
 
 ```powershell
-cd "C:\caminho\para\docs\scripts"
+cd "C:\caminho\para\docs\scripts\GerarHash"
 
 # Forma 1: passa a senha como argumento
-dotnet script gerar-hash.csx -- "MinhaSenha@Forte123"
+dotnet run -- "MinhaSenha@Forte123"
 
 # Forma 2: interativo (não exibe no histórico do PowerShell)
-dotnet script gerar-hash.csx
+dotnet run
 ```
 
 A saída inclui o hash BCrypt e um exemplo de `INSERT` pronto:
@@ -87,7 +83,8 @@ VALUES (
 ### 3.1 Gerar o hash da nova senha
 
 ```powershell
-dotnet script gerar-hash.csx -- "NovaSenha@Segura456"
+cd "C:\caminho\para\docs\scripts\GerarHash"
+dotnet run -- "NovaSenha@Segura456"
 ```
 
 ### 3.2 Atualizar o registro
@@ -120,7 +117,8 @@ DELETE FROM administrador WHERE login = 'admin_antigo';
 Se quiser manter o registro pra rastreamento futuro:
 
 ```powershell
-dotnet script gerar-hash.csx -- "$(New-Guid)"
+cd "C:\caminho\para\docs\scripts\GerarHash"
+dotnet run -- "$(New-Guid)"
 ```
 
 E executar o UPDATE. A senha gerada é descartada — ninguém consegue logar.
@@ -138,9 +136,9 @@ E executar o UPDATE. A senha gerada é descartada — ninguém consegue logar.
 
 ## 6. Script disponível
 
-### gerar-hash.csx
+### GerarHash (`docs/scripts/GerarHash`)
 
-Recebe uma senha (argumento ou interativo) e retorna o hash BCrypt fator 10, compatível com a verificação feita pelo `AuthController` do Int1.
+Console app .NET 8 que recebe uma senha (argumento ou interativo) e retorna o hash BCrypt fator 10, compatível com a verificação feita pelo `AuthController` do Int1.
 
 ```csharp
 // Validação no AuthController:

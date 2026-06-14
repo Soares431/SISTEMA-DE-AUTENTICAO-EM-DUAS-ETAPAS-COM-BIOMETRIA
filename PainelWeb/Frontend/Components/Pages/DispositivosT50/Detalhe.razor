@@ -5,6 +5,7 @@
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject NavigationManager Nav
+@inject IConfiguration Config
 
 <div class="space-y">
     @if (dispositivo == null)
@@ -69,7 +70,7 @@
                     {
                         <div class="space-y-sm">
                             <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" maxlength="50" @bind="editNome" @bind:event="oninput" /></div>
-                            <div class="form-group"><label class="form-label">Endereço (IP ou COMx) *</label><input class="form-input" maxlength="15" placeholder="192.168.0.218 ou COM5" onkeyup="window.maskEnderecoT50(this)" @bind="editIP" @bind:event="oninput" /></div>
+                            <div class="form-group"><label class="form-label">@(arduinoSuportado ? "Endereço (IP ou COMx) *" : "Endereço IP *")</label><input class="form-input" maxlength="15" placeholder="@(arduinoSuportado ? "192.168.0.218 ou COM5" : "192.168.0.218")" onkeyup="window.maskEnderecoT50(this)" @bind="editIP" @bind:event="oninput" /></div>
                             <div class="form-group"><label class="form-label">Porta TCP *</label><input type="number" class="form-input" min="1" max="65535" @bind="editPorta" /></div>
                             <div class="flex gap-2 mt-4">
                                 <button class="btn btn-primary" @onclick="HandleSalvarEdicao" disabled="@isSalvando">@(isSalvando ? "Salvando..." : "Salvar")</button>
@@ -176,13 +177,18 @@
     private bool showConfirmExcluir = false;
     private string nomeConfirmacao = "";
     private string? sucesso = null;
+    private bool arduinoSuportado = true;
     private string? erro = null;
 
     private string editNome = "";
     private string editIP = "";
     private int editPorta = 5010;
 
-    protected override void OnInitialized() => Carregar();
+    protected override void OnInitialized()
+    {
+        arduinoSuportado = Config.GetValue<bool?>("ArduinoSuportado") ?? false;
+        Carregar();
+    }
 
     private void Carregar()
     {
@@ -212,7 +218,13 @@
         erro = null;
         if (string.IsNullOrWhiteSpace(editNome)) { erro = "Nome é obrigatório."; return; }
         if (string.IsNullOrWhiteSpace(editIP)) { erro = "Endereço é obrigatório."; return; }
-        if (!FormatHelper.EnderecoT50Valido(editIP)) { erro = "Endereço inválido — use IP (ex: 192.168.0.218) ou porta serial (ex: COM5)."; return; }
+        if (!FormatHelper.EnderecoT50Valido(editIP, arduinoSuportado))
+        {
+            erro = arduinoSuportado
+                ? "Endereço inválido — use IP (ex: 192.168.0.218) ou porta serial (ex: COM5)."
+                : "Endereço inválido — use IP (ex: 192.168.0.218).";
+            return;
+        }
         if (editPorta < 1 || editPorta > 65535) { erro = "Porta inválida (1 a 65535)."; return; }
 
         var enderecoNorm = editIP.Trim();

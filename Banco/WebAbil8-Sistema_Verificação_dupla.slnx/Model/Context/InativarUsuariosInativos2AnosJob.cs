@@ -38,7 +38,25 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
                     .Where(ap => ap.PessoaId == usuario.Id)
                     .ToList();
                 _context.AmbientesPessoas.RemoveRange(vinculos);
-                _logger.LogInformation("Usuário {id} inativado por inatividade ({count} ambientes removidos).", usuario.Id, vinculos.Count);
+
+                var vinculosT50 = _context.PessoasT50
+                    .Where(pt => pt.PessoaId == usuario.Id)
+                    .ToList();
+                foreach (var pt in vinculosT50)
+                {
+                    var disp = _context.DispositivosT50.Find(pt.DispositivoT50Id);
+                    if (disp != null && disp.DigitaisCadastradas > 0) disp.DigitaisCadastradas--;
+                }
+                _context.PessoasT50.RemoveRange(vinculosT50);
+
+                if (usuario.SlotAs608 != null)
+                {
+                    usuario.SlotAs608ParaApagar = usuario.SlotAs608;
+                    usuario.SlotAs608 = null;
+                }
+
+                _logger.LogInformation("Usuário {id} inativado por inatividade ({count} ambientes, {t50} T50s removidos).",
+                    usuario.Id, vinculos.Count, vinculosT50.Count);
             }
 
             _context.SaveChanges();

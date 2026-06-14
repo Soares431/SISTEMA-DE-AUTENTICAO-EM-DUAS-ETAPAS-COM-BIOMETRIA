@@ -768,9 +768,15 @@
 
             var pessoasVinculadas = AmbientePessoaRepo.ListarPessoasDoAmbiente(ambienteId)
                 .Select(p => p.Id).ToList();
+            var t50sDoAmbiente = AmbienteT50Repo.ListarT50sDoAmbiente(ambienteId).Select(t => t.Id).ToList();
 
             foreach (var cam in cameras)
                 await CameraRepo.Remover(cam.Id);
+
+            foreach (var t50Id in t50sDoAmbiente)
+            {
+                AmbienteT50Repo.Remover(ambienteId, t50Id);
+            }
 
             foreach (var pessoaId in pessoasVinculadas)
                 AmbientePessoaRepo.RemoverPessoa(ambienteId, pessoaId);

@@ -109,7 +109,10 @@ namespace BiometricAcess.Worker.Services
             {
                 await _pessoaRepository.SalvarTemplate(pessoa.Id, template);
                 await _pessoaRepository.MarcarBiometriaCadastrada(pessoa.Id);
-                _anvizService.AlterarModo(codigoT50, "digital_id");
+                // Bug 4: "ambos" → Mode=6 (FP|PWD bitmask) — usuário pode escolher digital OU senha
+                // toda vez, conforme doc §2.2. Mode 6 também era o valor de "digital_id"; mantido
+                // como alias pra não quebrar chamadas existentes.
+                _anvizService.AlterarModo(codigoT50, "ambos");
                 Console.WriteLine($"Biometria cadastrada — Pessoa: {pessoa.Id}");
             }
 

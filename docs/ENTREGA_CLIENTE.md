@@ -851,13 +851,14 @@ Marque conforme avança:
 
 ### A.1 Gerar hash BCrypt de uma senha
 
-```csharp
-// Salvar como gerar-hash.csx e rodar com: dotnet script gerar-hash.csx <senha>
-#r "nuget: BCrypt.Net-Next, 4.1.0"
-using System;
-var senha = Args.Count > 0 ? Args[0] : "Admin@123";
-Console.WriteLine(BCrypt.Net.BCrypt.HashPassword(senha, workFactor: 10));
+Console app pronto em `docs/scripts/GerarHash`. Roda apenas com o .NET 8 SDK — não precisa instalar `dotnet-script` nem outras ferramentas:
+
+```powershell
+cd docs\scripts\GerarHash
+dotnet run -- "Admin@123"
 ```
+
+Saída inclui o hash e um `INSERT` de exemplo pronto pra colar no DBeaver/DB Browser.
 
 ### A.2 Backup diário do banco
 

@@ -183,7 +183,7 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
 <p>Seguem suas credenciais de acesso ao sistema do 5º CTA:</p>
 <table style=""border-collapse:collapse"">
 <tr><td style=""padding:6px 12px""><strong>ID do usuário (T50):</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{idMostrar}</td></tr>
-<tr><td style=""padding:6px 12px""><strong>Senha provisória:</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{senhaPlain}</td></tr>
+<tr><td style=""padding:6px 12px""><strong>Senha de acesso:</strong></td><td style=""padding:6px 12px;font-family:monospace;font-size:1.1em"">{senhaPlain}</td></tr>
 </table>
 <p>No terminal T50, digite o <strong>ID</strong> seguido da <strong>senha</strong> para liberar o acesso.</p>
 <p>Não compartilhe com terceiros.</p>";

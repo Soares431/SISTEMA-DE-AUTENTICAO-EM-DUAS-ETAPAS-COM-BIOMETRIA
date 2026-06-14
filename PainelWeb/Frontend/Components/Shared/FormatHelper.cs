@@ -82,7 +82,7 @@ public static class FormatHelper
         return int.TryParse(num, out var n) && n >= 1 && n <= 256;
     }
 
-    public static bool EnderecoT50Valido(string? endereco) =>
-        IpValido(endereco) || PortaSerialValida(endereco);
+    public static bool EnderecoT50Valido(string? endereco, bool aceitaSerial = true) =>
+        IpValido(endereco) || (aceitaSerial && PortaSerialValida(endereco));
 }
 

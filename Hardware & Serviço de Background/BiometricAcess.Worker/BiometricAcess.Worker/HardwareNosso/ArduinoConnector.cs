@@ -1,6 +1,8 @@
 ﻿using System.IO.Ports;
 using BiometricAcess.Worker.Models;
 using BiometricAcess.Worker.Services;
+using Microsoft.Extensions.DependencyInjection;
+using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
 namespace BiometricAcess.Worker.HardwareNosso;
 
@@ -12,9 +14,12 @@ public class ArduinoConnector : IAnvizConnector
     private EventoAcesso? _ultimoEvento;
     private int _idEmAndamento = 0;
     private string _senhaEmAndamento = "";
-    // Status do AS608 — atualizado pelos heartbeats EVT|FINGER|SENSOR|OK/FAIL.
     private bool _sensorOnline = true;
     private DateTime _ultimoHeartbeat = DateTime.UtcNow;
+    // ScopeFactory opcional pra registrar heartbeat de DB direto do EVT|FINGER|SENSOR|OK.
+    // Sem isto, o status online dependia só do polling do Worker (60s) — qualquer hiccup
+    // no Worker (reconexão, GC, etc) podia derrubar o dispositivo pra "offline" no painel.
+    public IServiceScopeFactory? ScopeFactory { get; set; }
 
     public bool SensorOnline => _sensorOnline;
     public DateTime UltimoHeartbeat => _ultimoHeartbeat;
@@ -205,18 +210,21 @@ public class ArduinoConnector : IAnvizConnector
             }
 
             // ── EVT|FINGER|SENSOR|OK|FAIL — heartbeat do AS608 ───────
-            // Não vira EventoAcesso (não toca DB). Só atualiza estado interno —
-            // FAIL repetido sinaliza que o sensor desconectou ou está com defeito.
+            // Atualiza estado interno + registra heartbeat no DB (mantém UltimaConexao fresca
+            // mesmo sem polling do Worker). FAIL repetido sinaliza problema no sensor.
             if (msg.EhEvento(Eventos.SensorOk))
             {
                 _sensorOnline = true;
                 _ultimoHeartbeat = DateTime.UtcNow;
+                RegistrarHeartbeatDb();
                 return;
             }
             if (msg.EhEvento(Eventos.SensorFalhou))
             {
                 _sensorOnline = false;
                 _ultimoHeartbeat = DateTime.UtcNow;
+                // Arduino ainda está respondendo, sensor é que falhou — DB continua online.
+                RegistrarHeartbeatDb();
                 Console.WriteLine("[Arduino] ALERTA — AS608 não responde (verifique fiação 3.3V/TX/RX)");
                 return;
             }
@@ -262,6 +270,18 @@ public class ArduinoConnector : IAnvizConnector
         var evento = _ultimoEvento;
         _ultimoEvento = null;
         return evento;
+    }
+
+    private void RegistrarHeartbeatDb()
+    {
+        if (ScopeFactory == null) return;
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IDispositivoT50Repository>();
+            repo.RegistrarHeartbeat(_porta);
+        }
+        catch { }
     }
 
     public List<EventoAcesso> BuscarEventosArmazenados()

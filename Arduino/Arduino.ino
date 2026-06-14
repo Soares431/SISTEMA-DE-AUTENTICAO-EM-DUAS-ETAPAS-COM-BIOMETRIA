@@ -141,9 +141,10 @@ void setup() {
   delay(200);
   if (finger.verifyPassword()) {
     as608Online = true;
-    // Security level 1-5: maior = mais estrito (default 3). Captura imperfeita do AS608
-    // em ambiente caseiro funciona melhor em 2 — match com tolerancia, mas seguro o bastante.
-    finger.setSecurityLevel(2);
+    // Security level 1-5: maior = mais estrito (default Adafruit = 3).
+    // Nivel 2 dava sucesso na ultima tentativa apos varias falhas (intermitente) —
+    // nivel 3 reduz esse padrao "sempre erra, depois libera" descrito pelo usuario.
+    finger.setSecurityLevel(3);
     Serial.println(F("EVT|FINGER|SENSOR|OK"));
   } else {
     as608Online = false;
@@ -593,6 +594,7 @@ void processarEstadoBiometrico() {
 void lerTeclado() {
   if (estado == MOSTRANDO_RESULTADO) return;
   if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA) return;
+
   if (estado == VERIFY_AGUARDANDO_DEDO
       || estado == ENROLL_AGUARDANDO_1A_VEZ
       || estado == ENROLL_AGUARDANDO_RETIRAR
@@ -601,6 +603,16 @@ void lerTeclado() {
     if (t == '#') {
       Serial.println(F("EVT|FINGER|CANCEL"));
       mostrarResultadoF(F("Cancelado"), F(""));
+      return;
+    }
+    // Bug 4: VERIFY com dedo é o caminho padrão (LCD mostra "Coloque o dedo"),
+    // mas se o usuário apertar tecla numérica, troca pra senha automaticamente.
+    // Doc §2.2: pessoa com biometria escolhe entre digital e senha na hora.
+    if (estado == VERIFY_AGUARDANDO_DEDO && t >= '0' && t <= '9') {
+      estado = DIGITANDO_SENHA;
+      senhaDigitada = String(t);
+      ultimaAtividade = millis();
+      mostrarDuasLinhasF(F("Acesso por senha"), F("Senha: *"));
       return;
     }
     // Modo simulado: keypad substitui o AS608. Permite testar o sistema sem sensor.

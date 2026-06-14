@@ -95,13 +95,19 @@ namespace BiometricAcess.Worker.Services
             try
             {
                 var userInfo = new UserInfo((ulong)id, string.Empty);
-                if (modo == "digital_id")
+                // Mode (Anviz UserInfo): bitmask de métodos aceitos. Doc oficial T-series:
+                //   Mode 2 = Fingerprint
+                //   Mode 4 = Password
+                //   Mode 6 = Fingerprint OR Password (2|4) → atende doc §2.2 "duas opções
+                //            disponíveis, usuário escolhe na hora"
+                // Bug 4: após enroll usa Mode=6 (não Mode=2) pra permitir senha+ID também.
+                if (modo == "digital_id" || modo == "ambos")
                 {
                     userInfo.Mode = 6;
                 }
                 else
                 {
-                    userInfo.Mode = 4; 
+                    userInfo.Mode = 4;
                 }
                 _device.SetEmployeesData(userInfo).Wait();
                 return true;

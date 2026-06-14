@@ -66,7 +66,11 @@ builder.Services.AddScoped<CameraService>();
 // ═══════════════════════════════════════════════════════════════
 
 var arduinoConnector = new ArduinoConnector(porta: "COM5"); // ← ajuste a porta (USB-SERIAL CH340 = Arduino)
-builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
+builder.Services.AddSingleton<IAnvizConnector>(sp =>
+{
+    arduinoConnector.ScopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+    return arduinoConnector;
+});
 builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
 builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
 

@@ -1,14 +1,7 @@
-#r "nuget: BCrypt.Net-Next, 4.0.3"
-using System;
-
-// Uso: dotnet script gerar-hash.csx -- <senha>
-// Ou rode interativo: dotnet script gerar-hash.csx
-// Saída: hash BCrypt fator 10 pronto pra colar no INSERT da tabela administrador.
-
 string senha;
-if (Args.Count > 0)
+if (args.Length > 0)
 {
-    senha = Args[0];
+    senha = args[0];
 }
 else
 {

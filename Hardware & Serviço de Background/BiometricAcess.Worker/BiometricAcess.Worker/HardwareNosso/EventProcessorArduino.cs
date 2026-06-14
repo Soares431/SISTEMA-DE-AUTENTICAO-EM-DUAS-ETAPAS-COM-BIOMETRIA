@@ -119,7 +119,9 @@ public class EventProcessorArduino : IEventProcessor
                 return;
             }
 
-            // Já tem biometria — pede digital direto
+            // Já tem biometria — manda START_VERIFY. Bug 4: o Arduino mostra "Coloque o dedo"
+            // mas se usuário apertar tecla numérica em vez de colocar dedo, ele troca pra senha
+            // e devolve EVT|SENHA com a senha digitada. Sem precisar de protocolo novo.
             _arduinoService.NotificarVerificarDigital(evento.PessoaID);
             return;
         }
@@ -172,20 +174,22 @@ public class EventProcessorArduino : IEventProcessor
                 return;
             }
 
-            // Senha correta — bifurca pelo modo de acesso da pessoa:
+            // Senha correta — bifurca por modo + se já tem biometria:
             // - somente_senha: libera direto, sem pedir biometria
-            // - digital_e_senha: cadastra biometria no AS608 (1º acesso)
-            if (pessoa.modoAcesso == "somente_senha")
+            // - digital_e_senha + biometria cadastrada: libera (bug 4 — usuário escolheu senha
+            //   em vez de digital, comportamento aceito por doc §2.2)
+            // - digital_e_senha + biometria nula: cadastra biometria no AS608 (1º acesso)
+            if (pessoa.modoAcesso == "somente_senha" || pessoa.biometriaCadastrada != null)
             {
                 await pessoaRepo.AtualizarUltimoAcesso(pessoa.Id);
                 var tentSenha = await RegistrarTentativa(pessoa, true, null);
                 _arduinoService.NotificarAcessoLiberado();
                 AgendarGravacaoOnvif(tentSenha.Id, ambiente);
-                Console.WriteLine($"[Arduino] Acesso liberado (somente_senha) — Pessoa: {pessoa.Id}");
+                Console.WriteLine($"[Arduino] Acesso liberado (senha) — Pessoa: {pessoa.Id}");
                 return;
             }
 
-            // digital_e_senha — vai cadastrar biometria (1º acesso).
+            // digital_e_senha sem biometria — vai cadastrar biometria (1º acesso).
             // Aloca slot do pool 1-127 (limite físico do AS608) via banco. Reuso de slots
             // vazios garante que sensor não lota mesmo após admin resetar biometrias.
             int? slot = pessoa.SlotAs608;
@@ -223,17 +227,10 @@ public class EventProcessorArduino : IEventProcessor
 
         if (evento.TipoVerificacao == "primeiro_acesso")
         {
-            // Só incrementa o contador no PRIMEIRO enroll. Re-enrolls (admin resetou e cadastrou
-            // de novo, ou usuário re-enrollou no mesmo slot) sobrescrevem o template no AS608 —
-            // o slot já estava ocupado, então não há +1 de "digital cadastrada" no T50.
-            var jaTinhaBiometria = pessoa.biometriaCadastrada != null;
+            // DigitaisCadastradas é incrementado quando PessoaT50 é criada (no momento que a pessoa
+            // é vinculada ao ambiente), NÃO no enroll — caso contrário haveria double-count.
+            // O slot AS608 já foi alocado/reservado antes; aqui só marca a biometria como cadastrada.
             await pessoaRepo.MarcarBiometriaCadastrada(pessoa.Id);
-            // doc_tecnica §2.3: incrementa contador de digitais do T50 quando enroll confirma.
-            if (!jaTinhaBiometria && dispositivo.DigitaisCadastradas < 1000)
-            {
-                dispositivo.DigitaisCadastradas++;
-                dispositivoRepo.Atualizar(dispositivo);
-            }
             Console.WriteLine($"[Arduino] Biometria cadastrada — Pessoa: {pessoa.Id}");
         }
 

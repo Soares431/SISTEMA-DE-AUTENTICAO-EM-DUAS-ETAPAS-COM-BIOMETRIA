@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using WebAbil8_Sistema_Verificação_dupla.slnx.Services;
 
 namespace BiometricAcess.Worker.Services
@@ -16,15 +17,18 @@ namespace BiometricAcess.Worker.Services
         private readonly ILogger<SincronizadorT50Worker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IAnvizService _anvizService;
+        private readonly string _aesKey;
 
         public SincronizadorT50Worker(
             ILogger<SincronizadorT50Worker> logger,
             IServiceScopeFactory scopeFactory,
-            IAnvizService anvizService)
+            IAnvizService anvizService,
+            IConfiguration configuration)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _anvizService = anvizService;
+            _aesKey = AesHelper.ResolverChave(configuration);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -50,9 +54,17 @@ namespace BiometricAcess.Worker.Services
                             }
 
                             var codigoT50 = CodigoT50DePessoa(pessoa);
+                            // senhaClear está AES-cifrada no banco — decifra antes de enviar ao T50,
+                            // senão o hardware recebe lixo cifrado e o usuário nunca consegue logar com senha+ID.
+                            string senhaPlain = "";
+                            if (!string.IsNullOrEmpty(pessoa.senhaClear))
+                            {
+                                try { senhaPlain = AesHelper.Decrypt(pessoa.senhaClear, _aesKey); }
+                                catch (Exception ex) { _logger.LogWarning("Falha ao decifrar senha da pessoa {Id}: {Msg}", pessoa.Id, ex.Message); }
+                            }
                             bool ok = p.Acao switch
                             {
-                                "adicionar" => _anvizService.AdicionarPessoa(codigoT50, pessoa.Nome ?? "", pessoa.senhaClear ?? ""),
+                                "adicionar" => _anvizService.AdicionarPessoa(codigoT50, pessoa.Nome ?? "", senhaPlain),
                                 "remover"   => _anvizService.RemoverPessoa(codigoT50),
                                 _ => false
                             };

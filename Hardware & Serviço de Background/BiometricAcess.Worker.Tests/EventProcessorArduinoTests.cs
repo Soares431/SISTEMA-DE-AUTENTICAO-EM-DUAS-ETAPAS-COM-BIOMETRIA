@@ -198,6 +198,9 @@ namespace BiometricAcess.Worker.Tests
         [Fact]
         public async Task EvtId_ComBiometria_DevePedirDigital()
         {
+            // Pessoa com biometria cadastrada → C# manda START_VERIFY ("Coloque o dedo").
+            // Bug 4: se o usuário apertar tecla numérica no lugar do dedo, o Arduino
+            // próprio troca pra DIGITANDO_SENHA — sem precisar de novo protocolo C#.
             var (processor, arduino, db, amb, _) = Setup();
             var p = CadastrarPessoa(db, "44444444444", "100004", biometria: DateTime.UtcNow);
             Vincular(db, p.Id, amb.Id);
@@ -211,6 +214,29 @@ namespace BiometricAcess.Worker.Tests
             });
 
             Assert.Contains($"verificarDigital:{p.Id}", arduino.Notificacoes);
+        }
+
+        [Fact]
+        public async Task EvtSenha_DigitalESenha_ComBiometriaCadastrada_DeveLiberar()
+        {
+            // Bug 4: usuário com biometria optou pela senha (apertou tecla no LCD que mostrava
+            // "Coloque o dedo"). C# recebe EVT|SENHA, valida e libera — NÃO tenta cadastrar
+            // biometria de novo (esse é o fluxo de 1º acesso, só vale quando biometria == null).
+            var (processor, arduino, db, amb, _) = Setup();
+            var p = CadastrarPessoa(db, "13131313131", "100013", biometria: DateTime.UtcNow);
+            Vincular(db, p.Id, amb.Id);
+
+            await processor.Processar(new EventoAcesso
+            {
+                PessoaID = (int)p.Id,
+                TipoVerificacao = "senha",
+                MotivoNegacao = "100013", // senha em texto claro
+                IpDispositivo = PortaSerial,
+                DataHora = DateTime.UtcNow
+            });
+
+            Assert.Contains($"acessoLiberado:5s", arduino.Notificacoes);
+            Assert.DoesNotContain(arduino.Notificacoes, n => n.StartsWith("primeiroAcesso:"));
         }
 
         // ════════════════════════════════════════════════════════════════
@@ -305,18 +331,23 @@ namespace BiometricAcess.Worker.Tests
         // ════════════════════════════════════════════════════════════════
 
         [Fact]
-        public async Task PrimeiroAcesso_DeveMarcarBiometriaEIncrementarDigitais()
+        public async Task PrimeiroAcesso_DeveMarcarBiometriaSemAlterarContador()
         {
+            // DigitaisCadastradas é incrementado quando PessoaT50 é criada (vínculo no ambiente),
+            // NÃO durante o primeiro_acesso. Aqui validamos que a biometria é marcada e o
+            // contador NÃO é alterado de novo (caso contrário haveria double-count).
             var (processor, _, db, amb, disp) = Setup();
             var p = CadastrarPessoa(db, "99999999999", "100009");
             Vincular(db, p.Id, amb.Id);
+            disp.DigitaisCadastradas = 1; // simula PessoaT50 já criada
+            await db.SaveChangesAsync();
             var dispBefore = disp.DigitaisCadastradas;
 
             await processor.Processar(new EventoAcesso
             {
                 PessoaID = (int)p.Id,
                 TipoVerificacao = "primeiro_acesso",
-                AcessoLiberado = true,  // ENROLLED do Arduino vem com sucesso (Connector seta)
+                AcessoLiberado = true,
                 IpDispositivo = PortaSerial,
                 DataHora = DateTime.UtcNow
             });
@@ -325,7 +356,7 @@ namespace BiometricAcess.Worker.Tests
             Assert.NotNull(pAtual!.biometriaCadastrada);
 
             var dispAtual = await db.DispositivosT50.FindAsync(disp.Id);
-            Assert.Equal(dispBefore + 1, dispAtual!.DigitaisCadastradas);
+            Assert.Equal(dispBefore, dispAtual!.DigitaisCadastradas);
         }
 
         [Fact]
