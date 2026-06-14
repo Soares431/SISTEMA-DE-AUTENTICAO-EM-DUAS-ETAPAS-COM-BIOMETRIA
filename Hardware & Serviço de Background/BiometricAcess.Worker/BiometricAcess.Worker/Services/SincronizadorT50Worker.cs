@@ -66,6 +66,14 @@ namespace BiometricAcess.Worker.Services
                             {
                                 "adicionar" => _anvizService.AdicionarPessoa(codigoT50, pessoa.Nome ?? "", senhaPlain),
                                 "remover"   => _anvizService.RemoverPessoa(codigoT50),
+                                // Restaura biometria após mudança de modo (somente_senha → digital_e_senha).
+                                // T50M: re-cria user com senha + faz upload do template do banco + Mode 6 (FP|PWD).
+                                // Arduino: AnvizService é o ArduinoService (no-op), template físico já tá lá.
+                                "restaurar_biometria" => RestaurarBiometria(codigoT50, pessoa, senhaPlain),
+                                // Limpa biometria após mudança de modo (digital_e_senha → somente_senha).
+                                // T50M: AlterarModo(senha) = Mode 4 (PWD+ID), mantém user com senha mas tira FP.
+                                // Arduino: no-op silencioso — template físico fica preservado pra re-ativação.
+                                "limpar_biometria"    => _anvizService.AlterarModo(codigoT50, "senha"),
                                 _ => false
                             };
 
@@ -94,6 +102,26 @@ namespace BiometricAcess.Worker.Services
             if (!string.IsNullOrEmpty(pessoa.CodigoUsuario) && int.TryParse(pessoa.CodigoUsuario, out var c))
                 return c;
             return (int)pessoa.Id;
+        }
+
+        private bool RestaurarBiometria(int codigoT50, WebAbil8_Sistema_Verificação_dupla.slnx.Model.Pessoa pessoa, string senhaPlain)
+        {
+            // Garante que o user existe no T50M com senha — necessário antes do upload do template.
+            // Idempotente: se já existe, SetEmployeesData só atualiza.
+            if (!_anvizService.AdicionarPessoa(codigoT50, pessoa.Nome ?? "", senhaPlain))
+                return false;
+
+            // Sem template no banco (caso Arduino com SlotAs608 != null): pula upload — o template
+            // físico já está preservado no AS608. AnvizService.UploadTemplate no Arduino é no-op
+            // de sucesso justamente pra esse cenário.
+            if (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0)
+            {
+                if (!_anvizService.UploadTemplate(codigoT50, pessoa.templateBackup))
+                    return false; // T50M real falhou — tenta de novo no próximo ciclo
+            }
+
+            // Mode 6 = FP|PWD = aceita ambos (doc Anviz). Arduino: no-op silencioso.
+            return _anvizService.AlterarModo(codigoT50, "ambos");
         }
     }
 }

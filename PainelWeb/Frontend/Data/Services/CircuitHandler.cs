@@ -20,3 +20,4 @@ public class AuthCircuitHandler : CircuitHandler
         return base.OnCircuitClosedAsync(circuit, cancellationToken);
     }
 }
+

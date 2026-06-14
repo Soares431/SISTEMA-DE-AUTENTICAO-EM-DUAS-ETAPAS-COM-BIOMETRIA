@@ -86,8 +86,9 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Controllers
                 (string.IsNullOrEmpty(tipo) || tipo == "todos" || h.TipoVerificacao == tipo) &&
                 (string.IsNullOrEmpty(gravacao) || gravacao == "todos" ||
                     (gravacao == "com" ? !string.IsNullOrEmpty(h.GravacaoPath) : string.IsNullOrEmpty(h.GravacaoPath))) &&
-                (!de.HasValue  || h.DataHora.Date >= de.Value.Date) &&
-                (!ate.HasValue || h.DataHora.Date <= ate.Value.Date));
+
+                (!de.HasValue  || DateTime.SpecifyKind(h.DataHora, DateTimeKind.Utc).ToLocalTime().Date >= de.Value.Date) &&
+                (!ate.HasValue || DateTime.SpecifyKind(h.DataHora, DateTimeKind.Utc).ToLocalTime().Date <= ate.Value.Date));
         }
 
         [HttpGet("logs.pdf")]

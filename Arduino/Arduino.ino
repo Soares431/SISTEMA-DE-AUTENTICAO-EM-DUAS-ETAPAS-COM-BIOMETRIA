@@ -141,9 +141,6 @@ void setup() {
   delay(200);
   if (finger.verifyPassword()) {
     as608Online = true;
-    // Security level 1-5: maior = mais estrito (default Adafruit = 3).
-    // Nivel 2 dava sucesso na ultima tentativa apos varias falhas (intermitente) —
-    // nivel 3 reduz esse padrao "sempre erra, depois libera" descrito pelo usuario.
     finger.setSecurityLevel(3);
     Serial.println(F("EVT|FINGER|SENSOR|OK"));
   } else {
@@ -605,9 +602,6 @@ void lerTeclado() {
       mostrarResultadoF(F("Cancelado"), F(""));
       return;
     }
-    // Bug 4: VERIFY com dedo é o caminho padrão (LCD mostra "Coloque o dedo"),
-    // mas se o usuário apertar tecla numérica, troca pra senha automaticamente.
-    // Doc §2.2: pessoa com biometria escolhe entre digital e senha na hora.
     if (estado == VERIFY_AGUARDANDO_DEDO && t >= '0' && t <= '9') {
       estado = DIGITANDO_SENHA;
       senhaDigitada = String(t);

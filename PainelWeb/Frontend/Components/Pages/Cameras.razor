@@ -248,9 +248,7 @@
 
     private async Task OpenLiveView(Camera cam)
     {
-        // Para o preview da mesma câmera antes de abrir o modal — sem isso ficam duas
-        // instâncias HLS rodando da mesma URL (preview minimizado + modal grande), gastando
-        // banda dobrada e dessincronizando a latência ("modal volta no tempo" vs preview).
+
         if (previewsAtivos.Contains(cam.Id))
         {
             try { await JS.InvokeVoidAsync("pararHls", $"camPreview_{cam.Id}"); } catch { }
@@ -267,8 +265,7 @@
             try { await JS.InvokeVoidAsync("pararHls", "liveVideo"); } catch { }
             hlsAtivo = false;
         }
-        // Não mexe em previewsAtivos: OnAfterRenderAsync detecta que a câmera não está mais
-        // ativa no HashSet e religa o preview do zero, já sincronizado no live edge.
+
         liveCamera = null;
     }
 
@@ -285,8 +282,7 @@
 
         foreach (var cam in Filtered)
         {
-            // Não reativa o preview da câmera que está aberta no modal — senão fica duas
-            // instâncias HLS rodando da mesma URL simultaneamente.
+
             if (liveCamera != null && cam.Id == liveCamera.Id) continue;
 
             if (cam.Ativa && !string.IsNullOrEmpty(cam.UrlHLS) && !previewsAtivos.Contains(cam.Id))
@@ -389,3 +385,4 @@
         editandoCamera = null;
     }
 }
+

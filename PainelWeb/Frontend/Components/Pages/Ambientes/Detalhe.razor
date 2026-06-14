@@ -135,6 +135,19 @@
         else if (activeTab == "config")
         {
             <div class="card">
+                <div class="card-header"><div class="card-title"><Icon Name="edit" Size="20" /> Nome do Ambiente</div><p class="card-description">Renomeia o ambiente — atualiza todas as referências e logs</p></div>
+                <div class="card-content space-y-sm">
+                    <div class="form-group">
+                        <input class="form-input" maxlength="100" placeholder="@ambiente.Nome" @bind="nomeAmbienteEdit" @bind:event="oninput" />
+                        @if (erroRenomear != null) { <p class="text-sm text-destructive" style="margin-top:0.4rem;">@erroRenomear</p> }
+                    </div>
+                    <button class="btn btn-primary" @onclick="HandleRenomearAmbiente" disabled="@(isRenomeando || string.IsNullOrWhiteSpace(nomeAmbienteEdit) || nomeAmbienteEdit.Trim() == ambiente.Nome)">
+                        @if (isRenomeando) { <span class="spinner"></span><span>Salvando…</span> } else { <span>Salvar Nome</span> }
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-header"><div class="card-title"><Icon Name="clock" Size="20" /> Tempo de Espera de Gravação</div><p class="card-description">Tempo em segundos que o sistema aguarda após uma tentativa de acesso para salvar a gravação</p></div>
                 <div class="card-content space-y-sm">
                     <div class="flex items-center gap-4"><input type="number" class="form-input w-32" @bind="tempoEspera" min="30" max="120" /><span class="text-muted">segundos</span></div>
@@ -453,6 +466,9 @@
     private bool isSalvandoConfig = false;
     private bool isAdicionandoCamera = false;
     private bool isAdicionandoPessoa = false;
+    private bool isRenomeando = false;
+    private string nomeAmbienteEdit = "";
+    private string? erroRenomear = null;
 
     private List<DispositivoT50> t50sVinculados = new();
     private List<DispositivoT50> todosT50 = new();
@@ -576,12 +592,39 @@
         if (ambiente != null)
         {
             tempoEspera = ambiente.TempoEsperaGravacaoSeg;
+            nomeAmbienteEdit = ambiente.Nome;
             dispositivo = DispositivoRepo.ListarTodos().FirstOrDefault(d => d.Id == ambiente.DispositivoT50Id);
             RecarregarT50s();
         }
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
         cameras = await CameraRepo.ListarPorAmbiente(Id);
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
+    }
+
+    private async Task HandleRenomearAmbiente()
+    {
+        if (ambiente == null) return;
+        var novo = (nomeAmbienteEdit ?? "").Trim();
+        if (string.IsNullOrEmpty(novo)) { erroRenomear = "Nome obrigatório."; return; }
+        if (novo.Length > 100) { erroRenomear = "Nome excede 100 caracteres."; return; }
+        if (novo == ambiente.Nome) { erroRenomear = null; return; }
+
+        var existente = AmbienteRepo.ListarTodos().FirstOrDefault(a => a.Id != ambiente.Id && string.Equals(a.Nome, novo, StringComparison.OrdinalIgnoreCase));
+        if (existente != null) { erroRenomear = "Já existe outro ambiente com este nome."; return; }
+
+        isRenomeando = true;
+        erroRenomear = null;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            ambiente.Nome = novo;
+            AmbienteRepo.Atualizar(ambiente);
+            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", ambiente.Id);
+            nomeAmbienteEdit = ambiente.Nome;
+        }
+        catch (Exception ex) { erroRenomear = ex.Message; }
+        finally { isRenomeando = false; }
     }
 
     private void AtualizarPessoasDisponiveis(List<Pessoa> todas)

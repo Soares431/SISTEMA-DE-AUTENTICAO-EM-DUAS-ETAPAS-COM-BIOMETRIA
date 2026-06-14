@@ -215,8 +215,9 @@
         (ambFilter == "todos" || h.AmbienteId.ToString() == ambFilter) &&
         (tipoFilter == "todos" || h.TipoVerificacao == tipoFilter) &&
         (gravacaoFilter == "todos" || (gravacaoFilter == "com" ? !string.IsNullOrEmpty(h.GravacaoPath) : string.IsNullOrEmpty(h.GravacaoPath))) &&
-        (dataInicio == null || h.DataHora.Date >= dataInicio.Value.Date) &&
-        (dataFim == null || h.DataHora.Date <= dataFim.Value.Date));
+
+        (dataInicio == null || DateHelper.Local(h.DataHora).Date >= dataInicio.Value.Date) &&
+        (dataFim == null || DateHelper.Local(h.DataHora).Date <= dataFim.Value.Date));
 
     private void AbrirGravacao(TentativaAcesso t) => gravacaoAberta = t;
     private void FecharGravacao() => gravacaoAberta = null;

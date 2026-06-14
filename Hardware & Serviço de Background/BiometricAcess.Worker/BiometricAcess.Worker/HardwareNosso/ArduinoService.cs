@@ -43,9 +43,12 @@ public class ArduinoService : IAnvizService
 
     public bool UploadTemplate(int id, byte[] template)
     {
-        // AS608 não suporta upload de template via serial
-        Console.WriteLine($"[ArduinoService] UploadTemplate não suportado no Arduino");
-        return false;
+        // AS608 não suporta upload de template via serial — porém na nossa simulação do T50M
+        // o template físico fica preservado quando muda pra somente_senha (não enviamos DELETE).
+        // Por isso "restaurar biometria" é um no-op de sucesso: o template já está fisicamente
+        // no sensor, o C# só precisa marcar biometriaCadastrada=now no banco.
+        Console.WriteLine($"[ArduinoService] UploadTemplate: template físico no AS608 preservado para ID {id}");
+        return true;
     }
 
     public bool AlterarModo(int id, string modo)

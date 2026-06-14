@@ -47,7 +47,6 @@ window.iniciarHls = function(videoElementId, urlHls) {
 
     window.pararHls(videoElementId);
 
-    // Safari nativo: força sync com live edge quando der pra carregar metadados
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = urlHls;
         var onMeta = function() {
@@ -66,10 +65,6 @@ window.iniciarHls = function(videoElementId, urlHls) {
         return false;
     }
 
-    // Config low-latency: começa 1 segmento atrás do live edge (não 3 que é o default),
-    // não guarda back buffer e usa playbackRate até 1.5x pra recuperar atraso. Sem isso,
-    // toda vez que reabria a câmera (modal) o player começava varios segundos no passado
-    // enquanto o preview minimizado já tava sincronizado — sensação de "voltar no tempo".
     var hls = new Hls({
         lowLatencyMode: true,
         liveSyncDurationCount: 1,
@@ -80,7 +75,7 @@ window.iniciarHls = function(videoElementId, urlHls) {
     hls.loadSource(urlHls);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, function() {
-        // Salta direto pro live edge antes de começar — evita arrancar do início do playlist
+
         try {
             if (hls.liveSyncPosition) video.currentTime = hls.liveSyncPosition;
         } catch (e) {}

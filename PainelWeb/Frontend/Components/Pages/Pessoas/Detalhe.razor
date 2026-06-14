@@ -54,6 +54,11 @@
                                 Biometria @(pessoa.biometriaCadastrada != null ? "cadastrada" : "pendente")
                             </span>
                         </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <Icon Name="key" Size="16" CssClass="text-muted" />
+                            <span class="text-muted">Modo:</span>
+                            <span>@(pessoa.modoAcesso == "digital_e_senha" ? "Digital + Senha" : "Somente Senha")</span>
+                        </div>
                         <div class="flex items-center gap-3 text-sm"><Icon Name="calendar" Size="16" CssClass="text-muted" /><span class="text-muted">Cadastro: @(DateHelper.Local(pessoa.dataCadastro)?.ToString("dd/MM/yyyy") ?? "-")</span></div>
                         <div class="flex items-center gap-3 text-sm"><Icon Name="clock" Size="16" CssClass="text-muted" /><span class="text-muted">Último acesso: @(DateHelper.Local(pessoa.dataUltimoAcesso)?.ToString("dd/MM/yyyy HH:mm") ?? "-")</span></div>
                     </div>
@@ -64,6 +69,7 @@
                             @if (isReenviando) { <span class="spinner"></span><span>Reenviando…</span> }
                             else { <Icon Name="mail" Size="16" /> <span>Reenviar ID + Senha</span> }
                         </button>
+                        <button class="btn btn-outline btn-block" @onclick="AbrirAlterarModo"><Icon Name="key" Size="16" /> Alterar Modo de Acesso</button>
                         <button class="btn btn-outline btn-block" @onclick="() => showConfirmReset = true"><Icon Name="refresh" Size="16" /> Resetar Biometria</button>
                         @if (pessoa.Status == "ativo")
                         {
@@ -223,6 +229,58 @@
     </div>
 }
 
+@if (showAlterarModo && pessoa != null)
+{
+    var paraDigital = pessoa.modoAcesso != "digital_e_senha";
+    <div class="modal-overlay">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Alterar Modo de Acesso</h3>
+                <p>Atual: <strong>@(pessoa.modoAcesso == "digital_e_senha" ? "Digital + Senha" : "Somente Senha")</strong></p>
+            </div>
+            <div class="modal-body space-y-sm">
+                @if (paraDigital)
+                {
+                    <p>Mudar para <strong>Digital + Senha</strong>. A pessoa poderá acessar com ID+digital ou ID+senha.</p>
+                    @if (alterarModoTemplateExiste)
+                    {
+                        <div class="alert alert-success">Biometria preservada — re-ativação imediata (sem precisar cadastrar de novo).</div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">A pessoa precisará cadastrar a digital no próximo acesso (fluxo de 1º acesso).</div>
+                    }
+                    @if (alterarModoT50sCheios.Any())
+                    {
+                        <div class="alert alert-danger">
+                            <strong>Bloqueado:</strong> T50 sem vaga em: @string.Join(", ", alterarModoT50sCheios)
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p>Mudar para <strong>Somente Senha</strong>. A pessoa só poderá acessar com ID+senha.</p>
+                    @if (pessoa.biometriaCadastrada != null)
+                    {
+                        <div class="alert alert-warning">A biometria atual será desativada. O template fica salvo pra re-ativação futura sem precisar recadastrar.</div>
+                    }
+                }
+                @if (erroAlterarModo != null)
+                {
+                    <div class="alert alert-danger">@erroAlterarModo</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="() => { showAlterarModo = false; erroAlterarModo = null; }" disabled="@isAlterandoModo">Cancelar</button>
+                <button class="btn btn-primary" @onclick="HandleAlterarModo"
+                    disabled="@(isAlterandoModo || (paraDigital && alterarModoT50sCheios.Any()))">
+                    @if (isAlterandoModo) { <span class="spinner"></span><span>Alterando…</span> } else { <span>Confirmar</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (showConfirmReset && pessoa != null)
 {
     <div class="modal-overlay">
@@ -336,6 +394,11 @@
     private bool showConfirmReset = false;
     private bool showConfirmRemoverAcesso = false;
     private bool showConfirmExcluir = false;
+    private bool showAlterarModo = false;
+    private bool isAlterandoModo = false;
+    private string? erroAlterarModo = null;
+    private bool alterarModoTemplateExiste = false;
+    private List<string> alterarModoT50sCheios = new();
     private int ambienteIdParaRemover = 0;
     private string nomeConfirmacaoExcluir = "";
     private string? erroExcluir = null;
@@ -717,6 +780,98 @@
         {
             isExcluindo = false;
         }
+    }
+
+    private void AbrirAlterarModo()
+    {
+        if (pessoa == null) return;
+        erroAlterarModo = null;
+
+        alterarModoTemplateExiste = (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0)
+            || pessoa.SlotAs608 != null;
+        alterarModoT50sCheios = new List<string>();
+        if (pessoa.modoAcesso != "digital_e_senha")
+        {
+            foreach (var amb in ambientesPessoa)
+            {
+                var t50s = AmbienteT50Repo.ListarT50sDoAmbiente(amb.Id);
+                foreach (var t50 in t50s)
+                {
+
+                    if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id)) continue;
+                    if (t50.DigitaisCadastradas >= 1000)
+                        alterarModoT50sCheios.Add(t50.Nome);
+                }
+            }
+        }
+        showAlterarModo = true;
+    }
+
+    private async Task HandleAlterarModo()
+    {
+        if (pessoa == null) return;
+        isAlterandoModo = true;
+        erroAlterarModo = null;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            var paraDigital = pessoa.modoAcesso != "digital_e_senha";
+            var t50sUnicos = ambientesPessoa
+                .SelectMany(a => AmbienteT50Repo.ListarT50sDoAmbiente(a.Id))
+                .GroupBy(t => t.Id).Select(g => g.First()).ToList();
+
+            if (paraDigital)
+            {
+                foreach (var t50 in t50sUnicos)
+                {
+                    if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id)) continue;
+                    if (t50.DigitaisCadastradas >= 1000)
+                    {
+                        erroAlterarModo = $"T50 '{t50.Nome}' está cheio (1000/1000).";
+                        return;
+                    }
+                    PessoaT50Repo.Adicionar(pessoa.Id, t50.Id);
+
+                    if (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0)
+                        T50PendenciaRepo.Enfileirar("restaurar_biometria", pessoa.Id, t50.Id);
+                    else
+                        T50PendenciaRepo.Enfileirar("adicionar", pessoa.Id, t50.Id);
+                }
+
+                var jaTinha = (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0)
+                    || pessoa.SlotAs608 != null;
+                pessoa.modoAcesso = "digital_e_senha";
+                if (jaTinha) pessoa.biometriaCadastrada = DateTime.UtcNow;
+                await PessoaRepo.Atualizar(pessoa);
+            }
+            else
+            {
+                foreach (var t50 in t50sUnicos)
+                {
+                    if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id))
+                    {
+                        PessoaT50Repo.Remover(pessoa.Id, t50.Id);
+
+                        T50PendenciaRepo.Enfileirar("limpar_biometria", pessoa.Id, t50.Id);
+                    }
+                }
+
+                pessoa.modoAcesso = "somente_senha";
+                pessoa.biometriaCadastrada = null;
+
+                await PessoaRepo.Atualizar(pessoa);
+            }
+
+            LogRepo.Registrar(TokenStore.AdminId, "AlterarModoAcesso", "Pessoa", (int)pessoa.Id);
+            pessoa = await PessoaRepo.BuscarPorId(Id);
+            showAlterarModo = false;
+        }
+        catch (Exception ex)
+        {
+            erroAlterarModo = ex.Message;
+        }
+        finally { isAlterandoModo = false; }
     }
 
     private async Task HandleConfirmarReset()
