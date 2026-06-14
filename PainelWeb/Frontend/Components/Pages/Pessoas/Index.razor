@@ -7,6 +7,7 @@
 @inject ITokenStore TokenStore
 @inject IJSRuntime JS
 @inject IConfiguration Config
+@inject IHttpClientFactory HttpClientFactory
 
 <div class="space-y">
     <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 1rem;">
@@ -83,9 +84,9 @@
 @if (showDialog)
 {
     <div class="modal-overlay">
-        <div class="modal" @onclick:stopPropagation="true">
+        <div class="modal" @onclick:stopPropagation="true" style="@(senhaMostrada != null ? "max-width: 38rem;" : "")">
             <div class="modal-header"><h3>Cadastrar Nova Pessoa</h3><p>Adicione uma nova pessoa ao sistema de controle de acesso</p></div>
-            <div class="modal-body space-y-sm">
+            <div class="modal-body space-y-sm" style="overflow-x: hidden;">
                 @if (isCadastrando)
                 {
                     <div class="loading-overlay">
@@ -95,22 +96,57 @@
                 }
                 @if (senhaMostrada != null)
                 {
-                    <div class="alert alert-success">
-                        <div style="margin-bottom: 0.75rem;">
-                            <strong>Pessoa cadastrada!</strong> Anote as informações abaixo:
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
+                    <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+                            <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--success); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">✓</div>
                             <div>
-                                <div class="text-muted text-sm">ID do usuário (T50):</div>
-                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@pessoaCadastradaCodigo</div>
-                            </div>
-                            <div>
-                                <div class="text-muted text-sm">Senha de acesso:</div>
-                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem;">@senhaMostrada</div>
+                                <div style="font-weight: 600; font-size: 1.05rem;">Pessoa cadastrada com sucesso</div>
+                                <div class="text-muted text-sm">Anote ou aguarde o email com as credenciais abaixo</div>
                             </div>
                         </div>
-                        <div style="padding-top: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); font-size: 0.85rem;">
-                            @(pessoaCadastradaModo == "digital_e_senha" ? "O usuário deverá cadastrar a digital no primeiro acesso." : "O usuário poderá acessar utilizando ID e senha.")
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="background: white; border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem;">
+                                <div class="text-muted text-xs" style="text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">ID do usuário (T50)</div>
+                                <div style="font-size: 1.75rem; font-weight: 700; letter-spacing: 0.3rem; color: var(--success); font-family: 'JetBrains Mono', monospace;">@pessoaCadastradaCodigo</div>
+                            </div>
+                            <div style="background: white; border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem;">
+                                <div class="text-muted text-xs" style="text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Senha de acesso</div>
+                                <div style="font-size: 1.75rem; font-weight: 700; letter-spacing: 0.3rem; color: var(--success); font-family: 'JetBrains Mono', monospace;">@senhaMostrada</div>
+                            </div>
+                        </div>
+
+                        @if (statusEmail == "enviado")
+                        {
+                            <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(16,185,129,0.15); padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; color: var(--success); margin-bottom: 0.75rem;">
+                                <span style="font-size: 1rem;">✓</span>
+                                <span>Email com ID e senha enviado para <strong>@novoEmail</strong>.</span>
+                            </div>
+                        }
+                        else if (statusEmail == "enviando")
+                        {
+                            <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(59,130,246,0.15); padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; margin-bottom: 0.75rem;">
+                                <span class="spinner"></span>
+                                <span>Enviando credenciais por email para @novoEmail…</span>
+                            </div>
+                        }
+                        else if (statusEmail == "falhou")
+                        {
+                            <div style="display: flex; align-items: flex-start; gap: 0.5rem; background: rgba(245,158,11,0.15); padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; color: var(--warning); margin-bottom: 0.75rem;">
+                                <span style="font-size: 1rem;">⚠</span>
+                                <span>Envio automático de email falhou — anote as credenciais acima e entregue manualmente. Verifique a configuração SMTP no servidor.</span>
+                            </div>
+                        }
+
+                        <div style="padding-top: 0.75rem; border-top: 1px solid rgba(16,185,129,0.2); font-size: 0.875rem; color: var(--muted-foreground);">
+                            @if (pessoaCadastradaModo == "digital_e_senha")
+                            {
+                                <span><strong style="color: var(--foreground);">Próximo passo:</strong> o usuário deverá cadastrar a digital no primeiro acesso ao T50.</span>
+                            }
+                            else
+                            {
+                                <span><strong style="color: var(--foreground);">Próximo passo:</strong> o usuário poderá acessar utilizando o ID e a senha acima.</span>
+                            }
                         </div>
                     </div>
                 }
@@ -211,6 +247,7 @@
     private string pessoaCadastradaModo = "";
     private string? erroDialog = null;
     private bool isCadastrando = false;
+    private string statusEmail = "";
 
     private string? errNome = null;
     private string? errEmail = null;
@@ -299,9 +336,42 @@
         pessoaCadastradaCodigo = "";
         pessoaCadastradaModo = "";
         erroDialog = null;
+        statusEmail = "";
         novoNome = novoEmail = novoCpf = novoCargo = "";
         novoModoAcesso = "digital_e_senha";
         errNome = errEmail = errCpf = errCargo = null;
+    }
+
+    private async Task EnviarCredenciaisAsync(long pessoaId)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("BancoAPI");
+            if (!string.IsNullOrEmpty(TokenStore.Token))
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", TokenStore.Token);
+            var resp = await client.PostAsync($"api/person/{pessoaId}/reenviar-credenciais", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadFromJsonAsync<EnvioResult>();
+                statusEmail = (json != null && json.fallback) ? "falhou" : "enviado";
+            }
+            else
+            {
+                statusEmail = "falhou";
+            }
+        }
+        catch
+        {
+            statusEmail = "falhou";
+        }
+    }
+
+    public class EnvioResult
+    {
+        public bool sucesso { get; set; }
+        public bool fallback { get; set; }
+        public string? mensagem { get; set; }
     }
 
     private async Task HandleCadastrar()
@@ -401,6 +471,12 @@
             pessoaCadastradaId = pessoaSalva.Id;
             pessoaCadastradaModo = novoModoAcesso;
             senhaMostrada = senhaDisp.Senha;
+
+            statusEmail = "enviando";
+            isCadastrando = false;
+            StateHasChanged();
+            await EnviarCredenciaisAsync(pessoaSalva.Id);
+            return;
         }
         catch (Exception ex)
         {

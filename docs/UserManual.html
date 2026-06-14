@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Manual do Usuário — Sistema de Controle de Acesso 5º CTA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --background: #ffffff; --foreground: #0f172a;
+  --primary: #10b981; --primary-foreground: #ffffff;
+  --muted: #f1f5f9; --muted-foreground: #64748b;
+  --destructive: #ef4444; --success: #10b981; --warning: #f59e0b; --info: #3b82f6;
+  --border: #e2e8f0; --sidebar-bg: #f8fafc; --sidebar-border: #e2e8f0;
+  --radius: 0.5rem;
+  --doc-bg: #fafbfc;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--doc-bg); color: var(--foreground); line-height: 1.7;
+}
+.doc { max-width: 920px; margin: 0 auto; padding: 48px 32px 96px; }
+
+/* Capa */
+.cover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white; padding: 80px 48px; border-radius: 16px; margin-bottom: 48px;
+  text-align: center;
+}
+.cover-logo {
+  width: 72px; height: 72px; background: rgba(255,255,255,0.2); border-radius: 16px;
+  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px;
+}
+.cover h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 8px; }
+.cover .sub { font-size: 1.1rem; opacity: 0.95; margin-bottom: 24px; }
+.cover .meta { font-size: 0.85rem; opacity: 0.85; }
+
+/* Sumário */
+.toc { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin-bottom: 48px; }
+.toc h2 { font-size: 1.25rem; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.toc ol { list-style: none; counter-reset: section; padding-left: 0; }
+.toc ol li { counter-increment: section; padding: 6px 0; font-size: 0.95rem; }
+.toc ol li::before { content: counter(section) ". "; color: var(--primary); font-weight: 700; }
+.toc ol li a { color: var(--foreground); text-decoration: none; }
+.toc ol li a:hover { color: var(--primary); text-decoration: underline; }
+
+/* Seções */
+h1.section { font-size: 1.9rem; margin: 64px 0 16px; padding-bottom: 12px; border-bottom: 2px solid var(--primary); scroll-margin-top: 20px; }
+h2.subsection { font-size: 1.35rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px dashed var(--border); }
+h3 { font-size: 1.1rem; margin: 24px 0 10px; }
+h4 { font-size: 1rem; margin: 16px 0 8px; }
+p { margin-bottom: 14px; }
+p.lead { font-size: 1.05rem; color: var(--muted-foreground); margin-bottom: 24px; }
+
+/* Caixas */
+.box { padding: 16px 20px; border-radius: 8px; margin: 16px 0; border-left: 4px solid; }
+.box strong { display: block; margin-bottom: 6px; }
+.box-info { background: #f0fdf4; border-color: var(--success); }
+.box-warn { background: #fef3c7; border-color: var(--warning); }
+.box-alert { background: #fee2e2; border-color: var(--destructive); }
+.box-tip { background: #eff6ff; border-color: var(--info); }
+
+/* Passos numerados */
+.steps { counter-reset: step; padding: 0; list-style: none; margin: 24px 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 56px; margin-bottom: 36px; }
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0;
+  width: 40px; height: 40px; background: var(--primary); color: white;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1.1rem;
+}
+.steps > li h4 { font-size: 1.05rem; margin-bottom: 8px; padding-top: 8px; }
+
+/* Tabela */
+table.t {
+  width: 100%; border-collapse: collapse; margin: 16px 0;
+  background: white; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+table.t th, table.t td { padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+table.t th { background: var(--sidebar-bg); font-weight: 600; }
+table.t tr:last-child td { border-bottom: none; }
+
+/* Listas */
+ul.doc-list { padding-left: 24px; margin: 12px 0; }
+ul.doc-list li { margin-bottom: 6px; }
+
+code { background: var(--muted); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: #be185d; }
+.kbd { display: inline-block; padding: 2px 8px; background: var(--muted); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.82em; }
+
+/* ========================================
+   MOCKUP DE TELA — recriação fiel do sistema
+   ======================================== */
+
+.screen {
+  position: relative; margin: 24px 0; border: 1px solid #cbd5e1; border-radius: 12px;
+  background: white; overflow: hidden; box-shadow: 0 6px 20px rgba(15,23,41,0.1);
+}
+.screen-titlebar {
+  background: #1a2236; color: #f0f0f0; padding: 8px 16px; font-size: 0.85rem;
+  display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace;
+}
+.screen-titlebar .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.screen-titlebar .dot.red { background: #ef4444; }
+.screen-titlebar .dot.yellow { background: #f59e0b; }
+.screen-titlebar .dot.green { background: #10b981; }
+.screen-titlebar .url { margin-left: 16px; font-size: 0.8rem; opacity: 0.7; }
+.screen-body { background: white; }
+
+/* Layout app */
+.app { display: flex; min-height: 480px; font-size: 0.85rem; }
+.sb { width: 200px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); padding: 12px 8px; flex-shrink: 0; }
+.sb-header { display: flex; gap: 8px; padding: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--sidebar-border); padding-bottom: 12px; align-items: center; }
+.sb-logo { width: 28px; height: 28px; background: var(--primary); color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; }
+.sb-title { font-size: 0.85rem; font-weight: 600; line-height: 1.2; }
+.sb-subtitle { font-size: 0.68rem; color: var(--muted-foreground); }
+.sb-group { text-transform: uppercase; font-size: 0.62rem; color: var(--muted-foreground); padding: 10px 8px 4px; font-weight: 600; letter-spacing: 0.05em; }
+.sb-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; color: var(--muted-foreground); font-size: 0.8rem; margin-bottom: 2px; }
+.sb-item .ic { width: 14px; height: 14px; background: currentColor; border-radius: 3px; opacity: 0.6; flex-shrink: 0; }
+.sb-item.active { background: var(--primary); color: white; }
+.sb-item.active .ic { opacity: 1; }
+
+.right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tb { height: 44px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 8px; background: white; flex-shrink: 0; }
+.tb .toggle { color: var(--muted-foreground); font-size: 1.1rem; }
+.tb .user { margin-left: auto; font-size: 0.82rem; color: var(--muted-foreground); display: flex; align-items: center; gap: 6px; }
+.tb .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+.main { flex: 1; padding: 20px; overflow: hidden; }
+.main h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+.main .subtitle { color: var(--muted-foreground); font-size: 0.82rem; margin-bottom: 18px; }
+.title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+
+.grid { display: grid; gap: 12px; }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+.card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.card-row { display: flex; align-items: center; justify-content: space-between; }
+.card-label { font-size: 0.78rem; color: var(--muted-foreground); font-weight: 500; }
+.card-value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
+.card-foot { font-size: 0.7rem; color: var(--muted-foreground); margin-top: 2px; }
+.ic-circle { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+.ic-success { background: rgba(16,185,129,0.15); color: var(--success); }
+.ic-danger { background: rgba(239,68,68,0.15); color: var(--destructive); }
+.ic-warn { background: rgba(245,158,11,0.15); color: var(--warning); }
+.ic-primary { background: rgba(16,185,129,0.15); color: var(--primary); }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; border: 1px solid transparent; cursor: default; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-outline { background: white; border-color: var(--border); color: var(--foreground); }
+.btn-ghost { background: transparent; color: var(--muted-foreground); }
+.btn-sm { padding: 3px 8px; font-size: 0.72rem; }
+
+.input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; color: var(--foreground); display: block; width: 100%; }
+.input-ph { color: var(--muted-foreground); }
+.form-label { display: block; font-size: 0.78rem; font-weight: 500; margin-bottom: 4px; }
+.form-group { margin-bottom: 12px; }
+
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 500; }
+.b-success { background: rgba(16,185,129,0.15); color: var(--success); }
+.b-danger { background: rgba(239,68,68,0.15); color: var(--destructive); }
+.b-warn { background: rgba(245,158,11,0.15); color: var(--warning); }
+.b-muted { background: var(--muted); color: var(--muted-foreground); }
+
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(16,185,129,0.15); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-weight: 500; font-size: 0.75rem; border: 2px solid var(--border); flex-shrink: 0; }
+
+.tb-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.tb-table th { text-align: left; padding: 8px 10px; color: var(--muted-foreground); font-weight: 500; font-size: 0.72rem; border-bottom: 1px solid var(--border); }
+.tb-table td { padding: 8px 10px; border-bottom: 1px solid rgba(226,232,240,0.5); }
+.tb-table tbody tr:hover { background: #f8fafc; }
+.link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+
+/* Modal */
+.modal-bg {
+  background: rgba(15,23,41,0.55); padding: 24px; min-height: 480px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: white; border-radius: 8px; max-width: 540px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.modal-header { padding: 18px 22px 8px; }
+.modal-header h3 { font-size: 1.05rem; font-weight: 600; }
+.modal-header p { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 4px; }
+.modal-body { padding: 12px 22px; }
+.modal-footer { padding: 14px 22px 18px; display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ========================================
+   CALLOUTS — números inline, sempre alinhados
+   ======================================== */
+
+/* O número aparece como rótulo COLADO no elemento que ele descreve */
+.tag {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #ef4444; color: white; font-weight: 700; font-size: 0.78rem;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.25);
+  margin: 0 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.tag-lg { width: 26px; height: 26px; font-size: 0.85rem; }
+
+/* Borda destacando o item */
+.hi {
+  outline: 2px dashed #ef4444; outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Legenda dos números */
+.legend {
+  margin-top: 16px; padding: 18px 20px; background: white;
+  border-radius: 8px; border: 1px solid var(--border);
+}
+.legend ol { list-style: none; padding: 0; }
+.legend ol li { padding: 6px 0; padding-left: 36px; position: relative; font-size: 0.92rem; }
+.legend ol li .ln {
+  position: absolute; left: 0; top: 6px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #ef4444; color: white; font-weight: 700; font-size: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+@media print {
+  body { background: white; }
+  .doc { max-width: none; padding: 0; }
+}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- =================== CAPA =================== -->
+<div class="cover">
+  <div class="cover-logo">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+  </div>
+  <h1>Manual do Usuário</h1>
+  <p class="sub">Sistema de Controle de Acesso Biométrico — 5º CTA</p>
+  <p class="meta">Versão 1.0 · 10ª Brigada de Infantaria · Junho 2026</p>
+</div>
+
+<!-- =================== SUMÁRIO =================== -->
+<div class="toc">
+  <h2>Sumário</h2>
+  <ol>
+    <li><a href="#s1">Introdução</a></li>
+    <li><a href="#s2">Como entrar no sistema (Login)</a></li>
+    <li><a href="#s3">Conhecendo o Painel</a></li>
+    <li><a href="#s4">Dashboard — Visão geral do dia</a></li>
+    <li><a href="#s5">Cadastrar uma pessoa</a></li>
+    <li><a href="#s6">Gerenciar uma pessoa (detalhe)</a></li>
+    <li><a href="#s7">Trocar o modo de acesso</a></li>
+    <li><a href="#s8">Cadastrar um dispositivo T50</a></li>
+    <li><a href="#s9">Criar um ambiente</a></li>
+    <li><a href="#s10">Adicionar pessoas ao ambiente</a></li>
+    <li><a href="#s11">Adicionar uma câmera</a></li>
+    <li><a href="#s12">Histórico de Acessos</a></li>
+    <li><a href="#s13">Logs de Auditoria</a></li>
+    <li><a href="#s14">Administradores</a></li>
+    <li><a href="#s15">Configurações</a></li>
+    <li><a href="#s16">Sair (Logout)</a></li>
+    <li><a href="#s17">Perguntas Frequentes</a></li>
+  </ol>
+</div>
+
+<!-- =================== 1. INTRODUÇÃO =================== -->
+<h1 class="section" id="s1">1. Introdução</h1>
+<p class="lead">Este manual mostra como usar o sistema de controle de acesso do 5º CTA. Em cada seção você vai ver uma <strong>reprodução da tela</strong> do sistema com <strong>números vermelhos</strong> marcando exatamente onde clicar.</p>
+
+<h3>O que o sistema faz</h3>
+<ul class="doc-list">
+  <li>Cadastra pessoas autorizadas a entrar em ambientes controlados;</li>
+  <li>Controla acesso por <strong>digital</strong> (biometria do T50M) e/ou <strong>senha</strong> (6 dígitos);</li>
+  <li>Grava cada tentativa com hora, ambiente, pessoa e método;</li>
+  <li>Liga câmeras IP ao acesso — cada entrada gera um trecho de vídeo associado;</li>
+  <li>Mantém auditoria completa de tudo que cada administrador faz.</li>
+</ul>
+
+<h3>Quem usa</h3>
+<p>Administradores cadastrados no banco. <strong>Não há cadastro de administrador pela tela</strong> — por segurança, só o setor de TI cria admins via banco direto (veja seção 14).</p>
+
+<div class="box box-tip">
+  <strong>Antes de começar</strong>
+  Você precisa de: navegador moderno (Chrome, Edge, Firefox), endereço do servidor do painel (algo tipo <code>http://10.0.0.5:8080</code>) e login/senha de admin entregues pela TI.
+</div>
+
+
+<!-- =================== 2. LOGIN =================== -->
+<h1 class="section" id="s2">2. Como entrar no sistema (Login)</h1>
+<p class="lead">A primeira tela é o login. Sem login válido nenhuma outra área abre.</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/login</span>
+  </div>
+  <div class="screen-body" style="padding: 40px; background: #f8fafc; display: flex; justify-content: center;">
+    <div style="width: 380px; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 56px; height: 56px; margin: 0 auto 12px; background: rgba(16,185,129,0.15); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 700;">5° CTA</h2>
+        <p style="font-size: 0.82rem; color: var(--muted-foreground);">Sistema de Controle de Acesso Biométrico</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Login <span class="tag">1</span></label>
+        <div class="input hi">admin</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha <span class="tag">2</span></label>
+        <div class="input hi" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>••••••••••</span>
+          <span style="color: var(--muted-foreground);">👁</span>
+        </div>
+      </div>
+      <div style="margin-top: 8px;">
+        <div class="btn btn-primary hi" style="width: 100%; justify-content: center; padding: 9px;">Entrar <span class="tag" style="background:white;color:#ef4444;margin-left:8px;">3</span></div>
+      </div>
+      <p style="font-size: 0.72rem; text-align: center; color: var(--muted-foreground); margin-top: 16px;">Acesso restrito a administradores autorizados</p>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Campo Login:</strong> digite o nome de usuário fornecido pela TI (ex: <code>admin</code>, <code>capitao.silva</code>). Sensível a maiúsculas/minúsculas.</li>
+    <li><span class="ln">2</span><strong>Campo Senha:</strong> digite a senha. Clique no ícone de olho à direita pra ver o que está digitando.</li>
+    <li><span class="ln">3</span><strong>Botão "Entrar":</strong> clique pra autenticar. Login/senha corretos te levam direto pro Dashboard.</li>
+  </ol>
+</div>
+
+<div class="box box-warn">
+  <strong>"Login ou senha inválidos"?</strong>
+  Verifique maiúsculas/minúsculas. Se a senha foi bloqueada/esquecida, só a TI pode redefinir (veja seção 8.5 do DeploymentGuide.html).
+</div>
+
+
+<!-- =================== 3. PAINEL =================== -->
+<h1 class="section" id="s3">3. Conhecendo o Painel</h1>
+<p class="lead">Depois do login, você cai no painel principal. À esquerda fica o menu, em cima a barra de status, no centro a tela ativa.</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/</span>
+  </div>
+  <div class="screen-body">
+    <div class="app">
+      <div class="sb hi" style="outline-offset: 0;">
+        <div class="sb-header">
+          <div class="sb-logo">5</div>
+          <div>
+            <div class="sb-title">5º CTA <span class="tag">1</span></div>
+            <div class="sb-subtitle">Controle de Acesso</div>
+          </div>
+        </div>
+        <div class="sb-group">Principal</div>
+        <div class="sb-item active"><span class="ic"></span>Dashboard</div>
+        <div class="sb-item"><span class="ic"></span>Ambientes</div>
+        <div class="sb-item"><span class="ic"></span>Dispositivos T50</div>
+        <div class="sb-item"><span class="ic"></span>Pessoas</div>
+        <div class="sb-item"><span class="ic"></span>Câmeras</div>
+        <div class="sb-group">Gerenciamento <span class="tag">3</span></div>
+        <div class="sb-item"><span class="ic"></span>Histórico de Acessos</div>
+        <div class="sb-item"><span class="ic"></span>Logs do Sistema</div>
+        <div class="sb-item"><span class="ic"></span>Administradores</div>
+        <div class="sb-group">Sistema</div>
+        <div class="sb-item"><span class="ic"></span>Configurações</div>
+        <div class="sb-item"><span class="ic"></span>Ajuda</div>
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--sidebar-border);">
+          <div class="sb-item" style="color: var(--destructive);"><span class="ic" style="background:var(--destructive);"></span>Sair</div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="tb">
+          <span class="toggle">≡</span>
+          <span class="user hi">
+            <span class="status-dot"></span> Sistema Online · Cap José Silva <span class="tag">2</span>
+          </span>
+        </div>
+        <div class="main">
+          <h1>Dashboard</h1>
+          <p class="subtitle">Resumo do dia — 14/06/2026</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Cabeçalho "5º CTA":</strong> clique pra voltar pro Dashboard de qualquer tela.</li>
+    <li><span class="ln">2</span><strong>Barra do topo:</strong> mostra seu nome de admin logado e ponto verde indicando sistema online. O ≡ na esquerda recolhe o menu lateral.</li>
+    <li><span class="ln">3</span><strong>Menu lateral em grupos:</strong> <em>Principal</em> (operação do dia-a-dia: pessoas, ambientes, T50, câmeras), <em>Gerenciamento</em> (histórico, logs, admins), <em>Sistema</em> (configurações e ajuda).</li>
+  </ol>
+</div>
+
+
+<!-- =================== 4. DASHBOARD =================== -->
+<h1 class="section" id="s4">4. Dashboard — Visão geral do dia</h1>
+<p class="lead">O dashboard é a primeira tela após login. Tem 4 cartões com números do dia, um gráfico de acessos por hora e uma lista de T50Ms em alerta.</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/</span>
+  </div>
+  <div class="screen-body">
+    <div class="app">
+      <div class="sb">
+        <div class="sb-header"><div class="sb-logo">5</div><div><div class="sb-title">5º CTA</div><div class="sb-subtitle">Controle de Acesso</div></div></div>
+        <div class="sb-group">Principal</div>
+        <div class="sb-item active"><span class="ic"></span>Dashboard</div>
+        <div class="sb-item"><span class="ic"></span>Ambientes</div>
+        <div class="sb-item"><span class="ic"></span>Dispositivos T50</div>
+        <div class="sb-item"><span class="ic"></span>Pessoas</div>
+        <div class="sb-item"><span class="ic"></span>Câmeras</div>
+      </div>
+      <div class="right">
+        <div class="tb"><span class="toggle">≡</span><span class="user"><span class="status-dot"></span> Cap José Silva</span></div>
+        <div class="main">
+          <h1>Dashboard</h1>
+          <p class="subtitle">Resumo do dia — 14/06/2026</p>
+
+          <div style="margin-bottom: 14px;"><span class="tag tag-lg">1</span> <strong>Estatísticas do dia</strong></div>
+          <div class="grid grid-4 hi" style="margin-bottom: 16px;">
+            <div class="card">
+              <div class="card-row"><span class="card-label">Entradas Permitidas</span><span class="ic-circle ic-success">✓</span></div>
+              <div class="card-value">47</div><div class="card-foot">acessos hoje</div>
+            </div>
+            <div class="card">
+              <div class="card-row"><span class="card-label">Acessos Negados</span><span class="ic-circle ic-danger">✗</span></div>
+              <div class="card-value">3</div><div class="card-foot">acessos hoje</div>
+            </div>
+            <div class="card">
+              <div class="card-row"><span class="card-label">T50 em Alerta</span><span class="ic-circle ic-warn">!</span></div>
+              <div class="card-value">1</div><div class="card-foot">dispositivo offline</div>
+            </div>
+            <div class="card">
+              <div class="card-row"><span class="card-label">Pessoas Ativas</span><span class="ic-circle ic-primary">👤</span></div>
+              <div class="card-value">128</div><div class="card-foot">cadastradas</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 10px;"><span class="tag tag-lg">2</span> <strong>Gráfico</strong> &nbsp;&nbsp; <span class="tag tag-lg">3</span> <strong>Alertas</strong></div>
+          <div class="grid grid-2">
+            <div class="card hi">
+              <div class="card-row">
+                <div>
+                  <div style="font-weight: 600; font-size: 0.88rem;">Acessos por Hora</div>
+                  <div style="font-size: 0.72rem; color: var(--muted-foreground);">Atualiza a cada 30s</div>
+                </div>
+                <div class="input" style="width: auto; padding: 2px 8px; font-size: 0.72rem;">14/06/2026</div>
+              </div>
+              <div style="height: 130px; background: linear-gradient(180deg, rgba(16,185,129,0.1), rgba(16,185,129,0)); border-bottom: 1px solid var(--border); position: relative; margin-top: 10px;">
+                <svg viewBox="0 0 300 130" style="width: 100%; height: 100%;" preserveAspectRatio="none">
+                  <polyline points="0,110 30,95 60,75 90,50 120,30 150,40 180,55 210,65 240,75 270,90 300,105" fill="none" stroke="#10b981" stroke-width="2"/>
+                  <polyline points="0,128 30,124 60,122 90,118 120,122 150,124 180,118 210,122 240,124 270,126 300,127" fill="none" stroke="#ef4444" stroke-width="2"/>
+                </svg>
+              </div>
+              <div style="display: flex; gap: 14px; margin-top: 8px; font-size: 0.72rem;">
+                <span><span style="color: #10b981;">●</span> Permitidos</span>
+                <span><span style="color: #ef4444;">●</span> Negados</span>
+              </div>
+            </div>
+            <div class="card hi">
+              <div style="font-weight: 600; font-size: 0.88rem; margin-bottom: 10px;">⚠ Alertas Ativos</div>
+              <div style="border: 1px solid var(--border); border-radius: 6px; padding: 10px; background: rgba(245,158,11,0.05);">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                  <span class="badge b-danger">Offline</span>
+                  <span style="font-weight: 500; font-size: 0.82rem;">T50-Sala-Operações</span>
+                </div>
+                <p style="font-size: 0.72rem; color: var(--muted-foreground);">192.168.0.218 · sem comunicação há 12 min</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>4 cartões de estatísticas:</strong> Entradas Permitidas hoje (verde), Acessos Negados hoje (vermelho), T50s em alerta agora (amarelo) e Pessoas Ativas total (verde). Os 3 primeiros resetam à meia-noite, o último é o total cadastrado.</li>
+    <li><span class="ln">2</span><strong>Gráfico "Acessos por Hora":</strong> linha verde = permitidos, vermelha = negados, das 00h às 23h. Use o seletor de data pra ver dias anteriores. Clique no botão circular (↻) ao lado pra forçar atualização imediata.</li>
+    <li><span class="ln">3</span><strong>Alertas Ativos:</strong> aparece quando algum T50 está offline (sem comunicação há mais de 2 min) ou perto da capacidade máxima (950+ digitais cadastradas). Se estiver vazio, ótimo sinal.</li>
+  </ol>
+</div>
+
+<div class="box box-tip">
+  <strong>Auto-refresh do dashboard</strong>
+  Se você ficar parado, o dashboard atualiza sozinho a cada 30 segundos. Não precisa apertar F5.
+</div>
+
+
+<!-- =================== 5. CADASTRAR PESSOA =================== -->
+<h1 class="section" id="s5">5. Cadastrar uma pessoa</h1>
+<p class="lead">É a operação mais comum. Toda pessoa que vai ter acesso a algum ambiente precisa ser cadastrada aqui primeiro — e <strong>vinculada a um ambiente depois</strong> (seção 10).</p>
+
+<h3>5.1 Abrir a tela e iniciar o cadastro</h3>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/pessoas</span>
+  </div>
+  <div class="screen-body">
+    <div class="app">
+      <div class="sb">
+        <div class="sb-header"><div class="sb-logo">5</div><div><div class="sb-title">5º CTA</div><div class="sb-subtitle">Controle de Acesso</div></div></div>
+        <div class="sb-group">Principal</div>
+        <div class="sb-item"><span class="ic"></span>Dashboard</div>
+        <div class="sb-item"><span class="ic"></span>Ambientes</div>
+        <div class="sb-item"><span class="ic"></span>Dispositivos T50</div>
+        <div class="sb-item active hi"><span class="ic"></span>Pessoas <span class="tag">1</span></div>
+        <div class="sb-item"><span class="ic"></span>Câmeras</div>
+      </div>
+      <div class="right">
+        <div class="tb"><span class="toggle">≡</span><span class="user"><span class="status-dot"></span> Cap José Silva</span></div>
+        <div class="main">
+          <div class="title-row">
+            <div>
+              <h1>Pessoas</h1>
+              <p class="subtitle">Gerencie pessoas e permissões de acesso</p>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div class="btn btn-outline">⬇ CSV</div>
+              <div class="btn btn-outline">📄 PDF</div>
+              <div class="btn btn-primary hi">+ Nova Pessoa <span class="tag" style="background:white;color:#ef4444;margin-left:6px;">2</span></div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+            <div class="input" style="flex: 1;"><span class="input-ph">🔍 Buscar por nome, email ou cargo...</span></div>
+            <div class="input" style="width: 100px;">Todos</div>
+          </div>
+          <div class="grid grid-3">
+            <div class="card">
+              <div style="display: flex; gap: 10px;">
+                <div class="avatar">JS</div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <strong style="font-size: 0.85rem;">João Silva</strong>
+                    <span class="badge b-success">ativo</span>
+                  </div>
+                  <p style="font-size: 0.74rem; color: var(--muted-foreground);">Sargento</p>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div style="display: flex; gap: 10px;">
+                <div class="avatar">AM</div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <strong style="font-size: 0.85rem;">Ana Martins</strong>
+                    <span class="badge b-success">ativo</span>
+                  </div>
+                  <p style="font-size: 0.74rem; color: var(--muted-foreground);">Tenente</p>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div style="display: flex; gap: 10px;">
+                <div class="avatar">PR</div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <strong style="font-size: 0.85rem;">Pedro Rocha</strong>
+                    <span class="badge b-muted">inativo</span>
+                  </div>
+                  <p style="font-size: 0.74rem; color: var(--muted-foreground);">Cabo</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Menu "Pessoas":</strong> clique no menu lateral pra abrir essa tela.</li>
+    <li><span class="ln">2</span><strong>Botão "+ Nova Pessoa":</strong> botão verde no canto superior direito. Clicar abre o formulário de cadastro.</li>
+  </ol>
+</div>
+
+<h3>5.2 Preencher o formulário</h3>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/pessoas (modal aberto)</span>
+  </div>
+  <div class="screen-body modal-bg">
+    <div class="modal" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3>Cadastrar Nova Pessoa</h3>
+        <p>Adicione uma nova pessoa ao sistema de controle de acesso</p>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Nome Completo <span style="color: var(--destructive);">*</span> <span class="tag">1</span></label>
+            <div class="input hi">João da Silva</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email <span style="color: var(--destructive);">*</span> <span class="tag">2</span></label>
+            <div class="input hi">joao.silva@eb.mil.br</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">CPF <span style="color: var(--destructive);">*</span> <span class="tag">3</span></label>
+            <div class="input hi">123.456.789-00</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cargo <span style="color: var(--destructive);">*</span> <span class="tag">4</span></label>
+            <div class="input hi">Sargento</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modo de Acesso <span class="tag">5</span></label>
+          <div class="input hi">Digital e Senha (ID + Biometria)  ▾</div>
+          <p style="font-size: 0.72rem; color: var(--muted-foreground); margin-top: 4px;">Define como esta pessoa poderá se autenticar no T50</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn btn-outline">Cancelar</div>
+        <div class="btn btn-primary hi">Cadastrar <span class="tag" style="background:white;color:#ef4444;margin-left:6px;">6</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Nome Completo:</strong> obrigatório, mínimo 3 caracteres, máximo 100. Aparece nas listas e relatórios.</li>
+    <li><span class="ln">2</span><strong>Email:</strong> obrigatório. <strong>Importante:</strong> é pra esse email que o ID e a senha vão ser enviados automaticamente depois (ver §5.3). Tem que ser válido e único — não dá pra cadastrar dois com o mesmo.</li>
+    <li><span class="ln">3</span><strong>CPF:</strong> obrigatório, único. Apenas os dígitos serão considerados (a máscara é cosmética).</li>
+    <li><span class="ln">4</span><strong>Cargo:</strong> patente ou função (ex: "Sargento", "Capitão", "Civil Terceirizado").</li>
+    <li><span class="ln">5</span><strong>Modo de Acesso:</strong> escolha entre <em>Digital + Senha</em> (padrão militar — exige biometria + senha) ou <em>Somente Senha</em> (visitantes, terceirizados).</li>
+    <li><span class="ln">6</span><strong>Botão "Cadastrar":</strong> clique pra criar. O sistema gera ID e senha automaticamente, salva no banco, registra log, <strong>e dispara o envio do email automaticamente</strong>.</li>
+  </ol>
+</div>
+
+<h3>5.3 Confirmação + envio automático de email</h3>
+
+<p>Depois do cadastro o sistema mostra os dados gerados <strong>e já tenta enviar o email automaticamente</strong> com ID + senha. Veja a tela:</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/pessoas (cadastro concluído)</span>
+  </div>
+  <div class="screen-body modal-bg">
+    <div class="modal" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3>Cadastrar Nova Pessoa</h3>
+      </div>
+      <div class="modal-body">
+        <div style="background: rgba(16,185,129,0.1); border: 1px solid var(--success); border-radius: 8px; padding: 16px;">
+          <div style="margin-bottom: 12px;">
+            <strong>Pessoa cadastrada!</strong> As credenciais foram processadas:
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+            <div class="hi">
+              <div style="font-size: 0.72rem; color: var(--muted-foreground);">ID do usuário (T50): <span class="tag">1</span></div>
+              <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem; color: var(--success);">438291</div>
+            </div>
+            <div class="hi">
+              <div style="font-size: 0.72rem; color: var(--muted-foreground);">Senha de acesso: <span class="tag">2</span></div>
+              <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.2rem; color: var(--success);">579024</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px;">
+            <div class="btn btn-outline hi">📋 Copiar ID e Senha <span class="tag" style="margin-left:6px;">3</span></div>
+            <div class="btn btn-outline">✉ Reenviar Email</div>
+          </div>
+          <div class="hi" style="background: rgba(16,185,129,0.15); padding: 8px 12px; border-radius: 4px; font-size: 0.82rem; color: var(--success);">
+            ✓ Email com ID e senha enviado para <strong>joao.silva@eb.mil.br</strong> <span class="tag" style="margin-left:6px;">4</span>
+          </div>
+          <div style="padding-top: 10px; font-size: 0.78rem; color: var(--muted-foreground);">
+            O usuário deverá cadastrar a digital no primeiro acesso.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn btn-primary">Fechar</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>ID do usuário (6 dígitos):</strong> o número que a pessoa vai digitar no T50M pra se identificar.</li>
+    <li><span class="ln">2</span><strong>Senha de acesso (6 dígitos):</strong> a senha que ela digita depois do ID. Em texto puro <strong>só aparece aqui e no email</strong> — depois é cifrada no banco.</li>
+    <li><span class="ln">3</span><strong>Botão "📋 Copiar ID e Senha":</strong> copia ambos pra área de transferência. Útil se você quer entregar verbalmente ou colar em outro lugar antes de fechar a modal. O texto disso vira <code>ID: 438291\nSenha: 579024</code>.</li>
+    <li><span class="ln">4</span><strong>Status do email:</strong> aparece automaticamente conforme o envio acontece — verde se foi enviado, amarelo se falhou (problema de SMTP no servidor — chame a TI), azul se ainda está enviando.</li>
+  </ol>
+</div>
+
+<div class="box box-info">
+  <strong>Email automático no cadastro</strong>
+  Ao clicar em "Cadastrar", o sistema imediatamente dispara o email com o ID e a senha para o endereço cadastrado da pessoa. <strong>Você não precisa apertar nenhum botão pra isso acontecer.</strong> O botão "Reenviar Email" e o botão "Copiar" são alternativas caso o envio automático falhe ou a pessoa queira receber por outro canal.
+</div>
+
+<div class="box box-warn">
+  <strong>"Envio automático falhou"?</strong>
+  Significa que o SMTP do servidor não está respondendo (configuração incorreta ou indisponível). Use o botão <strong>Copiar</strong> pra pegar ID e senha e entregar manualmente, ou tente <strong>Reenviar Email</strong> depois que a TI consertar o SMTP.
+</div>
+
+<h3>5.4 Vincular a um ambiente</h3>
+<p><strong>Importante:</strong> a pessoa fica com status <em>inativo</em> até ser vinculada a pelo menos um ambiente. Veja seção 10 pra fazer isso.</p>
+
+<div class="box box-tip">
+  <strong>Diferença dos dois modos de acesso</strong>
+  <ul class="doc-list" style="margin-top: 6px;">
+    <li><strong>Digital + Senha:</strong> exige ambos. Pessoa digita ID + dedo + senha. Mais seguro, padrão militar.</li>
+    <li><strong>Somente Senha:</strong> só ID + senha. Útil pra terceirizados, dedo machucado ou casos onde biometria não vale a pena cadastrar.</li>
+  </ul>
+</div>
+
+
+<!-- =================== 6. DETALHE PESSOA =================== -->
+<h1 class="section" id="s6">6. Gerenciar uma pessoa (detalhe)</h1>
+<p class="lead">Clicando em "Ver Perfil" no cartão de uma pessoa, você abre a tela de detalhe. Aqui dá pra: editar dados, reenviar credenciais, resetar biometria, inativar/reativar, trocar modo.</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/pessoas/42</span>
+  </div>
+  <div class="screen-body">
+    <div class="app">
+      <div class="sb">
+        <div class="sb-header"><div class="sb-logo">5</div><div><div class="sb-title">5º CTA</div><div class="sb-subtitle">Controle de Acesso</div></div></div>
+        <div class="sb-group">Principal</div>
+        <div class="sb-item active"><span class="ic"></span>Pessoas</div>
+      </div>
+      <div class="right">
+        <div class="tb"><span class="toggle">≡</span><span class="user"><span class="status-dot"></span> Cap José Silva</span></div>
+        <div class="main">
+          <div style="font-size: 0.78rem; color: var(--muted-foreground); margin-bottom: 14px;">← Voltar para Pessoas</div>
+          <div class="card" style="margin-bottom: 14px;">
+            <div style="display: flex; gap: 14px; align-items: center;">
+              <div class="avatar" style="width: 60px; height: 60px; font-size: 1.2rem;">JS</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                  <strong style="font-size: 1rem;">João da Silva</strong>
+                  <span class="badge b-success">ativo</span>
+                  <span class="badge b-success">Biometria cadastrada</span>
+                </div>
+                <p style="font-size: 0.78rem; color: var(--muted-foreground);">Sargento · ID: 438291 · digital_e_senha</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);">
+              <div class="btn btn-outline btn-sm hi">✉ Reenviar Senha <span class="tag" style="margin-left:4px;">1</span></div>
+              <div class="btn btn-outline btn-sm hi">🔄 Trocar Modo <span class="tag" style="margin-left:4px;">2</span></div>
+              <div class="btn btn-outline btn-sm hi">🗑 Resetar Biometria <span class="tag" style="margin-left:4px;">3</span></div>
+              <div class="btn btn-outline btn-sm hi" style="color: var(--destructive);">⊘ Inativar <span class="tag" style="margin-left:4px;">4</span></div>
+            </div>
+          </div>
+          <div class="grid grid-2">
+            <div class="card">
+              <div style="font-weight: 600; margin-bottom: 10px; font-size: 0.9rem;">Informações Pessoais</div>
+              <div style="font-size: 0.78rem;">
+                <div style="display:flex; gap:8px; padding:4px 0;"><span style="color: var(--muted-foreground); width:80px;">Email:</span><span>joao.silva@eb.mil.br</span></div>
+                <div style="display:flex; gap:8px; padding:4px 0;"><span style="color: var(--muted-foreground); width:80px;">CPF:</span><span>123.456.789-00</span></div>
+                <div style="display:flex; gap:8px; padding:4px 0;"><span style="color: var(--muted-foreground); width:80px;">Cadastro:</span><span>14/06/2026</span></div>
+                <div style="display:flex; gap:8px; padding:4px 0;"><span style="color: var(--muted-foreground); width:80px;">Último acesso:</span><span>14/06/2026 09:32</span></div>
+              </div>
+            </div>
+            <div class="card hi">
+              <div style="font-weight: 600; margin-bottom: 10px; font-size: 0.9rem;">Ambientes com Acesso <span class="tag" style="margin-left:4px;">5</span></div>
+              <div style="background: rgba(16,185,129,0.08); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 0.82rem;">
+                <span>Sala de Operações</span>
+                <span class="badge b-danger btn-sm" style="cursor: pointer;">Remover</span>
+              </div>
+              <div style="background: rgba(16,185,129,0.08); padding: 6px 8px; border-radius: 4px; display: flex; justify-content: space-between; font-size: 0.82rem;">
+                <span>Armaria</span>
+                <span class="badge b-danger btn-sm" style="cursor: pointer;">Remover</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Reenviar Senha:</strong> dispara o email com ID + senha pra pessoa de novo. Útil se ela esqueceu a senha (você nunca consegue ver a senha em texto puro, só reenviar).</li>
+    <li><span class="ln">2</span><strong>Trocar Modo:</strong> alterna entre <code>digital_e_senha</code> e <code>somente_senha</code>. Detalhes na seção 7.</li>
+    <li><span class="ln">3</span><strong>Resetar Biometria:</strong> apaga a digital cadastrada no T50M. No próximo acesso, a pessoa cadastra de novo (3 leituras do dedo). Pede confirmação antes.</li>
+    <li><span class="ln">4</span><strong>Inativar:</strong> bloqueia o acesso. Remove a pessoa de todos os T50Ms e marca como <code>inativo</code>. Pede confirmação. Pra reativar, é só vincular a um ambiente de novo.</li>
+    <li><span class="ln">5</span><strong>Ambientes com Acesso:</strong> lista os ambientes onde essa pessoa pode entrar. "Remover" tira o acesso ao ambiente específico. Se ela ficar sem nenhum ambiente, vira inativa automaticamente.</li>
+  </ol>
+</div>
+
+
+<!-- =================== 7. TROCAR MODO =================== -->
+<h1 class="section" id="s7">7. Trocar o modo de acesso</h1>
+<p class="lead">Às vezes você precisa mudar uma pessoa de <em>Digital + Senha</em> pra <em>Somente Senha</em> (dedo machucado) ou o contrário (pessoa que ficou fixa, vale cadastrar biometria).</p>
+
+<ol class="steps">
+  <li>
+    <h4>Entre no detalhe da pessoa</h4>
+    <p>Menu Pessoas → cartão da pessoa → "Ver Perfil".</p>
+  </li>
+  <li>
+    <h4>Clique em "🔄 Trocar Modo"</h4>
+    <p>Botão laranja no topo do detalhe. Abre confirmação mostrando pra qual modo vai mudar.</p>
+  </li>
+  <li>
+    <h4>O sistema cuida do resto</h4>
+    <p><strong>Digital + Senha → Somente Senha:</strong> a biometria é desligada no T50M (volta a aceitar só senha). <em>O template biométrico fica guardado no banco</em> — se voltar pra Digital + Senha depois, é restaurado em segundos sem precisar cadastrar de novo.</p>
+    <p><strong>Somente Senha → Digital + Senha:</strong></p>
+    <ul class="doc-list">
+      <li>Se já tinha biometria antes: restauração automática a partir do template guardado.</li>
+      <li>Se nunca cadastrou: a pessoa precisa fazer um <em>primeiro acesso</em> no T50M com o dedo pra criar o template (3 leituras do dedo).</li>
+    </ul>
+  </li>
+</ol>
+
+<div class="box box-warn">
+  <strong>Capacidade do T50M</strong>
+  Pra trocar pra <em>Digital + Senha</em>, cada T50M do ambiente precisa ter espaço (menos de 1000 digitais cadastradas). Se algum estiver cheio, o sistema bloqueia a troca e mostra qual T50M está lotado.
+</div>
+
+
+<!-- =================== 8. CADASTRAR T50 =================== -->
+<h1 class="section" id="s8">8. Cadastrar um dispositivo T50</h1>
+<p class="lead">Antes de criar um ambiente, o T50M precisa estar registrado no sistema. <strong>Confirme com a TI o IP e a porta do T50M</strong> — sem isso o cadastro não funciona.</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/dispositivos (modal aberto)</span>
+  </div>
+  <div class="screen-body modal-bg">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Cadastrar Novo T50</h3>
+        <p>Adicione um terminal Anviz T50 ao sistema</p>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nome do Dispositivo <span class="tag">1</span></label>
+          <div class="input hi">T50-Entrada-Principal</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Endereço IP <span class="tag">2</span></label>
+          <div class="input hi">192.168.0.218</div>
+          <p style="font-size: 0.72rem; color: var(--muted-foreground); margin-top: 4px;">IP fixo configurado no T50M</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Porta TCP <span class="tag">3</span></label>
+          <div class="input hi">5010</div>
+          <p style="font-size: 0.72rem; color: var(--muted-foreground); margin-top: 4px;">Padrão Anviz OAE: 5010 — não alterar</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn btn-outline">Cancelar</div>
+        <div class="btn btn-primary">Cadastrar</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Nome do Dispositivo:</strong> identificação descritiva. Sugestão: <code>T50-&lt;Ambiente&gt;</code>. Ex: <code>T50-Armaria</code>, <code>T50-Entrada-Principal</code>.</li>
+    <li><span class="ln">2</span><strong>Endereço IP:</strong> IP fixo do T50M na rede (definido no menu local do aparelho). <strong>Não use IP dinâmico</strong> — se mudar o IP, o sistema perde a conexão.</li>
+    <li><span class="ln">3</span><strong>Porta TCP:</strong> sempre <code>5010</code> (padrão Anviz). Só mude se você sabe o que está fazendo.</li>
+  </ol>
+</div>
+
+<div class="box box-info">
+  <strong>Como saber se conectou</strong>
+  Em menos de 1 minuto o cartão do T50M deve mostrar:
+  <ul class="doc-list" style="margin-top: 6px;">
+    <li><strong style="color: var(--success);">🟢 Online</strong> — comunicação OK (heartbeat nos últimos 2 min)</li>
+    <li><strong style="color: var(--destructive);">🔴 Offline</strong> — não responde (verifique IP, rede, alimentação)</li>
+    <li><strong style="color: var(--warning);">🟡 Capacidade crítica</strong> — 950+ digitais cadastradas (perto do limite de 1000)</li>
+  </ul>
+</div>
+
+
+<!-- =================== 9. CRIAR AMBIENTE =================== -->
+<h1 class="section" id="s9">9. Criar um ambiente</h1>
+<p class="lead">Um <strong>ambiente</strong> é um espaço físico controlado por um ou mais T50Ms (ex: "Sala de Operações", "Armaria"). Pessoas precisam estar vinculadas ao ambiente pra entrar.</p>
+
+<ol class="steps">
+  <li>
+    <h4>Menu lateral → Ambientes</h4>
+  </li>
+  <li>
+    <h4>Clique em "+ Novo Ambiente"</h4>
+  </li>
+  <li>
+    <h4>Preencha o formulário</h4>
+    <table class="t">
+      <tr><th>Campo</th><th>O que preencher</th></tr>
+      <tr><td><strong>Nome</strong></td><td>Identificação. Ex: "Sala de Operações 1º andar".</td></tr>
+      <tr><td><strong>T50 Principal</strong></td><td>Escolha um dos T50Ms cadastrados (seção 8). Outros T50Ms podem ser adicionados depois pela tela de detalhe do ambiente.</td></tr>
+      <tr><td><strong>Tempo de Espera para Gravação</strong></td><td>Segundos pra esperar a câmera disponibilizar a gravação depois do acesso. Padrão 60s. Min 30, máx 120.</td></tr>
+    </table>
+  </li>
+  <li>
+    <h4>Cadastrar</h4>
+    <p>O ambiente aparece na lista. Agora dá pra vincular pessoas (seção 10) e adicionar câmeras (seção 11).</p>
+  </li>
+</ol>
+
+
+<!-- =================== 10. VINCULAR PESSOAS =================== -->
+<h1 class="section" id="s10">10. Adicionar pessoas ao ambiente</h1>
+<p class="lead">Pra uma pessoa entrar num ambiente, ela precisa estar <strong>vinculada</strong> a ele. É a etapa que ativa o acesso depois do cadastro.</p>
+
+<ol class="steps">
+  <li>
+    <h4>Abra o ambiente</h4>
+    <p>Menu Ambientes → cartão do ambiente desejado.</p>
+  </li>
+  <li>
+    <h4>Vá até a seção "Pessoas com Acesso"</h4>
+    <p>No detalhe do ambiente, role até essa seção.</p>
+  </li>
+  <li>
+    <h4>Clique em "+ Adicionar Pessoa"</h4>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/ambientes/3 (modal aberto)</span>
+  </div>
+  <div class="screen-body modal-bg">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Adicionar Pessoa ao Ambiente</h3>
+        <p>Pessoas disponíveis (não vinculadas a este ambiente)</p>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Buscar pessoa <span class="tag">1</span></label>
+          <div class="input hi"><span class="input-ph">🔍 Digite o nome...</span></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Selecionar <span class="tag">2</span></label>
+          <div class="input hi">João da Silva — Sargento  ▾</div>
+        </div>
+        <div class="box box-info" style="margin: 0; padding: 10px 14px;">
+          <strong>O que vai acontecer:</strong>
+          <ul style="font-size: 0.85rem; padding-left: 20px; margin-top: 4px;">
+            <li>Pessoa é vinculada ao ambiente</li>
+            <li>Status muda pra "ativo"</li>
+            <li>Se modo for "digital_e_senha", a pessoa é cadastrada nos T50Ms (em ~10s)</li>
+            <li>Log de auditoria é registrado</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn btn-outline">Cancelar</div>
+        <div class="btn btn-primary hi">Adicionar <span class="tag" style="background:white;color:#ef4444;margin-left:6px;">3</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+  </li>
+</ol>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Buscar pessoa:</strong> digite parte do nome. A lista filtra na hora mostrando só quem ainda <em>não</em> tem acesso ao ambiente.</li>
+    <li><span class="ln">2</span><strong>Selecionar:</strong> escolha a pessoa da lista filtrada.</li>
+    <li><span class="ln">3</span><strong>Adicionar:</strong> ao clicar, todo o processo descrito na caixa de aviso acontece automaticamente.</li>
+  </ol>
+</div>
+
+
+<!-- =================== 11. CÂMERAS =================== -->
+<h1 class="section" id="s11">11. Adicionar uma câmera</h1>
+<p class="lead">Cada ambiente pode ter uma ou mais câmeras IP associadas. Quando alguém acessa, o sistema procura no servidor da câmera a gravação correspondente (via ONVIF) e guarda o link no histórico.</p>
+
+<ol class="steps">
+  <li>
+    <h4>Vá pra <em>Câmeras</em> no menu lateral</h4>
+    <p>(ou abra o detalhe de um ambiente e use a seção "Câmeras" dele)</p>
+  </li>
+  <li>
+    <h4>Clique em "+ Nova Câmera"</h4>
+  </li>
+  <li>
+    <h4>Preencha o formulário</h4>
+    <table class="t">
+      <tr><th>Campo</th><th>O que preencher</th></tr>
+      <tr><td><strong>Nome</strong></td><td>Ex: "Câmera Frontal Sala Op"</td></tr>
+      <tr><td><strong>Ambiente</strong></td><td>Escolha o ambiente da câmera</td></tr>
+      <tr><td><strong>Tipo</strong></td><td>Interna ou Externa</td></tr>
+      <tr><td><strong>URL RTSP</strong></td><td>Endereço pra visualização ao vivo. Formato: <code>rtsp://usuario:senha@IP:554/...</code>. A TI fornece esse endereço.</td></tr>
+      <tr><td><strong>URL HLS</strong> (opcional)</td><td>Endereço HLS pra visualização web. Se não preencher, a aba "Ver ao Vivo" mostra placeholder.</td></tr>
+      <tr><td><strong>Endereço ONVIF</strong></td><td>Endpoint ONVIF (ex: <code>http://192.168.0.50:80/onvif/device_service</code>). É por aqui que o sistema busca gravações.</td></tr>
+    </table>
+  </li>
+  <li>
+    <h4>Cadastre</h4>
+    <p>A partir daí, cada acesso liberado no ambiente da câmera gera URL de gravação que aparece no Histórico.</p>
+  </li>
+</ol>
+
+<div class="box box-alert">
+  <strong>Câmera offline ou URL errada?</strong>
+  Se a câmera não responder ao ONVIF, o campo "Gravação" no histórico fica vazio (—). A gravação não é perdida — ela está na câmera; o painel só não consegue mostrar a URL.
+</div>
+
+
+<!-- =================== 12. HISTÓRICO =================== -->
+<h1 class="section" id="s12">12. Histórico de Acessos</h1>
+<p class="lead">Aqui você vê tudo: quem entrou, quando, em qual ambiente, se foi liberado ou negado, e qual foi o método (digital, senha ou os dois).</p>
+
+<div class="screen">
+  <div class="screen-titlebar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="url">http://10.0.0.5:8080/historico</span>
+  </div>
+  <div class="screen-body">
+    <div class="app">
+      <div class="sb">
+        <div class="sb-header"><div class="sb-logo">5</div><div><div class="sb-title">5º CTA</div><div class="sb-subtitle">Controle de Acesso</div></div></div>
+        <div class="sb-group">Gerenciamento</div>
+        <div class="sb-item active"><span class="ic"></span>Histórico de Acessos</div>
+        <div class="sb-item"><span class="ic"></span>Logs do Sistema</div>
+      </div>
+      <div class="right">
+        <div class="tb"><span class="toggle">≡</span><span class="user"><span class="status-dot"></span> Cap José Silva</span></div>
+        <div class="main">
+          <div class="title-row">
+            <div>
+              <h1>Histórico de Acessos</h1>
+              <p class="subtitle">Últimas 500 tentativas registradas</p>
+            </div>
+            <div style="display: flex; gap: 6px;" class="hi">
+              <div class="btn btn-outline btn-sm">⬇ CSV</div>
+              <div class="btn btn-outline btn-sm">📄 PDF</div>
+              <span class="tag" style="margin-left:6px; align-self: center;">1</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;" class="hi">
+            <div class="input" style="flex: 1;"><span class="input-ph">🔍 Nome ou ambiente...</span></div>
+            <div class="input" style="width: 90px;">Status</div>
+            <div class="input" style="width: 100px;">14/06/2026</div>
+            <div class="input" style="width: 100px;">14/06/2026</div>
+            <span class="tag" style="align-self:center;">2</span>
+          </div>
+          <div class="card" style="padding: 0;">
+            <table class="tb-table">
+              <thead>
+                <tr class="hi">
+                  <th>Data/Hora ▼</th>
+                  <th>Pessoa ↑↓</th>
+                  <th>Ambiente ↑↓</th>
+                  <th>Verificação ↑↓</th>
+                  <th>Status</th>
+                  <th>Vídeo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>14/06 09:32</td><td><span class="link">João da Silva</span></td><td><span class="link">Sala Op</span></td><td>digital_id</td><td><span class="badge b-success">Liberado</span></td><td class="hi"><span class="link">▶</span> <span class="tag" style="margin-left:4px;">4</span></td></tr>
+                <tr><td>14/06 09:21</td><td><span class="link">Ana Martins</span></td><td><span class="link">Armaria</span></td><td>senha_id</td><td><span class="badge b-success">Liberado</span></td><td>—</td></tr>
+                <tr><td>14/06 09:05</td><td style="color: var(--muted-foreground);">— (não cad.)</td><td><span class="link">Sala Op</span></td><td>digital</td><td><span class="badge b-danger">Negado</span><br><small>nao_cadastrado</small></td><td><span class="link">▶</span></td></tr>
+                <tr><td>14/06 08:55</td><td><span class="link">Pedro Rocha</span></td><td><span class="link">Armaria</span></td><td>senha_id</td><td><span class="badge b-danger">Negado</span><br><small>sem_permissao</small></td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--muted-foreground); margin-top: 8px;">
+            <span class="tag" style="margin-right:4px;">3</span> Cabeçalhos clicáveis ordenam a tabela.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <ol>
+    <li><span class="ln">1</span><strong>Exportar CSV / PDF:</strong> baixa o que está visível na tela (já aplicados os filtros). CSV abre no Excel, PDF é pronto pra imprimir.</li>
+    <li><span class="ln">2</span><strong>Filtros:</strong> busca por nome de pessoa, ambiente, status (Liberado/Negado) e intervalo de datas. Os filtros se combinam.</li>
+    <li><span class="ln">3</span><strong>Cabeçalhos clicáveis:</strong> clique em uma coluna pra ordenar por ela (ascendente). Clique de novo pra inverter (descendente). A seta ▲▼ mostra a ordenação atual.</li>
+    <li><span class="ln">4</span><strong>Coluna Vídeo:</strong> se o ambiente tem câmera ONVIF e ela respondeu, aparece um ▶ pra ver o trecho gravado. Caso contrário, mostra "—".</li>
+  </ol>
+</div>
+
+<div class="box box-info">
+  <strong>Motivos de negação (badge vermelho)</strong>
+  <ul class="doc-list" style="margin-top: 4px;">
+    <li><code>nao_cadastrado</code>: ID não existe no banco</li>
+    <li><code>inativo</code>: pessoa existe mas está inativa</li>
+    <li><code>sem_permissao</code>: pessoa existe mas não foi vinculada a esse ambiente</li>
+    <li><code>biometria_invalida</code>: dedo não bateu com o template</li>
+    <li><code>senha_invalida</code>: senha digitada errada</li>
+  </ul>
+</div>
+
+
+<!-- =================== 13. LOGS =================== -->
+<h1 class="section" id="s13">13. Logs de Auditoria</h1>
+<p class="lead">Toda ação de administrador (login, cadastrar pessoa, mudar config, etc.) gera um log. Aqui você vê quem fez o quê e quando.</p>
+
+<table class="t">
+  <tr><th>Coluna</th><th>O que mostra</th></tr>
+  <tr><td><strong>Data/Hora</strong></td><td>Quando a ação ocorreu (hora local).</td></tr>
+  <tr><td><strong>Administrador</strong></td><td>Nome de quem fez. Clicável: leva pro detalhe do admin.</td></tr>
+  <tr><td><strong>Ação</strong></td><td><code>Login</code>, <code>Adicionar</code>, <code>Atualizar</code>, <code>Remocao</code>, <code>Inativacao</code>, <code>ResetBiometria</code>, <code>ReenvioCredenciais</code>, etc.</td></tr>
+  <tr><td><strong>Entidade Afetada</strong></td><td>Tipo: <code>Pessoa</code>, <code>Ambiente</code>, <code>Camera</code>, <code>Configuracao</code>, <code>Administrador</code>.</td></tr>
+  <tr><td><strong>Entidade</strong></td><td>Nome real (ex: "João da Silva"). Clicável quando o registro ainda existe.</td></tr>
+</table>
+
+<div class="box box-tip">
+  <strong>Por que algumas linhas aparecem só com ID?</strong>
+  Se a entidade foi removida do banco (ex: ambiente deletado), o log fica com a referência mas sem nome — você vê "<code>Ambiente {7}</code>" em vez do nome. É proposital pra preservar auditoria mesmo depois de exclusões.
+</div>
+
+
+<!-- =================== 14. ADMINS =================== -->
+<h1 class="section" id="s14">14. Administradores</h1>
+<p class="lead">A tela <em>Administradores</em> lista quem tem acesso ao painel. Dá pra ver quem é, editar dados auxiliares (nome, email, cargo) e ver os últimos 20 logs de cada admin.</p>
+
+<div class="box box-alert">
+  <strong>Não dá pra criar admin pela tela</strong>
+  Por decisão de segurança militar, criar/excluir admin e trocar senha <strong>só são feitos via acesso direto ao banco</strong> (com o GerarHash + DBeaver). Veja seção 8 do DeploymentGuide.html, ou peça pra TI.
+</div>
+
+<h3>O que dá pra fazer aqui</h3>
+<ul class="doc-list">
+  <li>Listar todos os admins (login e nome)</li>
+  <li>Buscar por login ou nome</li>
+  <li>Ordenar por coluna</li>
+  <li>Clicar num admin → ver detalhes (CPF, email, cargo, telefone, data criação) e os últimos 20 logs dele</li>
+  <li>Editar dados auxiliares (CPF/email/cargo/telefone) — <strong>não muda login nem senha</strong></li>
+</ul>
+
+
+<!-- =================== 15. CONFIGS =================== -->
+<h1 class="section" id="s15">15. Configurações</h1>
+<p class="lead">Define quanto tempo os dados ficam guardados antes de serem apagados automaticamente, e o tempo de espera pra gravação da câmera.</p>
+
+<table class="t">
+  <tr><th>Configuração</th><th>O que faz</th><th>Mín</th><th>Máx</th><th>Padrão</th></tr>
+  <tr><td><strong>Retenção de Tentativas</strong></td><td>Dias que o histórico de tentativas é guardado.</td><td>30</td><td>180</td><td>90 dias</td></tr>
+  <tr><td><strong>Retenção de Logs</strong></td><td>Dias que os logs de admins ficam guardados.</td><td>90</td><td>365</td><td>180 dias</td></tr>
+  <tr><td><strong>Tempo de Espera para Gravação</strong></td><td>Segundos que o sistema espera após o acesso pra ir buscar a gravação na câmera.</td><td>30</td><td>120</td><td>60 s</td></tr>
+  <tr><td><strong>Período de Inativação</strong></td><td>Meses sem acesso antes do sistema inativar a pessoa automaticamente.</td><td>3</td><td>24</td><td>24 meses</td></tr>
+</table>
+
+<div class="box box-tip">
+  <strong>Quando a limpeza acontece</strong>
+  Todo dia, às <strong>03:00 UTC</strong> (~00:00 BRT), o sistema executa automaticamente:
+  <ul class="doc-list" style="margin-top: 4px;">
+    <li>Apaga tentativas e logs com data de expiração ultrapassada</li>
+    <li>Inativa pessoas que ultrapassaram o período de inatividade</li>
+  </ul>
+</div>
+
+
+<!-- =================== 16. LOGOUT =================== -->
+<h1 class="section" id="s16">16. Sair (Logout)</h1>
+<p>Use o botão <strong>Sair</strong> na parte de baixo do menu lateral (vermelho). Isso encerra a sessão e leva pra tela de login.</p>
+
+<div class="box box-info">
+  <strong>Sessão expira sozinha</strong>
+  Mesmo sem você sair, o token de autenticação expira em <strong>8 horas</strong>. Depois disso, qualquer ação leva pra tela de login de novo.
+</div>
+
+
+<!-- =================== 17. FAQ =================== -->
+<h1 class="section" id="s17">17. Perguntas Frequentes</h1>
+
+<h3>Cadastrei a pessoa mas ela não consegue entrar no T50M</h3>
+<p>Provavelmente ela ainda não foi <strong>vinculada a um ambiente</strong>. Pessoa cadastrada mas sem ambiente fica <em>inativa</em> e nem aparece no T50M. Veja seção 10.</p>
+
+<h3>A pessoa aparece como ativa no painel mas o T50M nega o acesso</h3>
+<p>Pode ser que a sincronização com o T50M ainda não rodou. O <strong>SincronizadorT50</strong> roda a cada 10 segundos. Espere 30s e tente de novo. Se persistir, verifique se o T50M está online (Dispositivos T50).</p>
+
+<h3>Esqueci a senha de uma pessoa, consigo ver?</h3>
+<p>Não. Senhas são guardadas cifradas. Você só consegue <strong>reenviar por email</strong> (botão "Reenviar Senha" no detalhe da pessoa, seção 6) ou copiar/anotar no momento do cadastro (seção 5).</p>
+
+<h3>O email do cadastro foi enviado mesmo? Como confirmar?</h3>
+<p>Logo após clicar em "Cadastrar", a modal mostra um banner: verde = enviado, amarelo = falhou, azul = enviando. Se ficar amarelo, use o botão "Copiar" pra pegar ID + senha e entregar manualmente, e avise a TI pra revisar o SMTP.</p>
+
+<h3>Por que algumas tentativas no histórico não têm vídeo (—)?</h3>
+<p>3 motivos possíveis: (1) o ambiente não tem câmera cadastrada; (2) a câmera está offline; (3) o ONVIF da câmera não respondeu no tempo configurado.</p>
+
+<h3>Quem pode mudar a chave AES, a chave JWT etc.?</h3>
+<p>Só o setor de TI, alterando variáveis de ambiente no servidor. Não tem tela pra isso (proposital).</p>
+
+<h3>Como faço backup do banco?</h3>
+<p>O sistema já faz backup do banco SQLite todo dia ao iniciar (cópia em <code>banco_backup.db</code>). Pra cópia adicional: copie o arquivo <code>banco.db</code> direto no servidor com o sistema parado.</p>
+
+<h3>Posso usar pelo celular?</h3>
+<p>Tecnicamente sim — o painel é responsivo. Mas como é uso interno e operacional, recomendado desktop pra cadastros e celular só pra consulta rápida.</p>
+
+</div>
+</body>
+</html>

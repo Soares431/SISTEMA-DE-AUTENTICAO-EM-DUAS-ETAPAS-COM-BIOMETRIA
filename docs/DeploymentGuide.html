@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Guia de Implantação — Sistema de Controle de Acesso 5º CTA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --primary: #10b981; --primary-dark: #059669;
+  --foreground: #0f172a; --muted-foreground: #64748b;
+  --destructive: #ef4444; --success: #10b981; --warning: #f59e0b; --info: #3b82f6;
+  --border: #e2e8f0; --sidebar-bg: #f8fafc;
+  --bg: #fafbfc; --card: #ffffff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--foreground); line-height: 1.7; }
+.doc { max-width: 980px; margin: 0 auto; padding: 48px 32px 96px; }
+
+/* Capa */
+.cover {
+  background: linear-gradient(135deg, #1a2236 0%, #10b981 100%);
+  color: white; padding: 80px 48px; border-radius: 16px; margin-bottom: 48px;
+  text-align: center;
+}
+.cover-logo {
+  width: 80px; height: 80px; background: rgba(255,255,255,0.2); border-radius: 16px;
+  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px;
+}
+.cover h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 8px; }
+.cover .sub { font-size: 1.1rem; opacity: 0.95; margin-bottom: 24px; }
+.cover .badge {
+  display: inline-block; background: rgba(255,255,255,0.15); color: white;
+  padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; margin: 4px;
+}
+.cover .meta { font-size: 0.85rem; opacity: 0.85; margin-top: 24px; }
+
+/* TOC */
+.toc { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin-bottom: 48px; }
+.toc h2 { font-size: 1.25rem; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.toc ol { list-style: none; counter-reset: section; padding-left: 0; }
+.toc ol > li { counter-increment: section; padding: 6px 0; font-size: 0.95rem; }
+.toc ol > li::before { content: counter(section) ". "; color: var(--primary); font-weight: 700; }
+.toc ol > li a { color: var(--foreground); text-decoration: none; }
+.toc ol > li a:hover { color: var(--primary); text-decoration: underline; }
+.toc ul { list-style: none; padding-left: 28px; margin-top: 4px; }
+.toc ul li { padding: 3px 0; font-size: 0.88rem; color: var(--muted-foreground); }
+.toc ul li::before { content: "› "; color: var(--primary); }
+.toc ul li a { color: var(--muted-foreground); text-decoration: none; }
+.toc ul li a:hover { color: var(--primary); text-decoration: underline; }
+
+/* Seções */
+h1.section { font-size: 2rem; margin: 64px 0 16px; padding-bottom: 12px; border-bottom: 2px solid var(--primary); scroll-margin-top: 20px; }
+h2.subsection { font-size: 1.4rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px dashed var(--border); }
+h3 { font-size: 1.125rem; margin: 24px 0 12px; color: var(--foreground); }
+h4 { font-size: 1.02rem; margin: 16px 0 8px; font-weight: 600; }
+p { margin-bottom: 14px; }
+p.lead { font-size: 1.05rem; color: var(--muted-foreground); margin-bottom: 24px; }
+
+/* Caixas semânticas */
+.box { padding: 16px 20px; border-radius: 8px; margin: 16px 0; border-left: 4px solid; }
+.box strong { display: block; margin-bottom: 6px; }
+.box-info { background: #f0fdf4; border-color: var(--success); }
+.box-warn { background: #fef3c7; border-color: var(--warning); }
+.box-alert { background: #fee2e2; border-color: var(--destructive); }
+.box-tip { background: #eff6ff; border-color: var(--info); }
+
+/* Passos numerados */
+.steps { counter-reset: step; padding: 0; list-style: none; margin: 24px 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 60px; margin-bottom: 32px; }
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0;
+  width: 44px; height: 44px; background: var(--primary); color: white;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1.15rem;
+}
+.steps > li h4 { font-size: 1.05rem; margin-bottom: 8px; padding-top: 10px; }
+
+/* Erros */
+.error-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 18px 22px; margin: 12px 0;
+  border-left: 4px solid var(--destructive);
+}
+.error-card .error-title { font-weight: 700; color: var(--destructive); margin-bottom: 10px; }
+.error-card .error-cause { background: #fef2f2; padding: 10px 14px; border-radius: 6px; margin: 8px 0; font-size: 0.92rem; }
+.error-card .fix-title { font-weight: 700; color: var(--success); margin: 14px 0 8px; }
+.error-card .fix-title::before { content: "✓ "; }
+
+/* Tabelas */
+table.t {
+  width: 100%; border-collapse: collapse; margin: 16px 0; background: var(--card);
+  border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+}
+table.t th, table.t td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.92rem; vertical-align: top; }
+table.t th { background: var(--sidebar-bg); font-weight: 600; }
+table.t tr:last-child td { border-bottom: none; }
+table.t code { font-size: 0.85em; }
+
+/* Code blocks */
+pre {
+  background: #1a2236; color: #e2e8f0; padding: 16px 20px; border-radius: 8px;
+  overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+  margin: 12px 0; line-height: 1.55;
+}
+pre.terminal { background: #0d1117; }
+pre.terminal::before {
+  content: "$ Terminal"; display: block; color: #58a6ff; font-size: 0.75rem; margin-bottom: 8px;
+  border-bottom: 1px solid #30363d; padding-bottom: 6px;
+}
+pre.ps::before { content: "PS Powershell"; }
+pre.bash::before { content: "$ Bash / Linux"; }
+pre.sql::before { content: "SQL"; color: #ff7b72; }
+pre.code::before { content: "📄 Arquivo de código"; color: #d2a8ff; }
+pre code { background: none; padding: 0; color: inherit; }
+code {
+  background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
+  color: #be185d;
+}
+
+/* File path highlight */
+.filepath {
+  display: inline-block; background: #1e293b; color: #e2e8f0; padding: 4px 10px;
+  border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.82em;
+  margin: 2px 0;
+}
+
+/* Keyboard */
+.kbd {
+  display: inline-block; padding: 2px 8px; background: #f8fafc;
+  border: 1px solid #cbd5e1; border-bottom-width: 2px;
+  border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.82em;
+}
+
+/* Diagrama de rede */
+.diagram {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 24px; margin: 16px 0; font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem; line-height: 1.5; white-space: pre; overflow-x: auto;
+  color: #334155;
+}
+
+/* Listas */
+ul.doc-list { padding-left: 24px; margin: 10px 0; }
+ul.doc-list li { margin-bottom: 6px; }
+
+/* Sub-steps (passos internos) */
+.substeps { padding-left: 20px; margin: 10px 0; }
+.substeps > li { margin-bottom: 8px; }
+
+/* Highlight inline */
+.h-good { color: var(--success); font-weight: 600; }
+.h-bad { color: var(--destructive); font-weight: 600; }
+.h-warn { color: var(--warning); font-weight: 600; }
+
+/* Tela mockada (mais simples — só pra ilustrar onde clicar) */
+.uimock {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px 20px; margin: 12px 0; font-size: 0.92rem;
+}
+.uimock .breadcrumb { color: var(--muted-foreground); font-size: 0.85rem; margin-bottom: 8px; }
+.uimock .breadcrumb b { color: var(--foreground); }
+.uimock .action {
+  display: inline-block; padding: 4px 10px; border-radius: 4px;
+  background: rgba(16,185,129,0.15); color: var(--primary); font-weight: 600;
+}
+.uimock .nav { color: var(--primary); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<div class="cover">
+  <div class="cover-logo">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+  </div>
+  <h1>Guia de Implantação</h1>
+  <p class="sub">Manual passo-a-passo de instalação e configuração no ambiente do 5º CTA</p>
+  <div>
+    <span class="badge">Servidor</span>
+    <span class="badge">T50M Anviz</span>
+    <span class="badge">Câmeras ONVIF</span>
+    <span class="badge">SMTP corporativo</span>
+    <span class="badge">Docker (opcional)</span>
+  </div>
+  <p class="meta">Versão 1.0 · Junho 2026 · Material técnico-operacional</p>
+</div>
+
+<div class="box box-info">
+  <strong>Como usar este guia</strong>
+  Leia na ordem. Cada seção parte do estado da anterior. Os comandos vêm prontos pra colar — quando aparecer <code>&lt;ALGO&gt;</code> entre símbolos de menor/maior, substitua pelo valor da sua rede (ex: <code>&lt;IP-SERVIDOR&gt;</code> vira <code>10.0.0.5</code>). Os arquivos a editar estão sempre destacados em <span class="filepath">cinza escuro</span> com o caminho completo.
+</div>
+
+<div class="toc">
+  <h2>Sumário</h2>
+  <ol>
+    <li><a href="#s1">Visão geral e diagrama de rede</a></li>
+    <li><a href="#s2">Preparar o servidor (Windows ou Linux)</a>
+      <ul>
+        <li><a href="#s2-1">2.1 Instalar o .NET 8 SDK</a></li>
+        <li><a href="#s2-2">2.2 Baixar o código do sistema</a></li>
+        <li><a href="#s2-3">2.3 Onde fica cada coisa (estrutura de pastas)</a></li>
+      </ul>
+    </li>
+    <li><a href="#s3">Configurar a rede do servidor</a>
+      <ul>
+        <li><a href="#s3-1">3.1 Definir IP fixo</a></li>
+        <li><a href="#s3-2">3.2 Abrir portas no firewall</a></li>
+        <li><a href="#s3-3">3.3 Testar acesso de outra máquina</a></li>
+      </ul>
+    </li>
+    <li><a href="#s4">Primeiro start do sistema</a>
+      <ul>
+        <li><a href="#s4-1">4.1 Rodar o iniciar.ps1</a></li>
+        <li><a href="#s4-2">4.2 O admin padrão (admin/Admin@123)</a></li>
+        <li><a href="#s4-3">4.3 Ver se está funcionando</a></li>
+      </ul>
+    </li>
+    <li><a href="#s5">Cadastrar e conectar T50M Anviz</a>
+      <ul>
+        <li><a href="#s5-1">5.1 Configurar IP fixo no T50M</a></li>
+        <li><a href="#s5-2">5.2 Conferir conectividade do servidor com o T50M</a></li>
+        <li><a href="#s5-3">5.3 Cadastrar o T50M no painel</a></li>
+        <li><a href="#s5-4">5.4 Erros de conexão T50M</a></li>
+      </ul>
+    </li>
+    <li><a href="#s6">Cadastrar câmeras IP</a>
+      <ul>
+        <li><a href="#s6-1">6.1 Habilitar ONVIF na câmera</a></li>
+        <li><a href="#s6-2">6.2 Anotar URL RTSP e endpoint ONVIF</a></li>
+        <li><a href="#s6-3">6.3 Cadastrar a câmera no painel</a></li>
+        <li><a href="#s6-4">6.4 (Opcional) Streaming HLS pra ver ao vivo</a></li>
+      </ul>
+    </li>
+    <li><a href="#s7">Configurar envio de email pelo SMTP do CTA</a>
+      <ul>
+        <li><a href="#s7-1">7.1 Coletar dados do servidor SMTP</a></li>
+        <li><a href="#s7-2">7.2 Configurar variáveis de ambiente</a></li>
+        <li><a href="#s7-3">7.3 Reiniciar e testar</a></li>
+        <li><a href="#s7-4">7.4 Customizar o HTML do email</a></li>
+      </ul>
+    </li>
+    <li><a href="#s8">Cadastrar administradores no banco</a>
+      <ul>
+        <li><a href="#s8-1">8.1 Por que é via banco e não pela tela</a></li>
+        <li><a href="#s8-2">8.2 Gerar o hash da senha</a></li>
+        <li><a href="#s8-3">8.3 Abrir o banco no DBeaver</a></li>
+        <li><a href="#s8-4">8.4 Executar o INSERT (com commit!)</a></li>
+        <li><a href="#s8-5">8.5 Trocar senha de admin existente</a></li>
+      </ul>
+    </li>
+    <li><a href="#s9">Instalar como serviço (Produção)</a>
+      <ul>
+        <li><a href="#s9-1">9.1 Windows — sc.exe + NSSM</a></li>
+        <li><a href="#s9-2">9.2 Linux — systemd</a></li>
+      </ul>
+    </li>
+    <li><a href="#s10">Backup e manutenção</a></li>
+    <li><a href="#s11">Bônus — Implantação via Docker</a></li>
+    <li><a href="#s12">Quando algo der errado (Troubleshooting global)</a></li>
+  </ol>
+</div>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s1">1. Visão geral e diagrama de rede</h1>
+
+<p>Antes de começar a instalar, é importante entender o que cada coisa faz pra ter clareza do que você está montando.</p>
+
+<p>O sistema é composto por <strong>3 serviços</strong> que rodam no mesmo servidor:</p>
+
+<table class="t">
+  <tr><th>Serviço (apelido interno)</th><th>O que faz</th><th>Porta</th></tr>
+  <tr>
+    <td><strong>Int1 — API/Banco</strong><br><small style="color: var(--muted-foreground);">pasta: <span class="filepath">Banco/WebAbil8-Sistema_Verificação_dupla.slnx/</span></small></td>
+    <td>Servidor HTTP que guarda o banco SQLite. Todas as operações de cadastrar pessoa, ambiente, T50M etc passam por aqui. Roda Hangfire para limpeza automática.</td>
+    <td><strong>5018</strong></td>
+  </tr>
+  <tr>
+    <td><strong>Int2 — Worker</strong><br><small style="color: var(--muted-foreground);">pasta: <span class="filepath">Hardware &amp; Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker/</span></small></td>
+    <td>Programa que fica conectado nos T50Ms via TCP/IP e processa cada acesso. Se for cadastrar/remover uma pessoa, ele envia pra cada T50M sob seu controle. Trabalha em silêncio em background.</td>
+    <td>(nenhuma fixa)</td>
+  </tr>
+  <tr>
+    <td><strong>Int3 — Painel</strong><br><small style="color: var(--muted-foreground);">pasta: <span class="filepath">PainelWeb/Frontend/</span></small></td>
+    <td>Site Blazor onde o admin loga, cadastra pessoas, vê histórico etc. O admin acessa pelo navegador.</td>
+    <td><strong>8080</strong></td>
+  </tr>
+</table>
+
+<p>Tem ainda uma biblioteca compartilhada:</p>
+
+<table class="t">
+  <tr><th>Biblioteca</th><th>O que faz</th></tr>
+  <tr>
+    <td><strong>Int4 — Infraestrutura</strong><br><small style="color: var(--muted-foreground);"><span class="filepath">InfraestruturaBloco1/</span></small></td>
+    <td>Reúne código compartilhado: o <code>CameraService</code> (que fala ONVIF com as câmeras) e o <code>ExportService</code> (que gera os CSV/PDF). Não é um serviço — é um DLL usado pelo Int1 e Int3.</td>
+  </tr>
+</table>
+
+<h3>Como tudo se conecta na rede</h3>
+
+<div class="diagram">
+                  ┌─────────────────────────┐
+                  │ Admin (navegador)       │
+                  │ Qualquer máquina da LAN │
+                  └────────┬────────────────┘
+                           │ HTTP :8080
+                           ▼
+        ┌──────────────────────────────────────┐
+        │   SERVIDOR (Windows ou Linux)        │
+        │   IP fixo: ex 10.0.0.5               │
+        │                                      │
+        │   ┌─────────────────────────────┐    │
+        │   │ Int3 — Painel Blazor :8080  │◄───┼─── Admin (browser)
+        │   ├─────────────────────────────┤    │
+        │   │ Int1 — API/Banco :5018      │    │
+        │   │  └── banco.db (SQLite)      │    │
+        │   ├─────────────────────────────┤    │
+        │   │ Int2 — Worker (background)  │    │
+        │   └─────────────┬───────────────┘    │
+        └─────────────────┼────────────────────┘
+                          │ TCP :5010 (OAE)
+                ┌─────────┼──────────┐
+                ▼         ▼          ▼
+          ┌────────┐ ┌────────┐ ┌────────┐
+          │ T50M-1 │ │ T50M-2 │ │ T50M-N │   ··· até quantos quiser
+          │  IP    │ │  IP    │ │  IP    │
+          └────────┘ └────────┘ └────────┘
+
+        ┌──────────────────────────────────────┐
+        │   Câmeras IP (ONVIF/RTSP)            │
+        │   IP fixo, na mesma LAN do servidor  │
+        └──────────────────────────────────────┘
+
+        ┌──────────────────────────────────────┐
+        │   Servidor SMTP do CTA (EBmail)      │
+        │   Saída: porta TCP 587 (STARTTLS)    │
+        └──────────────────────────────────────┘
+</div>
+
+<h3>Resumo das portas</h3>
+<table class="t">
+  <tr><th>Quem fala</th><th>Com quem</th><th>Porta</th><th>Direção</th></tr>
+  <tr><td>Navegador do admin</td><td>Servidor (Int3)</td><td>8080 TCP</td><td>Entrada no servidor</td></tr>
+  <tr><td>Int3 (Painel)</td><td>Int1 (API)</td><td>5018 TCP</td><td>Localhost no servidor</td></tr>
+  <tr><td>Int2 (Worker)</td><td>T50M</td><td>5010 TCP</td><td>Saída do servidor pra LAN</td></tr>
+  <tr><td>Int1 (API)</td><td>Câmera</td><td>80 TCP</td><td>Saída do servidor pra LAN (ONVIF)</td></tr>
+  <tr><td>Navegador / VLC</td><td>Câmera</td><td>554 TCP</td><td>Acesso direto pra ver ao vivo</td></tr>
+  <tr><td>Int1 (API)</td><td>Servidor SMTP</td><td>587 TCP</td><td>Saída do servidor</td></tr>
+</table>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s2">2. Preparar o servidor</h1>
+<p class="lead">Antes de qualquer configuração no painel, o servidor precisa ter o .NET 8 instalado, o código do sistema baixado e as pastas corretas. Vai por partes.</p>
+
+<h3>Requisitos mínimos</h3>
+<table class="t">
+  <tr><th>Recurso</th><th>Mínimo</th><th>Recomendado</th></tr>
+  <tr><td>Sistema operacional</td><td>Windows 10/11 ou Ubuntu 22.04+</td><td>Windows Server 2019+ ou Ubuntu 22.04 LTS</td></tr>
+  <tr><td>CPU</td><td>Dual-core 2 GHz</td><td>Quad-core 2.5 GHz+</td></tr>
+  <tr><td>RAM</td><td>4 GB</td><td>8 GB</td></tr>
+  <tr><td>Disco livre</td><td>20 GB</td><td>SSD 100 GB+</td></tr>
+  <tr><td>Rede</td><td>1 placa Ethernet, IP fixo</td><td>Switch gerenciável dedicado</td></tr>
+</table>
+
+<h2 class="subsection" id="s2-1">2.1 Instalar o .NET 8 SDK</h2>
+
+<p>O sistema é escrito em C# .NET 8 e precisa do SDK pra rodar e compilar.</p>
+
+<h4>No Windows</h4>
+<p>Abra o <strong>PowerShell como Administrador</strong> (botão direito no menu Iniciar → "Windows PowerShell (Admin)") e cole:</p>
+<pre class="ps"><code>winget install --id Microsoft.DotNet.SDK.8 --source winget</code></pre>
+
+<p>Depois feche e abra o PowerShell de novo. Pra confirmar que deu certo:</p>
+<pre class="ps"><code>dotnet --version
+# Deve imprimir 8.0.xxx</code></pre>
+
+<h4>No Ubuntu/Debian</h4>
+<pre class="bash"><code>sudo apt update
+sudo apt install -y wget
+wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+sudo apt update
+sudo apt install -y dotnet-sdk-8.0
+
+dotnet --version
+# Deve imprimir 8.0.xxx</code></pre>
+
+<div class="error-card">
+  <div class="error-title">❌ "dotnet: comando não encontrado" depois de instalar</div>
+  <div class="error-cause"><strong>Causa:</strong> a variável PATH não foi atualizada na sessão atual.</div>
+  <div class="fix-title">Como resolver</div>
+  <p><strong>Windows:</strong> feche todas as janelas do PowerShell e abra de novo. Se ainda não funcionar, vá em <em>Configurações → Sistema → Sobre → Configurações avançadas do sistema → Variáveis de ambiente</em> e confirme que <code>C:\Program Files\dotnet\</code> está no PATH.</p>
+  <p><strong>Linux:</strong> rode <code>source ~/.bashrc</code> ou abra um novo terminal.</p>
+</div>
+
+<h2 class="subsection" id="s2-2">2.2 Baixar o código do sistema</h2>
+
+<p>Você recebe o sistema em um pendrive, .zip ou via Git. Copie tudo pra uma pasta fixa no servidor — sugiro:</p>
+
+<table class="t">
+  <tr><th>SO</th><th>Pasta sugerida</th></tr>
+  <tr><td>Windows</td><td><span class="filepath">C:\5CTA\</span></td></tr>
+  <tr><td>Linux</td><td><span class="filepath">/opt/5cta/</span></td></tr>
+</table>
+
+<p>Use sempre o mesmo caminho — os scripts auxiliares assumem essa estrutura.</p>
+
+<h4>Se receber um .zip</h4>
+<pre class="ps"><code># Windows — descompactar com PowerShell
+Expand-Archive -Path "$env:USERPROFILE\Downloads\5cta-sistema.zip" -DestinationPath "C:\5CTA"</code></pre>
+
+<h4>Se for via Git</h4>
+<pre class="ps"><code>cd C:\
+git clone https://github.com/&lt;USUARIO&gt;/SISTEMA-DE-AUTENTICAO-EM-DUAS-ETAPAS-COM-BIOMETRIA.git 5CTA</code></pre>
+
+<h2 class="subsection" id="s2-3">2.3 Onde fica cada coisa (estrutura de pastas)</h2>
+
+<p>Depois de descompactado, a pasta <span class="filepath">C:\5CTA\</span> deve ter essa estrutura. Memorize porque vai ser citada muitas vezes:</p>
+
+<div class="diagram">C:\5CTA\
+│
+├── Banco\
+│   └── WebAbil8-Sistema_Verificação_dupla.slnx\     ← Int1 (API + Banco SQLite)
+│       ├── Controllers\           ← endpoints HTTP
+│       ├── Model\                 ← entidades do banco
+│       ├── Services\              ← repositórios e lógica
+│       ├── banco.db               ← o banco SQLite (gerado no 1º start)
+│       ├── appsettings.json       ← chaves JWT e AES (editar aqui!)
+│       └── Program.cs
+│
+├── PainelWeb\
+│   └── Frontend\                  ← Int3 (Painel Blazor)
+│       ├── Components\Pages\      ← telas Razor
+│       ├── Data\Services\
+│       ├── wwwroot\               ← CSS, JS, imagens
+│       ├── appsettings.json       ← URL da API (não mexer normalmente)
+│       └── Program.cs
+│
+├── Hardware &amp; Serviço de Background\
+│   └── BiometricAcess.Worker\
+│       └── BiometricAcess.Worker\ ← Int2 (Worker dos T50Ms)
+│           └── Program.cs
+│
+├── InfraestruturaBloco1\          ← Int4 (Câmera + Export, biblioteca)
+│
+├── docs\                          ← Documentação (este arquivo, UserManual, etc)
+│   └── scripts\
+│       └── GerarHash\             ← Console app pra hash BCrypt dos admins
+│
+└── iniciar.ps1                    ← Script que sobe tudo de uma vez</div>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s3">3. Configurar a rede do servidor</h1>
+<p class="lead">Antes de testar o sistema, o servidor precisa estar com IP fixo, firewall aberto e acessível pelas máquinas dos admins.</p>
+
+<h2 class="subsection" id="s3-1">3.1 Definir IP fixo no servidor</h2>
+
+<p>Combine com a TI um IP livre que <strong>nunca</strong> mude. Por exemplo: <code>10.0.0.5</code>. Esse IP vai ser:</p>
+<ul class="doc-list">
+  <li>O endereço que os admins vão digitar no navegador (<code>http://10.0.0.5:8080</code>);</li>
+  <li>O endereço que o servidor SMTP precisa autorizar para envio;</li>
+  <li>O IP que aparecerá nos logs.</li>
+</ul>
+
+<h4>Windows — pelo painel de controle</h4>
+<ol class="substeps">
+  <li>Pressione <kbd>Win</kbd>+<kbd>R</kbd> e digite <code>ncpa.cpl</code>.</li>
+  <li>Botão direito na conexão Ethernet → <em>Propriedades</em>.</li>
+  <li>Selecione <em>Protocolo IPv4 (TCP/IPv4)</em> → <em>Propriedades</em>.</li>
+  <li>Marque <em>"Usar o seguinte endereço IP"</em> e preencha (valores de exemplo):
+    <table class="t" style="margin-top: 8px;">
+      <tr><th>Campo</th><th>Valor</th></tr>
+      <tr><td>Endereço IP</td><td>10.0.0.5</td></tr>
+      <tr><td>Máscara</td><td>255.255.255.0</td></tr>
+      <tr><td>Gateway</td><td>10.0.0.1 (ou o gateway do CTA)</td></tr>
+      <tr><td>DNS</td><td>10.0.0.1 (ou os do CTA)</td></tr>
+    </table>
+  </li>
+  <li>Clique OK em todas as janelas.</li>
+</ol>
+
+<h4>Windows — pelo PowerShell (alternativa rápida)</h4>
+<pre class="ps"><code># Liste os adaptadores pra descobrir o nome
+Get-NetAdapter
+
+# Configure (troque "Ethernet" pelo nome real e ajuste os IPs)
+New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress 10.0.0.5 -PrefixLength 24 -DefaultGateway 10.0.0.1
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses 10.0.0.1</code></pre>
+
+<h4>Linux — Ubuntu Server (netplan)</h4>
+<p>Edite o arquivo <span class="filepath">/etc/netplan/00-installer-config.yaml</span>:</p>
+<pre class="bash"><code>sudo nano /etc/netplan/00-installer-config.yaml</code></pre>
+<p>Conteúdo esperado (ajuste os IPs):</p>
+<pre><code class="language-yaml">network:
+  version: 2
+  ethernets:
+    ens33:                       # nome do adaptador (use "ip a" pra descobrir)
+      dhcp4: false
+      addresses: [10.0.0.5/24]
+      routes:
+        - to: default
+          via: 10.0.0.1
+      nameservers:
+        addresses: [10.0.0.1, 8.8.8.8]</code></pre>
+<p>Salvar (<kbd>Ctrl</kbd>+<kbd>O</kbd>) → sair (<kbd>Ctrl</kbd>+<kbd>X</kbd>) → aplicar:</p>
+<pre class="bash"><code>sudo netplan apply
+ip a   # confirme que o IP está atribuído</code></pre>
+
+<div class="box box-warn">
+  <strong>Cuidado ao fazer isso via SSH</strong>
+  Se você está conectado via SSH no servidor Linux e mudar o IP, a sessão SSH cai. Sempre faça essa mudança no console físico ou via KVM remoto.
+</div>
+
+<h2 class="subsection" id="s3-2">3.2 Abrir as portas 8080 e 5018 no firewall</h2>
+
+<p>Sem isso, o navegador dos admins não conecta no painel.</p>
+
+<h4>Windows — PowerShell como Administrador</h4>
+<pre class="ps"><code>New-NetFirewallRule -DisplayName "5CTA-Painel" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "5CTA-API"    -Direction Inbound -LocalPort 5018 -Protocol TCP -Action Allow
+
+# Conferir
+Get-NetFirewallRule -DisplayName "5CTA-*"</code></pre>
+
+<h4>Linux — UFW</h4>
+<pre class="bash"><code>sudo ufw allow 8080/tcp
+sudo ufw allow 5018/tcp
+sudo ufw status</code></pre>
+
+<div class="box box-tip">
+  <strong>Por que abrir a 5018 se ela é interna?</strong>
+  Tecnicamente a 5018 é usada só pelo painel chamando localhost, então em produção pura você pode <em>não abrir</em> ela no firewall. Mas em ambiente de testes (depuração, scripts externos), abrir facilita. Em produção final, deixe só a 8080 aberta.
+</div>
+
+<h2 class="subsection" id="s3-3">3.3 Testar acesso de outra máquina</h2>
+
+<p>Antes de prosseguir, valide que tudo está acessível.</p>
+
+<ol class="substeps">
+  <li>Em qualquer notebook da rede do CTA, abra o navegador.</li>
+  <li>Digite <code>http://10.0.0.5:8080</code> (troque pelo IP que você definiu).</li>
+  <li>Por enquanto o site não está rodando, então vai dar erro de conexão. <strong>Isso é esperado.</strong> O importante: se aparecer <em>"Não foi possível acessar este site"</em>, ainda OK. Se aparecer <em>"Conexão recusada"</em> ou <em>"Tempo limite esgotado"</em>, é firewall.</li>
+  <li>Faça também um <code>ping 10.0.0.5</code> no CMD do notebook. Deve responder.</li>
+</ol>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s4">4. Primeiro start do sistema</h1>
+<p class="lead">Agora vamos subir os 3 serviços (Int1, Int2 e Int3) pela primeira vez. Tem um script pronto pra isso.</p>
+
+<h2 class="subsection" id="s4-1">4.1 Rodar o iniciar.ps1</h2>
+
+<p>Na raiz do projeto tem o arquivo <span class="filepath">C:\5CTA\iniciar.ps1</span> que sobe tudo. Faça assim:</p>
+
+<ol class="steps">
+  <li>
+    <h4>Abrir PowerShell na pasta do projeto</h4>
+    <p>Vá no Explorer até <span class="filepath">C:\5CTA\</span>. Mantenha <kbd>Shift</kbd> apertado e clique com botão direito em qualquer área vazia da pasta. Escolha <em>"Abrir janela do PowerShell aqui"</em>.</p>
+  </li>
+  <li>
+    <h4>Permitir execução do script</h4>
+    <p>O Windows bloqueia scripts por padrão. Rode uma vez:</p>
+    <pre class="ps"><code>Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass</code></pre>
+    <p>(Isso libera só pra essa sessão do PowerShell, não fica permanente.)</p>
+  </li>
+  <li>
+    <h4>Executar o script</h4>
+    <pre class="ps"><code>.\iniciar.ps1</code></pre>
+    <p>Você vai ver mensagens tipo:</p>
+    <pre><code>[1/4] Matando processos antigos nas portas 5018 e 8080...
+[2/4] Fazendo backup do banco...
+[3/4] Subindo Int1 (Banco/API)... aguardando porta 5018... OK
+[4/4] Subindo Int3 (Painel)... aguardando porta 8080... OK
+Subindo Int2 (Worker) em background...
+Abrindo navegador em http://localhost:8080</code></pre>
+    <p>Quando aparecer o navegador com a tela de login, deu certo.</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s4-2">4.2 O admin padrão (admin/Admin@123)</h2>
+
+<p>No primeiro start, o sistema cria automaticamente:</p>
+<ul class="doc-list">
+  <li>O arquivo <span class="filepath">C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\banco.db</span> (o banco SQLite vazio);</li>
+  <li><strong>900.000 senhas disponíveis</strong> (de 100000 a 999999, exceto triviais);</li>
+  <li><strong>900.000 códigos de usuário disponíveis</strong>;</li>
+  <li>Um administrador padrão: <strong>login: <code>admin</code></strong> / <strong>senha: <code>Admin@123</code></strong>;</li>
+  <li>Configurações padrão (90 dias retenção, 60s tempo de espera etc).</li>
+</ul>
+
+<div class="box box-alert">
+  <strong>SEGURANÇA — Troque a senha do admin padrão</strong>
+  A senha <code>Admin@123</code> está documentada (você está lendo agora). <em>Antes de colocar o sistema em uso real</em>, siga o passo §8 desta documentação pra trocar a senha do admin padrão por algo único e forte.
+</div>
+
+<h2 class="subsection" id="s4-3">4.3 Ver se está funcionando</h2>
+
+<ol class="substeps">
+  <li>No navegador, acesse <code>http://10.0.0.5:8080</code> (de outra máquina) ou <code>http://localhost:8080</code> (no próprio servidor).</li>
+  <li>Tela de login deve aparecer.</li>
+  <li>Login: <code>admin</code> / senha: <code>Admin@123</code>.</li>
+  <li>Você cai no Dashboard com 0 acessos. Tudo zerado — é esperado, o sistema acabou de ser criado.</li>
+</ol>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s5">5. Cadastrar e conectar T50M Anviz</h1>
+<p class="lead">Cada T50M tem 2 etapas: primeiro você configura o IP fixo dele <strong>no próprio aparelho</strong> (menu local), depois cadastra esse IP no painel.</p>
+
+<h2 class="subsection" id="s5-1">5.1 Configurar IP fixo no T50M</h2>
+
+<p>O T50M sai de fábrica com IP <code>192.168.0.218</code> (padrão Anviz). Se a sua rede usa essa faixa, talvez já dê pra usar direto. Mas o padrão recomendado é configurar manualmente.</p>
+
+<ol class="steps">
+  <li>
+    <h4>Acesse o menu local do T50M</h4>
+    <p>No teclado do T50M (já fisicamente instalado e ligado), pressione <kbd>M/OK</kbd>.</p>
+    <p>Será pedida a senha de admin. Padrão de fábrica: <code>12345</code>. Se já foi alterada por outra equipe, peça pra TI.</p>
+  </li>
+  <li>
+    <h4>Navegue até System → Comm → Ethernet</h4>
+    <p>Use as setas ▲▼ pra navegar no menu, <kbd>M/OK</kbd> pra confirmar, <kbd>ESC</kbd> pra voltar.</p>
+    <p>Caminho completo: <strong>Menu → System Setting → Comm Setting → Ethernet</strong>.</p>
+  </li>
+  <li>
+    <h4>Defina os endereços</h4>
+    <table class="t">
+      <tr><th>Campo</th><th>Valor exemplo</th><th>O que é</th></tr>
+      <tr><td><strong>IP Address</strong></td><td><code>10.0.0.10</code></td><td>O IP que o T50M vai ter (precisa ser livre na sua LAN)</td></tr>
+      <tr><td><strong>Subnet Mask</strong></td><td><code>255.255.255.0</code></td><td>Igual à do servidor</td></tr>
+      <tr><td><strong>Gateway</strong></td><td><code>10.0.0.1</code></td><td>Mesmo gateway da sua rede</td></tr>
+      <tr><td><strong>DNS</strong></td><td><code>0.0.0.0</code></td><td>Pode deixar zerado (T50M não usa DNS)</td></tr>
+      <tr><td><strong>Server IP</strong></td><td><code>10.0.0.5</code></td><td>IP do <strong>servidor</strong> onde o sistema roda</td></tr>
+      <tr><td><strong>Server Port</strong></td><td><code>5010</code></td><td>Porta padrão Anviz (não mudar)</td></tr>
+    </table>
+    <p>Pressione <kbd>M/OK</kbd> em cada campo, digite o valor com o teclado numérico, <kbd>M/OK</kbd> pra confirmar.</p>
+  </li>
+  <li>
+    <h4>Salve e reinicie a interface de rede do T50M</h4>
+    <p>Saia do menu com <kbd>ESC</kbd> várias vezes até voltar à tela inicial. O T50M reaplica a config de rede sozinho em alguns segundos.</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s5-2">5.2 Conferir conectividade do servidor com o T50M</h2>
+
+<p>Antes de cadastrar no painel, verifique que o servidor enxerga o T50M.</p>
+
+<h4>Teste 1 — Ping</h4>
+<pre class="ps"><code># Do servidor
+ping 10.0.0.10
+# Resposta esperada: 4 pacotes recebidos, 0% de perda.</code></pre>
+
+<h4>Teste 2 — Porta TCP 5010</h4>
+<pre class="ps"><code># Windows — testa se a porta está aceitando conexão
+Test-NetConnection 10.0.0.10 -Port 5010
+# Deve mostrar "TcpTestSucceeded : True"</code></pre>
+<pre class="bash"><code># Linux
+nc -zv 10.0.0.10 5010
+# Deve mostrar "Connection to 10.0.0.10 5010 port [tcp/*] succeeded!"</code></pre>
+
+<h2 class="subsection" id="s5-3">5.3 Cadastrar o T50M no painel</h2>
+
+<div class="uimock">
+  <div class="breadcrumb">Caminho no painel: <b>Menu lateral</b> › <span class="nav">Dispositivos T50</span> › botão <span class="action">+ Novo T50</span></div>
+</div>
+
+<p>Na modal que abre, preencha:</p>
+
+<table class="t">
+  <tr><th>Campo</th><th>O que preencher</th><th>Exemplo</th></tr>
+  <tr><td><strong>Nome do Dispositivo</strong></td><td>Identificação descritiva pra você identificar no painel</td><td><code>T50-Entrada-Principal</code></td></tr>
+  <tr><td><strong>Endereço IP</strong></td><td>O IP que você definiu em §5.1, passo 3</td><td><code>10.0.0.10</code></td></tr>
+  <tr><td><strong>Porta TCP</strong></td><td>Sempre 5010 (padrão Anviz OAE)</td><td><code>5010</code></td></tr>
+</table>
+
+<p>Clique em <span class="action">Cadastrar</span>. Em menos de 1 minuto, o cartão do T50M na lista deve mostrar um badge verde <strong class="h-good">Online</strong>.</p>
+
+<h2 class="subsection" id="s5-4">5.4 Erros de conexão T50M</h2>
+
+<div class="error-card">
+  <div class="error-title">❌ T50M cadastrado, mas fica para sempre "Offline"</div>
+  <div class="error-cause"><strong>Causa provável:</strong> Worker não consegue conectar TCP, IP errado, ou Server IP/Port no T50M aponta pra lugar errado.</div>
+  <div class="fix-title">Checagem 1 — Pinga?</div>
+  <pre class="ps"><code>ping 10.0.0.10</code></pre>
+  <p>Se não responder, problema é de rede. Verifique cabo, IP, máscara, e se T50M e servidor estão na mesma VLAN.</p>
+  <div class="fix-title">Checagem 2 — Porta 5010 abre?</div>
+  <pre class="ps"><code>Test-NetConnection 10.0.0.10 -Port 5010</code></pre>
+  <p>Se "TcpTestSucceeded: False", o T50M está respondendo ping mas a porta 5010 não está aceitando. Volte no menu local do T50M e confirme o <strong>Server Port</strong> em System → Comm → Ethernet.</p>
+  <div class="fix-title">Checagem 3 — Reiniciar o Worker</div>
+  <p>Pare o Worker e suba de novo. Os logs ajudam:</p>
+  <pre class="ps"><code># Mate todos os processos do Worker
+Get-Process | Where-Object { $_.ProcessName -like "*BiometricAcess*" } | Stop-Process -Force
+
+# Volte na pasta e rode o iniciar.ps1
+cd C:\5CTA
+.\iniciar.ps1</code></pre>
+  <p>Verifique o log em <span class="filepath">C:\5CTA\Hardware &amp; Serviço de Background\BiometricAcess.Worker\BiometricAcess.Worker\Logs\</span>. Procure por linhas com <code>Falha ao conectar</code>.</p>
+</div>
+
+<div class="error-card">
+  <div class="error-title">❌ T50M aparece Online mas não responde aos acessos físicos</div>
+  <div class="error-cause"><strong>Causa provável:</strong> Modo de verificação local do T50M (FP/PWD) não está habilitado.</div>
+  <div class="fix-title">Como resolver</div>
+  <p>No T50M: <kbd>M/OK</kbd> → System → Verify → escolha <strong>FP + PWD</strong> (digital ou senha).</p>
+</div>
+
+<div class="error-card">
+  <div class="error-title">❌ Pessoa cadastrada no painel mas T50M não aceita o ID</div>
+  <div class="error-cause"><strong>Causa provável:</strong> A pessoa não foi vinculada a um ambiente, ou a sincronização ainda não rodou.</div>
+  <div class="fix-title">Como resolver</div>
+  <ul class="doc-list">
+    <li>Vá em <em>Pessoas → detalhe da pessoa</em>. Confirme que ela tem status <strong>ativo</strong> e está em pelo menos um ambiente.</li>
+    <li>Vá em <em>Dispositivos T50 → detalhe do T50</em>. Veja se o contador <em>DigitaisCadastradas</em> aumentou.</li>
+    <li>O <em>SincronizadorT50</em> roda a cada 10s. Espere 30s e tente acessar de novo.</li>
+  </ul>
+</div>
+
+<div class="box box-warn">
+  <strong>Múltiplos T50Ms num mesmo ambiente</strong>
+  Um ambiente pode ter vários T50Ms (ex: porta de entrada + saída). Quando você vincula uma pessoa ao ambiente, ela é cadastrada em <strong>todos</strong> os T50Ms do ambiente automaticamente. Capacidade é por T50M (1000 cada).
+</div>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s6">6. Cadastrar câmeras IP</h1>
+<p class="lead">As câmeras precisam ter ONVIF habilitado e ser cadastradas no sistema. O sistema usa ONVIF pra buscar gravações e RTSP pra preview ao vivo.</p>
+
+<h2 class="subsection" id="s6-1">6.1 Habilitar ONVIF na câmera</h2>
+
+<p>Cada marca tem um caminho um pouco diferente. Em geral:</p>
+
+<ol class="steps">
+  <li>
+    <h4>Acesse o painel web da câmera</h4>
+    <p>Digite o IP da câmera no navegador (ex: <code>http://192.168.0.50</code>). Login geralmente é <code>admin</code> + a senha definida na instalação.</p>
+  </li>
+  <li>
+    <h4>Procure o menu de ONVIF</h4>
+    <p>Os caminhos comuns:</p>
+    <table class="t">
+      <tr><th>Marca</th><th>Caminho típico</th></tr>
+      <tr><td>Intelbras</td><td>Configuração → Rede → Avançado → ONVIF</td></tr>
+      <tr><td>Hikvision</td><td>Configuration → Network → Advanced Settings → Integration Protocol</td></tr>
+      <tr><td>Dahua</td><td>Setup → Network → ONVIF</td></tr>
+    </table>
+  </li>
+  <li>
+    <h4>Crie um usuário dedicado ao ONVIF</h4>
+    <p>Não use o admin da câmera — crie um usuário separado com permissão de leitura/playback. Anote login e senha.</p>
+    <p>Sugestão de credenciais: usuário <code>onvif_5cta</code>, senha forte gerada (use um gerador de senhas).</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s6-2">6.2 Anotar URL RTSP e endpoint ONVIF</h2>
+
+<p>Pra cada câmera, anote 3 informações:</p>
+
+<table class="t">
+  <tr><th>O que</th><th>Onde achar</th><th>Exemplo</th></tr>
+  <tr>
+    <td><strong>URL RTSP</strong></td>
+    <td>No painel web da câmera, seção de Streaming. Cada marca tem um formato.</td>
+    <td><code>rtsp://onvif_5cta:SenhaForte@192.168.0.50:554/Streaming/Channels/101</code></td>
+  </tr>
+  <tr>
+    <td><strong>Endpoint ONVIF</strong></td>
+    <td>Geralmente <code>http://&lt;IP-CAMERA&gt;:80/onvif/device_service</code>.</td>
+    <td><code>http://192.168.0.50:80/onvif/device_service</code></td>
+  </tr>
+  <tr>
+    <td><strong>Usuário/senha ONVIF</strong></td>
+    <td>O que você criou em §6.1.</td>
+    <td><code>onvif_5cta / SenhaForte</code></td>
+  </tr>
+</table>
+
+<h4>Testar o RTSP no VLC antes</h4>
+<p>Baixe o VLC se ainda não tem. Abra: <em>Mídia → Abrir Stream de Rede</em> → cole a URL RTSP completa. Se aparecer o vídeo ao vivo, está OK pra cadastrar.</p>
+
+<h2 class="subsection" id="s6-3">6.3 Cadastrar a câmera no painel</h2>
+
+<div class="uimock">
+  <div class="breadcrumb">Caminho: <b>Menu lateral</b> › <span class="nav">Câmeras</span> › botão <span class="action">+ Nova Câmera</span></div>
+</div>
+
+<table class="t">
+  <tr><th>Campo</th><th>Como preencher</th></tr>
+  <tr><td><strong>Nome</strong></td><td>Identificação visual. Ex: "Câmera Frontal Sala Op"</td></tr>
+  <tr><td><strong>Ambiente</strong></td><td>O ambiente onde a câmera está (precisa estar cadastrado antes — veja UserManual §9)</td></tr>
+  <tr><td><strong>Tipo</strong></td><td>Interna ou Externa</td></tr>
+  <tr><td><strong>URL RTSP</strong></td><td>O endereço que você anotou em §6.2</td></tr>
+  <tr><td><strong>URL HLS (opcional)</strong></td><td>Só preencha se configurou MediaMTX (ver §6.4)</td></tr>
+  <tr><td><strong>Endereço ONVIF</strong></td><td>O endpoint completo</td></tr>
+</table>
+
+<p>Clique em <span class="action">Cadastrar</span>. Pronto — a próxima entrada liberada nesse ambiente já vai gerar uma URL de gravação que aparece no Histórico.</p>
+
+<h2 class="subsection" id="s6-4">6.4 (Opcional) Streaming HLS pra ver ao vivo</h2>
+
+<p>RTSP não roda direto no navegador moderno. Pra ver a câmera ao vivo dentro do painel, é preciso um servidor de mídia que converte RTSP → HLS. O mais simples é o <strong>MediaMTX</strong>.</p>
+
+<h4>Instalar o MediaMTX (Linux)</h4>
+<pre class="bash"><code>cd /opt
+sudo wget https://github.com/bluenviron/mediamtx/releases/download/v1.8.5/mediamtx_v1.8.5_linux_amd64.tar.gz
+sudo tar xzf mediamtx_v1.8.5_linux_amd64.tar.gz
+sudo rm mediamtx_v1.8.5_linux_amd64.tar.gz</code></pre>
+
+<h4>Configurar uma câmera</h4>
+<p>Edite <span class="filepath">/opt/mediamtx.yml</span> e adicione (uma entrada por câmera):</p>
+<pre><code class="language-yaml">paths:
+  cam-frontal:
+    source: rtsp://onvif_5cta:SenhaForte@192.168.0.50:554/Streaming/Channels/101
+    sourceProtocol: tcp
+  cam-corredor:
+    source: rtsp://onvif_5cta:SenhaForte@192.168.0.51:554/Streaming/Channels/101
+    sourceProtocol: tcp</code></pre>
+
+<h4>Iniciar</h4>
+<pre class="bash"><code>cd /opt
+./mediamtx
+# Por padrão escuta na porta 8888 (HLS)</code></pre>
+
+<p>A URL HLS pra colar no painel fica:</p>
+<pre><code>http://&lt;IP-DO-MEDIAMTX&gt;:8888/cam-frontal/index.m3u8</code></pre>
+
+<p>Pra rodar como serviço (não cair se reiniciar), crie <span class="filepath">/etc/systemd/system/mediamtx.service</span>:</p>
+<pre><code>[Unit]
+Description=MediaMTX
+After=network.target
+
+[Service]
+ExecStart=/opt/mediamtx /opt/mediamtx.yml
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+<pre class="bash"><code>sudo systemctl daemon-reload
+sudo systemctl enable --now mediamtx</code></pre>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s7">7. Configurar envio de email pelo SMTP do CTA</h1>
+<p class="lead">Quando você cadastra uma pessoa, o sistema tenta enviar ID + senha por email automaticamente. Pra isso precisa do servidor SMTP do CTA configurado.</p>
+
+<h2 class="subsection" id="s7-1">7.1 Coletar dados do servidor SMTP</h2>
+
+<p>Peça pra TI do CTA os 4 dados abaixo:</p>
+
+<table class="t">
+  <tr><th>Variável</th><th>O que é</th><th>Exemplo</th></tr>
+  <tr><td><code>SMTP_HOST</code></td><td>Endereço do servidor SMTP</td><td><code>smtp.ebmail.eb.mil.br</code></td></tr>
+  <tr><td><code>SMTP_PORT</code></td><td>Porta. Padrão STARTTLS = 587, SSL puro = 465.</td><td><code>587</code></td></tr>
+  <tr><td><code>SMTP_USER</code></td><td>Usuário SMTP. Recomendo uma conta dedicada (não email pessoal).</td><td><code>controle.acesso@eb.mil.br</code></td></tr>
+  <tr><td><code>SMTP_PASS</code></td><td>Senha da conta SMTP</td><td>(guarde em local seguro)</td></tr>
+</table>
+
+<div class="box box-tip">
+  <strong>Pegar uma conta dedicada</strong>
+  Idealmente o CTA cria uma conta exclusiva <code>controle.acesso@eb.mil.br</code> só pra esse uso. Vantagens: dá pra rastrear emails enviados pelo sistema, fácil resetar se vazar, não usa email de pessoa que pode sair.
+</div>
+
+<h2 class="subsection" id="s7-2">7.2 Configurar variáveis de ambiente</h2>
+
+<p>O sistema lê as 4 vars do ambiente do processo do Int1 (API). Como você quer que persistam após reboot, configure no nível da máquina, não da sessão.</p>
+
+<h4>Windows — PowerShell como Administrador</h4>
+<pre class="ps"><code>[System.Environment]::SetEnvironmentVariable("SMTP_HOST", "smtp.ebmail.eb.mil.br", "Machine")
+[System.Environment]::SetEnvironmentVariable("SMTP_PORT", "587", "Machine")
+[System.Environment]::SetEnvironmentVariable("SMTP_USER", "controle.acesso@eb.mil.br", "Machine")
+[System.Environment]::SetEnvironmentVariable("SMTP_PASS", "&lt;senha aqui&gt;", "Machine")
+
+# Confirmar
+[System.Environment]::GetEnvironmentVariable("SMTP_HOST", "Machine")
+[System.Environment]::GetEnvironmentVariable("SMTP_PORT", "Machine")
+[System.Environment]::GetEnvironmentVariable("SMTP_USER", "Machine")
+# Não imprima SMTP_PASS no log!</code></pre>
+
+<div class="box box-warn">
+  <strong>Persistem após reboot</strong>
+  As variáveis com escopo <code>Machine</code> ficam salvas no registro do Windows. Mesmo desligando e religando, continuam. Pra apagar, use o mesmo comando com valor <code>$null</code>.
+</div>
+
+<h4>Linux — editar o serviço systemd do Int1</h4>
+<p>Se você instalar o Int1 como serviço (ver §9.2), edite o arquivo <span class="filepath">/etc/systemd/system/5cta-banco.service</span> e adicione na seção <code>[Service]</code>:</p>
+<pre><code>[Service]
+Environment="SMTP_HOST=smtp.ebmail.eb.mil.br"
+Environment="SMTP_PORT=587"
+Environment="SMTP_USER=controle.acesso@eb.mil.br"
+Environment="SMTP_PASS=&lt;senha aqui&gt;"</code></pre>
+<pre class="bash"><code>sudo systemctl daemon-reload
+sudo systemctl restart 5cta-banco</code></pre>
+
+<h2 class="subsection" id="s7-3">7.3 Reiniciar e testar</h2>
+
+<p><strong>Importante:</strong> as variáveis de ambiente são lidas só quando o Int1 inicia. Depois de configurar, reinicie:</p>
+
+<h4>Windows</h4>
+<pre class="ps"><code># Mate todos os processos Int1
+Get-Process | Where-Object { $_.ProcessName -like "*WebAbil8*" } | Stop-Process -Force
+
+# Rode iniciar.ps1 de novo
+cd C:\5CTA
+.\iniciar.ps1</code></pre>
+
+<h4>Como testar</h4>
+<ol class="substeps">
+  <li>Logue no painel.</li>
+  <li>Cadastre uma pessoa de teste com <strong>seu próprio email</strong>.</li>
+  <li>Na modal de sucesso após o cadastro, observe o status do envio. Aparece um banner:
+    <ul>
+      <li><strong class="h-good">✓ Email com ID e senha enviado</strong> — deu certo.</li>
+      <li><strong class="h-warn">⚠ Envio automático falhou</strong> — algo errado com SMTP. Veja o log do Int1.</li>
+    </ul>
+  </li>
+  <li>Verifique sua caixa de entrada. Deve chegar um email com o ID e a senha em HTML formatado.</li>
+</ol>
+
+<h3>Erros comuns no SMTP</h3>
+
+<div class="error-card">
+  <div class="error-title">❌ "Authentication failed" / "535 5.7.8"</div>
+  <div class="error-cause"><strong>Causa:</strong> usuário/senha errados, ou a conta exige App Password.</div>
+  <div class="fix-title">Como resolver</div>
+  <ol class="substeps">
+    <li>Teste o usuário e senha em um cliente de email normal (Thunderbird, Outlook) configurando IMAP/SMTP. Se não funciona lá, problema é com a conta — fale com a TI.</li>
+    <li>Se for conta moderna (Microsoft 365, Outlook.com pessoal, Gmail), pode exigir App Password (uma senha específica gerada pra apps externos). Peça pra TI gerar.</li>
+    <li>Confira se sua senha tem caracteres especiais que foram mal escapados. No PowerShell, senhas com <code>$</code>, <code>"</code>, <code>!</code> dão problema — use sempre aspas simples ou variável intermediária:
+      <pre class="ps"><code>$senha = 'M1nh@$enhaSecreta'
+[System.Environment]::SetEnvironmentVariable("SMTP_PASS", $senha, "Machine")</code></pre>
+    </li>
+  </ol>
+</div>
+
+<div class="error-card">
+  <div class="error-title">❌ "Connection timeout" no SMTP</div>
+  <div class="error-cause"><strong>Causa:</strong> firewall bloqueando saída na porta 587 ou servidor SMTP fora do ar.</div>
+  <div class="fix-title">Como resolver</div>
+  <pre class="ps"><code># Do servidor, teste a conexão TCP
+Test-NetConnection smtp.ebmail.eb.mil.br -Port 587</code></pre>
+  <p>Se "TcpTestSucceeded: False", peça pra TI liberar saída pra esse host/porta no firewall corporativo.</p>
+</div>
+
+<div class="error-card">
+  <div class="error-title">❌ "TLS handshake failed"</div>
+  <div class="error-cause"><strong>Causa:</strong> certificado SSL do servidor SMTP autoassinado ou desatualizado.</div>
+  <div class="fix-title">Como resolver</div>
+  <p>Verifique se a porta é realmente <code>587</code> (STARTTLS) e não <code>465</code> (SSL direto). Se o CTA usa certificado autoassinado, peça pra TI adicionar o CA root deles no <em>trust store</em> do Windows ou Linux do servidor.</p>
+</div>
+
+<h2 class="subsection" id="s7-4">7.4 Customizar o HTML do email</h2>
+
+<p>O template do email com ID e senha está no arquivo:</p>
+<p class="filepath">C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\Controllers\PersonController.cs</p>
+<p>Nas linhas 182-189, na variável <code>corpoHtml</code>. Procure por:</p>
+<pre class="code"><code>var corpoHtml = $@"&lt;h2&gt;Olá, {pessoa.Nome}!&lt;/h2&gt;
+&lt;p&gt;Seguem suas credenciais de acesso ao sistema do 5º CTA:&lt;/p&gt;
+...";</code></pre>
+<p>Edite o HTML como quiser. Pra trocar logo, cores, mensagem — tudo é texto HTML normal. Depois rebuild:</p>
+<pre class="ps"><code>cd C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx
+dotnet build</code></pre>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s8">8. Cadastrar administradores no banco</h1>
+<p class="lead">Por decisão de segurança, criar/editar admin e trocar senha não é feito pela tela. É feito direto no banco SQLite com um cliente como o DBeaver.</p>
+
+<h2 class="subsection" id="s8-1">8.1 Por que é via banco e não pela tela</h2>
+
+<div class="box box-info">
+  <strong>Decisão de arquitetura</strong>
+  Se a UI permitisse criar admin, qualquer admin comprometido criaria outro admin para si — escalada de privilégio sem rastreabilidade. Forçar via banco implica que quem cadastra admin já tem acesso físico ao servidor. Quem tem acesso ao servidor é uma pessoa de confiança da TI.
+</div>
+
+<p>Você precisa instalar um cliente SQLite. Os 2 mais usados:</p>
+<ul class="doc-list">
+  <li><strong>DBeaver Community</strong> (recomendado) — <a href="https://dbeaver.io/download/">dbeaver.io/download</a></li>
+  <li><strong>DB Browser for SQLite</strong> (mais simples) — <a href="https://sqlitebrowser.org/dl/">sqlitebrowser.org/dl</a></li>
+</ul>
+
+<h2 class="subsection" id="s8-2">8.2 Gerar o hash da senha</h2>
+
+<p>A senha nunca pode ir em texto puro pro banco — tem que ser hash BCrypt. O sistema vem com um pequeno programa que gera esse hash. Ele fica em:</p>
+<p class="filepath">C:\5CTA\docs\scripts\GerarHash\</p>
+
+<ol class="steps">
+  <li>
+    <h4>Abrir PowerShell na pasta</h4>
+    <p>No Explorer, vá em <span class="filepath">C:\5CTA\docs\scripts\GerarHash</span>. <kbd>Shift</kbd> + botão direito → <em>"Abrir janela do PowerShell aqui"</em>.</p>
+  </li>
+  <li>
+    <h4>Rodar o gerador</h4>
+    <p>Forma 1 — passando a senha como argumento (rápido):</p>
+    <pre class="ps"><code>dotnet run -- "MinhaSenha@Forte123"</code></pre>
+    <p>Forma 2 — interativo (não fica no histórico):</p>
+    <pre class="ps"><code>dotnet run
+# vai pedir a senha</code></pre>
+  </li>
+  <li>
+    <h4>Copiar o hash</h4>
+    <p>Saída esperada:</p>
+    <pre><code>Hash BCrypt (fator 10):
+$2a$10$abcd1234efgh5678ijkl9012mnop3456qrst7890uvwxyzABCDEF</code></pre>
+    <p>Selecione e copie o hash todo (começa com <code>$2a$10$</code>). Esse é o valor que vai no campo <code>senhaHash</code> do INSERT.</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s8-3">8.3 Abrir o banco no DBeaver</h2>
+
+<ol class="steps">
+  <li>
+    <h4>Instale e abra o DBeaver</h4>
+    <p>Baixe e instale do site oficial. Abra o programa.</p>
+  </li>
+  <li>
+    <h4>Nova conexão SQLite</h4>
+    <ul class="doc-list">
+      <li>Menu <em>Database → New Database Connection</em></li>
+      <li>Escolha <strong>SQLite</strong> e clique <em>Next</em></li>
+      <li>No campo <em>Path</em>, navegue até: <span class="filepath">C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\banco.db</span></li>
+      <li>Clique <em>Test Connection</em> — deve dizer "Connected"</li>
+      <li>Clique <em>Finish</em></li>
+    </ul>
+  </li>
+  <li>
+    <h4>Abrir editor SQL</h4>
+    <p>Botão direito na conexão criada → <em>SQL Editor → New SQL script</em>. Aparece uma aba em branco com cursor pronto pra digitar SQL.</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s8-4">8.4 Executar o INSERT (com commit!)</h2>
+
+<p>Cole o INSERT abaixo no editor, ajustando os valores entre aspas:</p>
+
+<pre class="sql"><code>INSERT INTO administrador (login, senhaHash, nomeCompleto, cpf, email, cargo, telefone, dataCriacao)
+VALUES (
+    'capitao.silva',                              -- login curto, único no sistema
+    '$2a$10$&lt;hash gerado em §8.2&gt;',                -- COLE O HASH AQUI
+    'Cap José da Silva',                          -- nome completo pra exibição
+    '12345678901',                                -- CPF apenas dígitos
+    'jose.silva@ebmail.eb.mil.br',                -- email
+    'Capitão',                                    -- cargo/patente
+    '11987654321',                                -- telefone apenas dígitos
+    datetime('now')                               -- data atual UTC
+);</code></pre>
+
+<ol class="steps">
+  <li>
+    <h4>Selecionar a linha do INSERT</h4>
+    <p>Use o mouse pra selecionar o INSERT inteiro (do <code>INSERT</code> até o <code>);</code>).</p>
+  </li>
+  <li>
+    <h4>Executar</h4>
+    <p>Pressione <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Na parte inferior aparece "1 row affected" — o INSERT entrou na transação local.</p>
+  </li>
+  <li>
+    <h4>⚠ COMMITAR</h4>
+    <div class="box box-alert">
+      <strong>Não pula esse passo!</strong>
+      Sem commit, o INSERT fica só na transação local do DBeaver e o painel não vê o novo admin. Sintoma típico: "Inseri o admin mas o login não funciona."
+    </div>
+    <p>Pressione <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>. Ou clique no botão de commit na barra de transações (ícone verde 💾).</p>
+    <p>Alternativa: ative auto-commit. Botão direito na conexão → <em>Edit Connection → Transactions → Auto-commit</em>. Aí qualquer execução commita automaticamente.</p>
+  </li>
+  <li>
+    <h4>Testar</h4>
+    <p>Logue no painel com o novo login/senha. <strong>Não precisa reiniciar nada</strong> — o admin já está disponível imediatamente.</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s8-5">8.5 Trocar senha de admin existente</h2>
+
+<p>Mesma lógica do INSERT, mas com UPDATE.</p>
+
+<ol class="substeps">
+  <li>Gere um novo hash (§8.2) pra senha nova.</li>
+  <li>No DBeaver SQL editor, execute:
+    <pre class="sql"><code>UPDATE administrador
+SET senhaHash = '$2a$10$&lt;novo hash&gt;'
+WHERE login = 'capitao.silva';</code></pre>
+  </li>
+  <li>Commit (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>).</li>
+  <li>O admin precisa logar de novo — sessões antigas continuam válidas até expirar (8h). Pra forçar logout: reinicie o Int1.</li>
+</ol>
+
+<h3>Inativar admin (sem apagar)</h3>
+<p>A tabela <code>administrador</code> não tem coluna de status. Pra impedir login, troque a senha pra algo aleatório que ninguém saiba:</p>
+<pre class="ps"><code># Gera um GUID e usa como senha (descartável)
+cd C:\5CTA\docs\scripts\GerarHash
+dotnet run -- "$(New-Guid)"</code></pre>
+<p>Pegue o hash e UPDATE no banco. Como ninguém sabe a senha (foi descartada na hora), o admin não loga mais.</p>
+
+<h3>Apagar definitivamente</h3>
+<pre class="sql"><code>DELETE FROM administrador WHERE login = 'admin_antigo';</code></pre>
+<p>Logs antigos ficam com adminId órfão. No painel aparece como <code>Admin {id}</code>. É proposital — auditoria não some.</p>
+
+<h3>Trocar a senha do admin padrão (admin/Admin@123)</h3>
+<p>Faça isso <strong>antes</strong> de colocar o sistema em uso real:</p>
+<pre class="ps"><code>cd C:\5CTA\docs\scripts\GerarHash
+dotnet run -- "&lt;Senha forte nova aqui&gt;"</code></pre>
+<pre class="sql"><code>UPDATE administrador
+SET senhaHash = '$2a$10$&lt;hash colado aqui&gt;'
+WHERE login = 'admin';</code></pre>
+<p>Commit (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>).</p>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s9">9. Instalar como serviço (Produção)</h1>
+<p class="lead">Em produção, o sistema precisa subir sozinho quando o servidor liga e reiniciar se algum processo cair. Pra isso converta os 3 serviços (Int1, Int2, Int3) em serviços do SO.</p>
+
+<h2 class="subsection" id="s9-1">9.1 Windows — usando NSSM</h2>
+
+<p>NSSM (Non-Sucking Service Manager) é uma ferramenta gratuita que transforma qualquer programa em serviço do Windows.</p>
+
+<ol class="steps">
+  <li>
+    <h4>Baixar e instalar o NSSM</h4>
+    <p>Baixe de <a href="https://nssm.cc/download">nssm.cc/download</a>. Descompacte em <span class="filepath">C:\nssm\</span>. Abra PowerShell como Administrador.</p>
+  </li>
+  <li>
+    <h4>Publicar os 3 projetos em modo Release</h4>
+    <pre class="ps"><code>cd C:\5CTA
+
+dotnet publish "Banco\WebAbil8-Sistema_Verificação_dupla.slnx" `
+    -c Release -o "C:\5CTA\publish\banco"
+
+dotnet publish "PainelWeb\Frontend" `
+    -c Release -o "C:\5CTA\publish\painel"
+
+dotnet publish "Hardware &amp; Serviço de Background\BiometricAcess.Worker\BiometricAcess.Worker" `
+    -c Release -o "C:\5CTA\publish\worker"</code></pre>
+  </li>
+  <li>
+    <h4>Criar os 3 serviços</h4>
+    <pre class="ps"><code># Int1 — API/Banco
+C:\nssm\nssm.exe install "5CTA-Banco" "C:\Program Files\dotnet\dotnet.exe" "C:\5CTA\publish\banco\WebAbil8-Sistema_Verificação_dupla.slnx.dll"
+C:\nssm\nssm.exe set "5CTA-Banco" AppDirectory "C:\5CTA\publish\banco"
+C:\nssm\nssm.exe set "5CTA-Banco" Start SERVICE_AUTO_START
+C:\nssm\nssm.exe set "5CTA-Banco" AppStdout "C:\5CTA\logs\banco-stdout.log"
+C:\nssm\nssm.exe set "5CTA-Banco" AppStderr "C:\5CTA\logs\banco-stderr.log"
+
+# Int3 — Painel
+C:\nssm\nssm.exe install "5CTA-Painel" "C:\Program Files\dotnet\dotnet.exe" "C:\5CTA\publish\painel\FrontendControleAcesso.dll"
+C:\nssm\nssm.exe set "5CTA-Painel" AppDirectory "C:\5CTA\publish\painel"
+C:\nssm\nssm.exe set "5CTA-Painel" Start SERVICE_AUTO_START
+C:\nssm\nssm.exe set "5CTA-Painel" AppStdout "C:\5CTA\logs\painel-stdout.log"
+C:\nssm\nssm.exe set "5CTA-Painel" AppStderr "C:\5CTA\logs\painel-stderr.log"
+
+# Int2 — Worker
+C:\nssm\nssm.exe install "5CTA-Worker" "C:\Program Files\dotnet\dotnet.exe" "C:\5CTA\publish\worker\BiometricAcess.Worker.dll"
+C:\nssm\nssm.exe set "5CTA-Worker" AppDirectory "C:\5CTA\publish\worker"
+C:\nssm\nssm.exe set "5CTA-Worker" Start SERVICE_AUTO_START
+C:\nssm\nssm.exe set "5CTA-Worker" AppStdout "C:\5CTA\logs\worker-stdout.log"
+C:\nssm\nssm.exe set "5CTA-Worker" AppStderr "C:\5CTA\logs\worker-stderr.log"
+
+# Crie a pasta de logs
+mkdir C:\5CTA\logs -ErrorAction SilentlyContinue</code></pre>
+  </li>
+  <li>
+    <h4>Iniciar os serviços</h4>
+    <pre class="ps"><code>Start-Service "5CTA-Banco"
+Start-Sleep -Seconds 5    # Espera o Int1 subir (cria o banco se não existir)
+Start-Service "5CTA-Worker"
+Start-Service "5CTA-Painel"</code></pre>
+  </li>
+  <li>
+    <h4>Conferir</h4>
+    <pre class="ps"><code>Get-Service "5CTA-*"
+# Os 3 devem aparecer Running</code></pre>
+    <p>Acesse <code>http://10.0.0.5:8080</code>. Deve estar no ar.</p>
+  </li>
+</ol>
+
+<h2 class="subsection" id="s9-2">9.2 Linux — usando systemd</h2>
+
+<ol class="steps">
+  <li>
+    <h4>Publicar os 3 projetos</h4>
+    <pre class="bash"><code>cd /opt/5cta
+
+dotnet publish "Banco/WebAbil8-Sistema_Verificação_dupla.slnx" \
+    -c Release -o /opt/5cta/publish/banco
+
+dotnet publish "PainelWeb/Frontend" \
+    -c Release -o /opt/5cta/publish/painel
+
+dotnet publish "Hardware & Serviço de Background/BiometricAcess.Worker/BiometricAcess.Worker" \
+    -c Release -o /opt/5cta/publish/worker</code></pre>
+  </li>
+  <li>
+    <h4>Criar os 3 unit files</h4>
+    <p>Arquivo <span class="filepath">/etc/systemd/system/5cta-banco.service</span>:</p>
+    <pre><code>[Unit]
+Description=5CTA - Int1 Banco/API
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/5cta/publish/banco
+ExecStart=/usr/bin/dotnet /opt/5cta/publish/banco/WebAbil8-Sistema_Verificação_dupla.slnx.dll
+Restart=always
+RestartSec=10
+User=root
+Environment="ASPNETCORE_ENVIRONMENT=Production"
+Environment="SMTP_HOST=smtp.ebmail.eb.mil.br"
+Environment="SMTP_PORT=587"
+Environment="SMTP_USER=controle.acesso@eb.mil.br"
+Environment="SMTP_PASS=&lt;senha aqui&gt;"
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+    <p>Arquivo <span class="filepath">/etc/systemd/system/5cta-painel.service</span>:</p>
+    <pre><code>[Unit]
+Description=5CTA - Int3 Painel
+After=5cta-banco.service
+
+[Service]
+WorkingDirectory=/opt/5cta/publish/painel
+ExecStart=/usr/bin/dotnet /opt/5cta/publish/painel/FrontendControleAcesso.dll
+Restart=always
+RestartSec=10
+User=root
+Environment="ASPNETCORE_ENVIRONMENT=Production"
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+    <p>Arquivo <span class="filepath">/etc/systemd/system/5cta-worker.service</span>:</p>
+    <pre><code>[Unit]
+Description=5CTA - Int2 Worker
+After=5cta-banco.service
+
+[Service]
+WorkingDirectory=/opt/5cta/publish/worker
+ExecStart=/usr/bin/dotnet /opt/5cta/publish/worker/BiometricAcess.Worker.dll
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+  </li>
+  <li>
+    <h4>Ativar e iniciar</h4>
+    <pre class="bash"><code>sudo systemctl daemon-reload
+sudo systemctl enable --now 5cta-banco
+sleep 5
+sudo systemctl enable --now 5cta-worker
+sudo systemctl enable --now 5cta-painel
+
+# Conferir
+sudo systemctl status 5cta-banco 5cta-painel 5cta-worker</code></pre>
+  </li>
+  <li>
+    <h4>Ver logs em tempo real</h4>
+    <pre class="bash"><code>sudo journalctl -u 5cta-banco -f
+# Ctrl+C pra sair</code></pre>
+  </li>
+</ol>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s10">10. Backup e manutenção</h1>
+
+<h2 class="subsection">10.1 Backup automático do banco</h2>
+
+<p>O Int1 já faz backup do banco ao iniciar (cópia em <span class="filepath">banco_backup.db</span> na mesma pasta). Pra backup adicional (sugerido: diário em outro disco/local):</p>
+
+<h4>Windows — Task Scheduler</h4>
+<p>Crie o script <span class="filepath">C:\5CTA\backup.ps1</span>:</p>
+<pre class="ps"><code>$origem  = "C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\banco.db"
+$destino = "D:\Backups\5CTA\banco-$(Get-Date -f 'yyyyMMdd-HHmm').db"
+$pasta   = Split-Path $destino -Parent
+if (-not (Test-Path $pasta)) { New-Item -ItemType Directory -Path $pasta -Force | Out-Null }
+Copy-Item $origem $destino
+# Mantém só os últimos 30 backups
+Get-ChildItem $pasta -Filter "banco-*.db" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -Skip 30 |
+    Remove-Item</code></pre>
+
+<p>Agendar pra rodar todo dia às 02:00:</p>
+<pre class="ps"><code>schtasks /create /tn "5CTA-Backup" /sc daily /st 02:00 /tr "powershell.exe -ExecutionPolicy Bypass -File C:\5CTA\backup.ps1"</code></pre>
+
+<h4>Linux — cron</h4>
+<pre class="bash"><code>sudo crontab -e
+# Adicionar:
+0 2 * * * cp /opt/5cta/Banco/WebAbil8-Sistema_Verificação_dupla.slnx/banco.db /var/backups/5cta/banco-$(date +\%Y\%m\%d).db</code></pre>
+
+<h2 class="subsection">10.2 Limpeza automática (já vem ligada)</h2>
+
+<p>Todo dia às <strong>03:00 UTC</strong> (~00:00 BRT), o sistema executa via Hangfire:</p>
+<ul class="doc-list">
+  <li>Apaga tentativas de acesso com mais de 90 dias (configurável em <em>Configurações → Retenção de Tentativas</em>);</li>
+  <li>Apaga logs de admin com mais de 180 dias (configurável em <em>Configurações → Retenção de Logs</em>);</li>
+  <li>Inativa pessoas que não acessaram em 24 meses (configurável).</li>
+</ul>
+
+<p>O dashboard do Hangfire fica em <code>http://10.0.0.5:5018/hangfire</code> (precisa estar logado no painel).</p>
+
+<h2 class="subsection">10.3 Atualizar o sistema (nova versão)</h2>
+
+<ol class="steps">
+  <li>
+    <h4>Pare os serviços</h4>
+    <pre class="ps"><code>Stop-Service "5CTA-Painel","5CTA-Worker","5CTA-Banco"</code></pre>
+  </li>
+  <li>
+    <h4>Backup do banco e da pasta publish</h4>
+    <pre class="ps"><code>$ts = Get-Date -f "yyyyMMdd-HHmm"
+Copy-Item "C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\banco.db" "D:\Backups\5CTA\banco-pre-update-$ts.db"
+Copy-Item "C:\5CTA\publish" "D:\Backups\5CTA\publish-pre-update-$ts" -Recurse</code></pre>
+  </li>
+  <li>
+    <h4>Substitua o código fonte pela nova versão</h4>
+    <p>Descompacte o novo zip por cima de <span class="filepath">C:\5CTA\</span>, mantendo o banco.</p>
+  </li>
+  <li>
+    <h4>Republique</h4>
+    <pre class="ps"><code>cd C:\5CTA
+dotnet publish "Banco\WebAbil8-Sistema_Verificação_dupla.slnx" -c Release -o "C:\5CTA\publish\banco"
+dotnet publish "PainelWeb\Frontend" -c Release -o "C:\5CTA\publish\painel"
+dotnet publish "Hardware &amp; Serviço de Background\BiometricAcess.Worker\BiometricAcess.Worker" -c Release -o "C:\5CTA\publish\worker"</code></pre>
+  </li>
+  <li>
+    <h4>Inicie os serviços</h4>
+    <pre class="ps"><code>Start-Service "5CTA-Banco"
+Start-Sleep -Seconds 5
+Start-Service "5CTA-Worker","5CTA-Painel"</code></pre>
+    <p>O Int1 detecta migrações pendentes do banco e aplica automaticamente no startup.</p>
+  </li>
+</ol>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s11">11. Bônus — Implantação via Docker</h1>
+<p class="lead">Em vez de instalar .NET no servidor, você pode rodar o sistema todo em containers Docker. Útil pra padronizar implantação em várias unidades militares.</p>
+
+<h3>Quando vale a pena</h3>
+<ul class="doc-list">
+  <li>Você vai testar antes de mexer no servidor de produção</li>
+  <li>Tem várias máquinas com versões diferentes do .NET</li>
+  <li>Quer rollback rápido entre versões</li>
+  <li>Vai implantar em mais de uma unidade do CTA</li>
+</ul>
+
+<h3>Quando NÃO vale</h3>
+<ul class="doc-list">
+  <li>Comunicação Worker ↔ T50M via TCP fica mais complicada (precisa <code>--network host</code> no Linux, ou IP de rota explícita no Windows)</li>
+  <li>Equipe da TI sem familiaridade com Docker — manutenção fica mais difícil</li>
+</ul>
+
+<h3>11.1 Estrutura</h3>
+
+<p>Criar 3 Dockerfiles na raiz do projeto. Exemplo do Int1:</p>
+
+<p class="filepath">Arquivo: C:\5CTA\Dockerfile.banco</p>
+<pre class="code"><code>FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish "Banco/WebAbil8-Sistema_Verificação_dupla.slnx/" -c Release -o /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app .
+EXPOSE 5018
+ENTRYPOINT ["dotnet", "WebAbil8-Sistema_Verificação_dupla.slnx.dll"]</code></pre>
+
+<p>Dockerfiles análogos pra Painel (Dockerfile.painel) e Worker (Dockerfile.worker).</p>
+
+<h3>11.2 docker-compose.yml</h3>
+
+<p class="filepath">Arquivo: C:\5CTA\docker-compose.yml</p>
+<pre class="code"><code>version: "3.8"
+services:
+  banco:
+    build:
+      context: .
+      dockerfile: Dockerfile.banco
+    ports:
+      - "5018:5018"
+    environment:
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    volumes:
+      - banco-data:/app/banco
+    restart: unless-stopped
+
+  painel:
+    build:
+      context: .
+      dockerfile: Dockerfile.painel
+    ports:
+      - "8080:8080"
+    depends_on:
+      - banco
+    volumes:
+      - banco-data:/app/banco:ro
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    network_mode: host    # Necessário pra alcançar T50Ms na LAN
+    depends_on:
+      - banco
+    volumes:
+      - banco-data:/app/banco
+    restart: unless-stopped
+
+volumes:
+  banco-data:</code></pre>
+
+<h3>11.3 Subir</h3>
+
+<p>Criar arquivo <span class="filepath">.env</span> na mesma pasta com as variáveis:</p>
+<pre><code>SMTP_HOST=smtp.ebmail.eb.mil.br
+SMTP_PORT=587
+SMTP_USER=controle.acesso@eb.mil.br
+SMTP_PASS=SenhaForte123</code></pre>
+
+<pre class="bash"><code># Subir tudo
+docker compose up -d
+
+# Ver logs em tempo real
+docker compose logs -f banco
+docker compose logs -f worker
+
+# Parar (mantém o volume de dados)
+docker compose down
+
+# Parar e APAGAR dados (cuidado!)
+docker compose down -v</code></pre>
+
+<div class="box box-alert">
+  <strong>Cuidado com persistência</strong>
+  O volume <code>banco-data</code> guarda o SQLite. Se você fizer <code>docker compose down -v</code>, o volume some e o banco se perde. Sempre faça backup do volume antes de operações destrutivas:
+  <pre class="bash"><code># Backup
+docker run --rm -v banco-data:/data -v /var/backups:/backup busybox tar czf /backup/banco-$(date +%Y%m%d).tar.gz -C /data .</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h1 class="section" id="s12">12. Quando algo der errado — Troubleshooting global</h1>
+<p class="lead">Resumo dos problemas mais comuns separados por sintoma. Procure o seu pelo sintoma.</p>
+
+<h3>Sintoma: o painel não abre de fora do servidor</h3>
+<div class="error-card">
+  <div class="error-title">Sintoma: erro de conexão / "site não disponível"</div>
+  <ul class="doc-list">
+    <li><strong>Firewall:</strong> revise §3.2.</li>
+    <li><strong>IP errado:</strong> use <code>ipconfig</code> (Win) ou <code>ip a</code> (Linux) no servidor pra confirmar.</li>
+    <li><strong>Serviço não está rodando:</strong> <code>Get-Service "5CTA-Painel"</code> deve dizer Running.</li>
+    <li><strong>Serviço escutando só em localhost:</strong> verifique <span class="filepath">C:\5CTA\PainelWeb\Frontend\Properties\launchSettings.json</span> — <code>applicationUrl</code> tem que ser <code>http://0.0.0.0:8080</code>, não <code>http://localhost:8080</code>.</li>
+  </ul>
+</div>
+
+<h3>Sintoma: T50M não fica Online</h3>
+<p>Veja §5.4. Em ordem: ping → testar porta 5010 → reiniciar Worker → ver log do Worker.</p>
+
+<h3>Sintoma: Email não chega</h3>
+<p>Veja §7.3. Confira no painel a banner de status do envio na modal de cadastro. Se falhou, olhe os logs:</p>
+<pre class="ps"><code>Get-Content "C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\Logs\*.log" -Tail 50
+# Procure por "SMTP falhou" ou "[FALLBACK]"</code></pre>
+
+<h3>Sintoma: gravação de câmera não aparece no histórico</h3>
+<ul class="doc-list">
+  <li>Câmera está cadastrada no ambiente da tentativa?</li>
+  <li>Endpoint ONVIF está correto? Teste com <code>curl http://&lt;IP-CAMERA&gt;:80/onvif/device_service</code> — deve retornar XML.</li>
+  <li>Aumente o <em>Tempo de espera</em> em <em>Configurações</em> de 60s pra 90/120s (câmeras antigas levam mais tempo pra liberar a gravação).</li>
+  <li>A câmera grava por movimento ou contínuo? Sem gravação ativa, não há nada pra puxar.</li>
+</ul>
+
+<h3>Sintoma: novo admin inserido no banco mas o login não funciona</h3>
+<p>99% das vezes é falta de commit no DBeaver. Volte em §8.4, passo 3, e pressione <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>.</p>
+
+<h3>Sintoma: contador "DigitaisCadastradas" do T50M não cresce</h3>
+<ul class="doc-list">
+  <li>O sincronizador roda a cada 10s. Espere e veja se aparece.</li>
+  <li>Memória do T50M cheia (1000/1000): apague usuários antigos pelo menu local do T50M.</li>
+  <li>Verifique no log do Worker se aparece <code>SetEmployeesData FALHOU</code>.</li>
+</ul>
+
+<h3>Sintoma: tudo lento</h3>
+<ul class="doc-list">
+  <li>Banco SQLite muito grande (&gt;1 GB)? Confira retenção de tentativas — está apagando? Veja Hangfire em <code>:5018/hangfire</code>.</li>
+  <li>RAM do servidor saturada? Use <code>tasklist</code> ou <code>top</code>.</li>
+  <li>Disco cheio? <code>Get-PSDrive C</code> (Win) ou <code>df -h</code> (Linux).</li>
+</ul>
+
+<div class="box box-tip">
+  <strong>Onde ficam todos os logs</strong>
+  <ul class="doc-list">
+    <li>Int1 (Banco/API): <span class="filepath">C:\5CTA\Banco\WebAbil8-Sistema_Verificação_dupla.slnx\Logs\</span></li>
+    <li>Int2 (Worker): <span class="filepath">C:\5CTA\Hardware &amp; Serviço de Background\BiometricAcess.Worker\BiometricAcess.Worker\Logs\</span></li>
+    <li>Int3 (Painel): logs em stdout (no Windows com NSSM ficam em <span class="filepath">C:\5CTA\logs\painel-stdout.log</span>)</li>
+    <li>Hangfire (jobs): dashboard web em <code>http://localhost:5018/hangfire</code></li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>
