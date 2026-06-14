@@ -82,11 +82,9 @@ var app = builder.Build();
 
 app.UseHangfireDashboard("/hangfire");
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 using (var scope = app.Services.CreateScope())
 {
