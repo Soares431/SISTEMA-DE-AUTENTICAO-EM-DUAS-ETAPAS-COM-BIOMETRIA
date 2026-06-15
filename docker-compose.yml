@@ -21,12 +21,25 @@ services:
       - "5018:5018"
     volumes:
       - db-data:/data
+      # Gravações das câmeras — montadas em CAMERA_BASE_PATH dentro do container.
+      - camera-recordings:/var/cameras
     environment:
       - DB_PATH=/data/banco.db
       - ASPNETCORE_ENVIRONMENT=Production
       # Sobrescreve as chaves do appsettings.json. Em prod, troque por valores fortes.
       - Jwt__Key=chave-secreta-minimo-32-caracteres-5cta
       - AesKey=5cta-aes-key-senha-segura-32char
+      # SMTP — usado pelo reenvio de credenciais (PersonController.cs).
+      # Lidos do .env ao lado do compose. Sem eles, o envio cai no fallback console.
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      # Câmera — onde gravações são escritas e qual o binário do ffmpeg.
+      # ffmpeg é instalado na imagem (ver docker/Dockerfile.api), então o path
+      # padrão "ffmpeg" funciona dentro do container.
+      - CAMERA_BASE_PATH=/var/cameras
+      - FFMPEG_PATH=ffmpeg
     healthcheck:
       # Verifica se a API ta respondendo antes do Frontend tentar conectar.
       # Usa a rota /swagger (existe em Dev) ou /hangfire — ambas retornam algo.
@@ -62,15 +75,21 @@ services:
     container_name: cta-worker
     volumes:
       - db-data:/data
+      # Worker tambem aciona MonitorarNovoArquivo (EventProcessor) — precisa
+      # ler o mesmo diretorio de gravacoes do int1.
+      - camera-recordings:/var/cameras
     environment:
       - DB_PATH=/data/banco.db
       - DOTNET_ENVIRONMENT=Production
+      - CAMERA_BASE_PATH=/var/cameras
+      - FFMPEG_PATH=ffmpeg
     depends_on:
       int1:
         condition: service_started
     restart: unless-stopped
 
-# Volume nomeado — persiste o banco.db entre `down`/`up`. Pra apagar:
-# docker compose down -v   (CUIDADO: zera o banco)
+# Volumes nomeados — persistem entre `down`/`up`. Pra apagar TUDO:
+# docker compose down -v   (CUIDADO: zera banco e gravações)
 volumes:
   db-data:
+  camera-recordings:

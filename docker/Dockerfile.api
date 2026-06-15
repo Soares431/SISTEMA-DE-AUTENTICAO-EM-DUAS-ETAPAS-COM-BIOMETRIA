@@ -23,6 +23,14 @@ RUN dotnet publish "WebAbil8-Sistema_Verificação_dupla.slnx.csproj" -c Release
 # ── Fase de runtime ─────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+
+# ffmpeg e curl — ffmpeg eh usado pelo CameraService pra gerar gravacoes a partir
+# do stream RTSP; curl serve pro healthcheck do compose. Limpa cache do apt no
+# final pra nao inchar a imagem.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg curl \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 # Porta interna onde o Kestrel escuta. Mapeada no docker-compose como 5018:5018.
@@ -31,6 +39,9 @@ ENV ASPNETCORE_URLS=http://+:5018
 
 # Caminho do banco SQLite no volume compartilhado (montado em /data pelo compose).
 ENV DB_PATH=/data/banco.db
-RUN mkdir -p /data
+# Diretorio onde o CameraService grava clipes. Sobrescrito pelo compose pra /var/cameras.
+ENV CAMERA_BASE_PATH=/var/cameras
+ENV FFMPEG_PATH=ffmpeg
+RUN mkdir -p /data /var/cameras
 
 ENTRYPOINT ["dotnet", "WebAbil8-Sistema_Verificação_dupla.slnx.dll"]

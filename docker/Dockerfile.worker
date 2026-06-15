@@ -24,8 +24,18 @@ RUN dotnet publish "BiometricAcess.Worker.csproj" -c Release -o /app/publish --n
 # que dependem do ASP.NET (Hangfire, etc).
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+
+# ffmpeg — Worker chama CameraService.MonitorarNovoArquivo pra associar
+# gravacao a tentativas, entao precisa do binario instalado.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 ENV DB_PATH=/data/banco.db
+ENV CAMERA_BASE_PATH=/var/cameras
+ENV FFMPEG_PATH=ffmpeg
+RUN mkdir -p /var/cameras
 
 ENTRYPOINT ["dotnet", "BiometricAcess.Worker.dll"]
