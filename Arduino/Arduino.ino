@@ -88,6 +88,7 @@ enum Estado {
   DIGITANDO_SENHA,
   AGUARDANDO_SERVIDOR_SENHA,
   VERIFY_AGUARDANDO_DEDO,     // CMD|FINGER|START_VERIFY recebido — espera dedo + faz fingerSearch
+  AGUARDANDO_SERVIDOR_FINGER, // EVT|FINGER|OK enviado — espera BUZZER|OK ou ACCESS|DENIED do Worker
   ENROLL_AGUARDANDO_1A_VEZ,   // CMD|FINGER|START_ENROLL|<slot> — 1ª captura
   ENROLL_AGUARDANDO_RETIRAR,  // pede pra tirar o dedo
   ENROLL_AGUARDANDO_2A_VEZ,   // 2ª captura
@@ -181,7 +182,7 @@ void gerenciarTimeouts() {
     }
     return;
   }
-  if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA) {
+  if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA || estado == AGUARDANDO_SERVIDOR_FINGER) {
     if (millis() - pedidoEnviadoEm > TIMEOUT_SERVIDOR_MS) {
       Serial.println(F("EVT|SERVIDOR|TIMEOUT"));
       mostrarResultadoF(F("Servidor offline"), F("Tente de novo"));
@@ -472,6 +473,14 @@ void processarEstadoBiometrico() {
     if (s == FINGERPRINT_OK) {
       tentativasVerify = 0;
       Serial.print(F("EVT|FINGER|OK|")); Serial.println(idDigitado);
+      // Sai de VERIFY_AGUARDANDO_DEDO IMEDIATAMENTE. Sem isso, processarEstadoBiometrico()
+      // continua chamando finger.getImage()/fingerSearch() enquanto o dedo estiver no sensor
+      // e dispara N eventos OK ate o C# responder, duplicando tentativas no historico
+      // e mostrando "Acesso Liberado" varias vezes no LCD. AGUARDANDO_SERVIDOR_FINGER reusa
+      // o timeout de 15s do TIMEOUT_SERVIDOR_MS via gerenciarTimeouts.
+      mostrarDuasLinhasF(F("Verificando..."), F(""));
+      estado = AGUARDANDO_SERVIDOR_FINGER;
+      pedidoEnviadoEm = millis();
     } else {
       // confidence pode vir com lixo quando s != OK (16384 etc).
       // Clampea pra ficar legível no LCD.
@@ -590,7 +599,7 @@ void processarEstadoBiometrico() {
 // ═══════════════════════════════════════════════════════════════
 void lerTeclado() {
   if (estado == MOSTRANDO_RESULTADO) return;
-  if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA) return;
+  if (estado == AGUARDANDO_SERVIDOR_ID || estado == AGUARDANDO_SERVIDOR_SENHA || estado == AGUARDANDO_SERVIDOR_FINGER) return;
 
   if (estado == VERIFY_AGUARDANDO_DEDO
       || estado == ENROLL_AGUARDANDO_1A_VEZ
@@ -614,6 +623,10 @@ void lerTeclado() {
       if (t == 'A') {
         if (estado == VERIFY_AGUARDANDO_DEDO) {
           Serial.print(F("EVT|FINGER|OK|")); Serial.println(idDigitado);
+          // Mesma transicao do caminho real (ver processarEstadoBiometrico)
+          mostrarDuasLinhasF(F("Verificando..."), F(""));
+          estado = AGUARDANDO_SERVIDOR_FINGER;
+          pedidoEnviadoEm = millis();
         } else {
           // Qualquer estado de ENROLL → simula cadastro concluído
           Serial.print(F("EVT|FINGER|ENROLLED|")); Serial.println(idDigitado);
