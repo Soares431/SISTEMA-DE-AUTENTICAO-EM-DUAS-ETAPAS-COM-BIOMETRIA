@@ -1,3 +1,4 @@
+
 @page "/dispositivos/{Id:int}"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject IDispositivoT50Repository DispositivoRepo
@@ -153,7 +154,7 @@
                 <p>Esta ação não pode ser desfeita</p>
             </div>
             <div class="modal-body space-y-sm">
-                <div class="alert alert-danger">O dispositivo <strong>@dispositivo.Nome</strong> será removido permanentemente do sistema.</div>
+                <div class="alert alert-danger">O dispositivo será removido permanentemente do sistema.</div>
                 <div class="form-group">
                     <label class="form-label">Digite o nome exato para confirmar: <strong>@dispositivo.Nome</strong></label>
                     <input class="form-input" @bind="nomeConfirmacao" placeholder="@dispositivo.Nome" />
@@ -161,7 +162,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacao = string.Empty; }">Cancelar</button>
-                <button class="btn btn-primary text-destructive" @onclick="HandleExcluir" disabled="@(nomeConfirmacao != dispositivo.Nome)">Excluir Permanentemente</button>
+                <button class="btn btn-primary" @onclick="HandleExcluir" disabled="@(nomeConfirmacao != dispositivo.Nome)">Excluir Permanentemente</button>
             </div>
         </div>
     </div>
@@ -177,24 +178,21 @@
     private bool showConfirmExcluir = false;
     private string nomeConfirmacao = "";
     private string? sucesso = null;
-    private bool arduinoSuportado = true;
     private string? erro = null;
+    private bool arduinoSuportado = false;
 
     private string editNome = "";
     private string editIP = "";
     private int editPorta = 5010;
 
-    protected override void OnInitialized()
-    {
-        arduinoSuportado = Config.GetValue<bool?>("ArduinoSuportado") ?? false;
-        Carregar();
-    }
+    protected override void OnInitialized() => Carregar();
 
     private void Carregar()
     {
         dispositivo = DispositivoRepo.BuscarPorId(Id);
         if (dispositivo != null)
         {
+            arduinoSuportado = Config.GetValue<bool?>("ArduinoSuportado") ?? false;
             ambientesVinculados = AmbienteRepo.ListarTodos()
                 .Where(a => a.DispositivoT50Id == dispositivo.Id)
                 .ToList();
@@ -227,9 +225,11 @@
         }
         if (editPorta < 1 || editPorta > 65535) { erro = "Porta inválida (1 a 65535)."; return; }
 
+        
         var enderecoNorm = editIP.Trim();
         if (FormatHelper.PortaSerialValida(enderecoNorm)) enderecoNorm = enderecoNorm.ToUpperInvariant();
 
+        
         var ipDuplicado = DispositivoRepo.ListarTodos()
             .Any(d => d.Id != dispositivo!.Id && d.EnderecoIP == enderecoNorm);
         if (ipDuplicado) { erro = "Já existe outro T50 com este endereço."; return; }
@@ -262,4 +262,3 @@
         catch (Exception ex) { erro = ex.Message; showConfirmExcluir = false; }
     }
 }
-

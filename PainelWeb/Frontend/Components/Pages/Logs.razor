@@ -1,11 +1,7 @@
+
 @page "/logs"
 @using WebAbil8_Sistema_Verificação_dupla.slnx.Model
 @inject ILogAdminRepository LogRepo
-@inject IPessoaRepository PessoaRepo
-@inject IAmbienteRepository AmbienteRepo
-@inject IAdministradorRepository AdminRepo
-@inject ICameraRepository CameraRepo
-@inject IDispositivoT50Repository DispositivoRepo
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IConfiguration Config
@@ -78,26 +74,48 @@
                                 <td><span class="badge @GetAcaoBadge(log.Acao)"><Icon Name="@GetAcaoIcon(log.Acao)" Size="12" /> @log.Acao</span></td>
                                 <td>
                                     @{
-                                        var entHref = GetEntidadeHref(log);
-                                        var entNome = GetEntidadeNome(log);
-                                        var entIcon = GetEntidadeIcon(log.EntidadeAfetada);
+                                        var entHref = log.EntidadeAfetada switch
+                                        {
+                                            "Pessoa" when log.EntidadeId.HasValue => $"/pessoas/{log.EntidadeId}",
+                                            "Ambiente" when log.EntidadeId.HasValue => $"/ambientes/{log.EntidadeId}",
+                                            "Administrador" when log.EntidadeId.HasValue => $"/admins/{log.EntidadeId}",
+                                            "Camera" => $"/cameras",
+                                            "DispositivoT50" when log.EntidadeId.HasValue => $"/dispositivos/{log.EntidadeId}",
+                                            "AmbienteT50" when log.EntidadeId.HasValue => $"/ambientes/{log.EntidadeId}",
+                                            "Configuracao" => "/configuracoes",
+                                            _ => (string?)null
+                                        };
+                                        var entNome = log.EntidadeAfetada switch
+                                        {
+                                            "AmbienteT50" => "T50 Vinculado",
+                                            "Configuracao" => "Configurações",
+                                            "DispositivoT50" => "Dispositivo T50",
+                                            "Camera" => "Câmera",
+                                            _ => log.EntidadeAfetada
+                                        };
+                                        var entIcon = log.EntidadeAfetada switch
+                                        {
+                                            "Pessoa" => "user",
+                                            "Ambiente" => "building",
+                                            "Administrador" => "shield",
+                                            "Camera" => "camera",
+                                            "DispositivoT50" => "settings",
+                                            "AmbienteT50" => "link",
+                                            "Configuracao" => "sliders",
+                                            _ => "activity"
+                                        };
                                     }
-                                    @if (entHref != null)
-                                    {
-                                        <a href="@entHref" class="flex items-center gap-2 text-primary" style="text-decoration:none;cursor:pointer">
-                                            <Icon Name="@entIcon" Size="16" CssClass="text-muted" />
-                                            <span>@entNome</span>
-                                            <span class="text-xs text-muted">(@log.EntidadeAfetada)</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <span class="flex items-center gap-2 text-muted">
-                                            <Icon Name="@entIcon" Size="16" />
-                                            <span>@entNome</span>
-                                            <span class="text-xs">(@log.EntidadeAfetada)</span>
-                                        </span>
-                                    }
+                                    <span class="flex items-center gap-2">
+                                        <Icon Name="@entIcon" Size="16" CssClass="text-muted" />
+                                        @if (entHref != null) {
+                                            <a href="@entHref" class="text-primary" style="text-decoration:none">@entNome</a>
+                                        } else {
+                                            <span class="text-muted">@entNome</span>
+                                        }
+                                        @if (log.EntidadeId.HasValue) {
+                                            <span class="text-xs font-mono text-muted">(ID @log.EntidadeId)</span>
+                                        }
+                                    </span>
                                 </td>
                             </tr>
                         }
@@ -117,72 +135,10 @@
     private bool sortAsc = false;
     private List<LogAdmin> todosLogs = new();
 
-    private Dictionary<long, string> pessoasNome = new();
-    private Dictionary<int, string> ambientesNome = new();
-    private Dictionary<int, string> adminsNome = new();
-    private Dictionary<int, (string nome, int ambienteId)> camerasInfo = new();
-    private Dictionary<int, string> dispositivosNome = new();
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         todosLogs = LogRepo.ListarTodos();
-
-        pessoasNome = (await PessoaRepo.ListarTodos())
-            .ToDictionary(p => p.Id, p => p.Nome);
-        ambientesNome = AmbienteRepo.ListarTodosIncluindoExcluidos()
-            .ToDictionary(a => a.Id, a => a.Nome);
-        adminsNome = AdminRepo.ListarTodos()
-            .ToDictionary(a => a.Id, a => a.NomeCompleto);
-        var todasCams = await CameraRepo.ListarComFiltros(null, null);
-        camerasInfo = todasCams.ToDictionary(c => c.Id, c => (c.Nome, c.AmbienteId));
-        dispositivosNome = DispositivoRepo.ListarTodos()
-            .ToDictionary(d => d.Id, d => d.Nome);
     }
-
-    private string GetEntidadeNome(LogAdmin log)
-    {
-        if (!log.EntidadeId.HasValue) return log.EntidadeAfetada;
-        var id = log.EntidadeId.Value;
-        return log.EntidadeAfetada switch
-        {
-            "Pessoa" => pessoasNome.TryGetValue(id, out var n) ? n : $"Pessoa #{id}",
-            "Ambiente" => ambientesNome.TryGetValue(id, out var n) ? n : $"Ambiente #{id}",
-            "Administrador" => adminsNome.TryGetValue(id, out var n) ? n : $"Admin #{id}",
-            "Camera" => camerasInfo.TryGetValue(id, out var c) ? c.nome : $"Câmera #{id}",
-            "DispositivoT50" => dispositivosNome.TryGetValue(id, out var n) ? n : $"T50 #{id}",
-            "AmbienteT50" => ambientesNome.TryGetValue(id, out var n) ? n : $"Ambiente #{id}",
-            "Configuracao" => "Configurações do sistema",
-            _ => $"{log.EntidadeAfetada} #{id}"
-        };
-    }
-
-    private string? GetEntidadeHref(LogAdmin log)
-    {
-        var id = log.EntidadeId;
-        return log.EntidadeAfetada switch
-        {
-            "Pessoa" when id.HasValue && pessoasNome.ContainsKey(id.Value) => $"/pessoas/{id}",
-            "Ambiente" when id.HasValue && ambientesNome.ContainsKey(id.Value) => $"/ambientes/{id}",
-            "Administrador" when id.HasValue && adminsNome.ContainsKey(id.Value) => $"/admins/{id}",
-            "Camera" when id.HasValue && camerasInfo.TryGetValue(id.Value, out var c) => $"/cameras?ambienteId={c.ambienteId}",
-            "DispositivoT50" when id.HasValue && dispositivosNome.ContainsKey(id.Value) => $"/dispositivos/{id}",
-            "AmbienteT50" when id.HasValue && ambientesNome.ContainsKey(id.Value) => $"/ambientes/{id}",
-            "Configuracao" => "/configuracoes",
-            _ => null
-        };
-    }
-
-    private string GetEntidadeIcon(string entidade) => entidade switch
-    {
-        "Pessoa" => "user",
-        "Ambiente" => "map-pin",
-        "Administrador" => "shield",
-        "Camera" => "video",
-        "DispositivoT50" => "settings",
-        "AmbienteT50" => "settings",
-        "Configuracao" => "sliders",
-        _ => "file"
-    };
 
     private string[] Acoes => todosLogs.Select(l => l.Acao).Distinct().Order().ToArray();
     private string[] Entidades => todosLogs.Select(l => l.EntidadeAfetada).Distinct().Order().ToArray();
@@ -286,4 +242,3 @@
     private static string Slug(string s) =>
         new string((s ?? "").Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray()).ToLower();
 }
-

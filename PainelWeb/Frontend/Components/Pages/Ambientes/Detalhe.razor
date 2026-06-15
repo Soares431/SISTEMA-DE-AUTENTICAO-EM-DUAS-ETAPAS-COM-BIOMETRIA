@@ -94,7 +94,7 @@
                                             else { <span class="badge badge-success">Online</span> }
                                         </td>
                                         <td class="text-right">
-                                            <button class="btn btn-ghost btn-sm text-destructive" @onclick="() => ConfirmarRemoverT50(d.Id)" title="Desvincular este T50 do ambiente (remove as digitais que pertencem só a este ambiente)">
+                                            <button class="btn btn-ghost btn-sm" @onclick="() => ConfirmarRemoverT50(d.Id)" title="Desvincular este T50 do ambiente (remove as digitais que pertencem só a este ambiente)">
                                                 <Icon Name="trash" Size="14" />
                                             </button>
                                         </td>
@@ -418,7 +418,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => showConfirmRemoverT50 = 0">Cancelar</button>
-                <button class="btn btn-primary text-destructive" @onclick="HandleRemoverT50">Desvincular</button>
+                <button class="btn btn-primary" @onclick="HandleRemoverT50">Desvincular</button>
             </div>
         </div>
     </div>
@@ -449,7 +449,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }">Cancelar</button>
-                <button class="btn btn-primary text-destructive" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != ambiente.Nome || isExcluindo)">@(isExcluindo ? "Excluindo..." : "Excluir Permanentemente")</button>
+                <button class="btn btn-primary" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != ambiente.Nome || isExcluindo)">@(isExcluindo ? "Excluindo..." : "Excluir Permanentemente")</button>
             </div>
         </div>
     </div>
@@ -478,7 +478,7 @@
     private bool isAdicionandoT50 = false;
     private string? errAddT50 = null;
     private int novoT50ParaAdicionarId = 0;
-    private int showConfirmRemoverT50 = 0;
+    private int showConfirmRemoverT50 = 0; 
 
     private string buscaPessoa = "";
     private HashSet<long> pessoasSelecionadas = new();
@@ -599,32 +599,6 @@
         pessoas = AmbientePessoaRepo.ListarPessoasDoAmbiente(Id);
         cameras = await CameraRepo.ListarPorAmbiente(Id);
         AtualizarPessoasDisponiveis(await PessoaRepo.ListarTodos());
-    }
-
-    private async Task HandleRenomearAmbiente()
-    {
-        if (ambiente == null) return;
-        var novo = (nomeAmbienteEdit ?? "").Trim();
-        if (string.IsNullOrEmpty(novo)) { erroRenomear = "Nome obrigatório."; return; }
-        if (novo.Length > 100) { erroRenomear = "Nome excede 100 caracteres."; return; }
-        if (novo == ambiente.Nome) { erroRenomear = null; return; }
-
-        var existente = AmbienteRepo.ListarTodos().FirstOrDefault(a => a.Id != ambiente.Id && string.Equals(a.Nome, novo, StringComparison.OrdinalIgnoreCase));
-        if (existente != null) { erroRenomear = "Já existe outro ambiente com este nome."; return; }
-
-        isRenomeando = true;
-        erroRenomear = null;
-        StateHasChanged();
-        await Task.Yield();
-        try
-        {
-            ambiente.Nome = novo;
-            AmbienteRepo.Atualizar(ambiente);
-            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", ambiente.Id);
-            nomeAmbienteEdit = ambiente.Nome;
-        }
-        catch (Exception ex) { erroRenomear = ex.Message; }
-        finally { isRenomeando = false; }
     }
 
     private void AtualizarPessoasDisponiveis(List<Pessoa> todas)
@@ -856,5 +830,30 @@
             $"relatorio_ambiente_{Id}.pdf");
     }
 
-}
+    private async Task HandleRenomearAmbiente()
+    {
+        if (ambiente == null) return;
+        var novo = (nomeAmbienteEdit ?? "").Trim();
+        if (string.IsNullOrEmpty(novo)) { erroRenomear = "Nome obrigatório."; return; }
+        if (novo.Length > 100) { erroRenomear = "Nome excede 100 caracteres."; return; }
+        if (novo == ambiente.Nome) { erroRenomear = null; return; }
 
+        var existente = AmbienteRepo.ListarTodos().FirstOrDefault(a => a.Id != ambiente.Id && string.Equals(a.Nome, novo, StringComparison.OrdinalIgnoreCase));
+        if (existente != null) { erroRenomear = "Já existe outro ambiente com este nome."; return; }
+
+        isRenomeando = true;
+        erroRenomear = null;
+        StateHasChanged();
+        await Task.Yield();
+        try
+        {
+            ambiente.Nome = novo;
+            AmbienteRepo.Atualizar(ambiente);
+            LogRepo.Registrar(TokenStore.AdminId, "Atualizar", "Ambiente", ambiente.Id);
+            nomeAmbienteEdit = ambiente.Nome;
+        }
+        catch (Exception ex) { erroRenomear = ex.Message; }
+        finally { isRenomeando = false; }
+    }
+
+}

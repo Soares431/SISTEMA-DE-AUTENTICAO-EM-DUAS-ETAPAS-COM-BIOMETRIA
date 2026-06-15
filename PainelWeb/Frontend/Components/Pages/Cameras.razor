@@ -163,9 +163,16 @@
                 <div class="form-group">
                     <label class="form-label">Ambiente</label>
                     <select class="form-select" @bind="novoAmbienteId">
-                        @foreach (var a in ambientes)
+                        @if (ambientes.Any())
                         {
-                            <option value="@a.Id">@a.Nome</option>
+                            @foreach (var a in ambientes)
+                            {
+                                <option value="@a.Id">@a.Nome</option>
+                            }
+                        }
+                        else
+                        {
+                            <option value="0">Vazio</option>
                         }
                     </select>
                 </div>
@@ -198,9 +205,16 @@
                 <div class="form-group">
                     <label class="form-label">Ambiente</label>
                     <select class="form-select" @bind="editandoCamera.AmbienteId">
-                        @foreach (var a in ambientes)
+                        @if (ambientes.Any())
                         {
-                            <option value="@a.Id">@a.Nome</option>
+                            @foreach (var a in ambientes)
+                            {
+                                <option value="@a.Id">@a.Nome</option>
+                            }
+                        }
+                        else
+                        {
+                            <option value="0">Vazio</option>
                         }
                     </select>
                 </div>
@@ -248,24 +262,22 @@
 
     private async Task OpenLiveView(Camera cam)
     {
-
         if (previewsAtivos.Contains(cam.Id))
         {
             try { await JS.InvokeVoidAsync("pararHls", $"camPreview_{cam.Id}"); } catch { }
             previewsAtivos.Remove(cam.Id);
         }
         liveCamera = cam;
-        hlsAtivo = false;
+        hlsAtivo = false; 
     }
 
     private async Task FecharLiveView()
     {
         if (hlsAtivo)
         {
-            try { await JS.InvokeVoidAsync("pararHls", "liveVideo"); } catch { }
+            await JS.InvokeVoidAsync("pararHls", "liveVideo");
             hlsAtivo = false;
         }
-
         liveCamera = null;
     }
 
@@ -273,18 +285,16 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-
+        
         if (liveCamera != null && !string.IsNullOrEmpty(liveCamera.UrlHLS) && !hlsAtivo)
         {
             hlsAtivo = true;
             await JS.InvokeVoidAsync("iniciarHls", "liveVideo", liveCamera.UrlHLS);
         }
-
+        
         foreach (var cam in Filtered)
         {
-
             if (liveCamera != null && cam.Id == liveCamera.Id) continue;
-
             if (cam.Ativa && !string.IsNullOrEmpty(cam.UrlHLS) && !previewsAtivos.Contains(cam.Id))
             {
                 previewsAtivos.Add(cam.Id);
@@ -296,7 +306,6 @@
 
     public async ValueTask DisposeAsync()
     {
-
         if (hlsAtivo)
         {
             try { await JS.InvokeVoidAsync("pararHls", "liveVideo"); } catch { }
@@ -362,7 +371,6 @@
 
     private void AbrirEdicao(Camera cam)
     {
-
         editandoCamera = new Camera
         {
             Id = cam.Id,
@@ -385,4 +393,3 @@
         editandoCamera = null;
     }
 }
-

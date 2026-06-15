@@ -317,13 +317,7 @@ window.renderDashboardChart = function(canvasId, permitidosData, negadosData) {
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
-                    labels: {
-                        color: textMuted,
-                        usePointStyle: true,
-                        pointStyleWidth: 12,
-                        padding: 24,
-                        font: { size: 12, weight: '500' }
-                    }
+                    display: false
                 },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.97)',

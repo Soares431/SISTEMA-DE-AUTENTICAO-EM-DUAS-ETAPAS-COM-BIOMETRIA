@@ -1,62 +1,248 @@
+
 @page "/login"
 @layout LoginLayout
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
 @inject ITokenStore TokenStore
 @inject IJSRuntime JS
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+
+<style>
+
+    .switch-container {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+        margin-bottom: 1.25rem;
+        padding: 0.25rem 0;
+        cursor: pointer;
+    }
+
+    .switch-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--foreground);
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.2s ease;
+    }
+
+    .switch-input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
+    }
+
+    .switch-slider {
+        position: relative;
+        display: inline-block;
+        width: 2.5rem;
+        height: 1.375rem;
+        background-color: color-mix(in srgb, var(--border) 40%, transparent);
+        border: 1.5px solid var(--border);
+        border-radius: 1rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .switch-slider::before {
+        content: "";
+        position: absolute;
+        height: 0.875rem;
+        width: 0.875rem;
+        left: 0.18rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: #86877C;
+        border-radius: 50%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .switch-container:hover .switch-slider {
+        border-color: var(--primary);
+    }
+
+    .switch-input:checked + .switch-slider {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .switch-input:checked + .switch-slider::before {
+        transform: translateY(-50%) translateX(1.1rem);
+        background-color: var(--card);
+    }
+
+    .switch-input:focus-visible + .switch-slider {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+    }
+</style>
 
 <div class="login-page">
-    <div class="login-blob" style="top: 25%; left: 25%;"></div>
-    <div class="login-blob" style="bottom: 25%; right: 25%;"></div>
+    @if (isLoading)
+    {
+        <div class="loading-overlay">
+            <div class="spinner spinner-lg"></div>
+            <div class="loading-text">Logando...</div>
+        </div>
+    }
+    <div class="theme-toggle-wrapper">
+        <button type="button" class="btn btn-outline btn-icon theme-toggle-btn" @onclick="ToggleTheme" title="Alternar tema">
+            @if (isDarkTheme)
+            {
+                <Icon Name="sun" Size="18" />
+            }
+            else
+            {
+                <Icon Name="moon" Size="18" />
+            }
+        </button>
+        @if (showThemeTooltip)
+        {
+            <div class="theme-tooltip-bubble">
+                Modo Claro
+                <div class="theme-tooltip-arrow"></div>
+            </div>
+        }
+    </div>
+    <div class="login-blob login-blob-primary"></div>
+    <div class="login-blob login-blob-accent"></div>
 
     <div class="card login-card">
-        <div class="card-header" style="text-align: center;">
-            <div style="margin: 0 auto 1rem; width: 4rem; height: 4rem; border-radius: 0.75rem; background: color-mix(in srgb, var(--primary) 15%, transparent); display: flex; align-items: center; justify-content: center;">
+        <div class="card-header login-card-header">
+            <div class="login-logo-container">
                 <Icon Name="shield" Size="32" CssClass="text-primary" />
             </div>
             <h2 class="text-2xl font-bold">5° CTA</h2>
-            <p class="text-muted text-sm">Sistema de Controle de Acesso Biometrico</p>
+            <p class="text-muted text-sm">Sistema de Controle de Acesso</p>
         </div>
-        <div class="card-content">
+        <div class="card-content" style="position: relative;">
             <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
                 <div class="space-y-sm">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-warning" style="margin-bottom: 1rem;">
+                            <Icon Name="alert-triangle" Size="16" CssClass="text-warning" />
+                            <div>
+                                <p class="alert-desc">@errorMessage</p>
+                            </div>
+                        </div>
+                    }
                     <div class="form-group">
-                        <label class="form-label" for="email">Login</label>
-                        <input id="email" type="text" class="form-input" placeholder="admin"
-                               maxlength="40" @bind="loginModel.Email" required />
+                        <label class="form-label" for="login">Login</label>
+                        <input id="login" type="text" class="form-input" placeholder="Coloque seu login"
+                               @bind="loginModel.Email" required />
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="password">Senha</label>
-                        <div style="position: relative;">
-                            <input id="password" type="@(showPassword ? "text" : "password")" class="form-input"
-                                   placeholder="Digite sua senha" maxlength="64" @bind="loginModel.Password" required
-                                   style="padding-right: 2.5rem;" />
-                            <button type="button" class="btn btn-ghost btn-icon"
-                                    style="position: absolute; right: 0; top: 0; height: 100%;"
+                        <div class="password-input-container">
+                            <input id="password" type="@(showPassword ? "text" : "password")" class="form-input password-input"
+                                   placeholder="Digite sua senha" @bind="loginModel.Password" required />
+                            <button type="button" class="btn btn-ghost btn-icon password-toggle-btn"
                                     @onclick="TogglePassword">
                                 <Icon Name="@(showPassword ? "eye-off" : "eye")" Size="16" />
                             </button>
                         </div>
                     </div>
-                    @if (errorMessage != null)
-                    {
-                        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: color-mix(in srgb, var(--destructive) 10%, transparent); border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent); border-radius: var(--radius); color: var(--destructive); font-size: 0.875rem;">
-                            <Icon Name="x-circle" Size="16" /> @errorMessage
-                        </div>
-                    }
+                    <label class="switch-container">
+                        <input type="checkbox" @bind="permanecerLogado" class="switch-input" id="persist" />
+                        <span class="switch-slider"></span>
+                        <span class="switch-label">Permanecer logado?</span>
+                    </label>
                     <button type="submit" class="btn btn-primary btn-block" disabled="@isLoading">
                         @(isLoading ? "Entrando..." : "Entrar")
                     </button>
                 </div>
             </EditForm>
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <p class="text-xs text-muted">Acesso restrito a administradores autorizados</p>
+            <div class="login-footer-link-wrapper">
+                <button type="button" @onclick="MostrarModalEsqueciSenha" class="login-forgot-btn hover-underline">Esqueceu sua senha?</button>
+            </div>
+            <div class="login-footer-text">
+                <p class="text-xs text-muted">Acesso restrito</p>
             </div>
         </div>
     </div>
+
+    @if (exibirModalEsqueciSenha)
+    {
+        <div class="modal-overlay modal-overlay-flex">
+            <div class="modal modal-recovery">
+                <div class="modal-header">
+                    <h3>Recuperação de Senha</h3>
+                    <p>Instruções de segurança para administradores</p>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <Icon Name="shield" Size="18" CssClass="text-primary" />
+                        <div>
+                            <h4 class="alert-title">Acesso Restrito</h4>
+                            <p class="alert-desc">Por motivos de segurança nacional e controle de acesso militar do 5° CTA, não há fluxo automático de redefinição de senha via internet.</p>
+                        </div>
+                    </div>
+                    <div class="modal-recovery-body-content">
+                        <p style="margin-bottom: 0.75rem; font-weight: 500;">Para redefinir a sua senha de administrador, siga os passos abaixo:</p>
+                        <ol class="modal-recovery-list">
+                            <li>Entre em contato com outro <strong>Administrador</strong> cadastrado no sistema.</li>
+                            <li>Solicite que ele acesse o painel e navegue até a aba <strong>Administradores</strong>.</li>
+                            <li>Peça para ele selecionar o seu perfil e clicar em <strong>Editar / Redefinir Senha</strong>.</li>
+                        </ol>
+                        <p class="modal-recovery-warning">Caso seja o único administrador cadastrado, a redefinição só poderá ser feita via acesso direto e manual ao Banco de Dados do servidor.</p>
+                    </div>
+                </div>
+                <div class="modal-footer modal-recovery-footer">
+                    <button type="button" class="btn btn-primary" @onclick="FecharModalEsqueciSenha">Entendido</button>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
+    private bool exibirModalEsqueciSenha = false;
+    private bool isDarkTheme = true;
+    private bool permanecerLogado = false;
+    private bool showThemeTooltip = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var currentTheme = await JS.InvokeAsync<string>("window.themeManager.getTheme");
+            isDarkTheme = currentTheme == "dark";
+
+            if (isDarkTheme)
+            {
+                showThemeTooltip = true;
+                StateHasChanged();
+
+                _ = Task.Delay(3000).ContinueWith(_ =>
+                {
+                    showThemeTooltip = false;
+                    InvokeAsync(StateHasChanged);
+                });
+            }
+            else
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkTheme = !isDarkTheme;
+        showThemeTooltip = false; 
+        var newTheme = isDarkTheme ? "dark" : "light";
+        await JS.InvokeVoidAsync("window.themeManager.setTheme", newTheme);
+    }
+
+    private void MostrarModalEsqueciSenha() => exibirModalEsqueciSenha = true;
+    private void FecharModalEsqueciSenha() => exibirModalEsqueciSenha = false;
+
     private LoginModel loginModel = new();
     private bool showPassword = false;
     private bool isLoading = false;
@@ -69,15 +255,19 @@
         isLoading = true;
         errorMessage = null;
         StateHasChanged();
+        await Task.Yield(); 
 
         try
         {
             var client = HttpClientFactory.CreateClient("BancoAPI");
-            var response = await client.PostAsJsonAsync("api/auth/login", new
+            var responseTask = client.PostAsJsonAsync("api/auth/login", new
             {
                 Login = loginModel.Email,
                 Senha = loginModel.Password
             });
+
+            await Task.WhenAll(responseTask, Task.Delay(3000));
+            var response = responseTask.Result;
 
             if (response.IsSuccessStatusCode)
             {
@@ -120,4 +310,3 @@
         public string NomeCompleto { get; set; } = "";
     }
 }
-

@@ -31,7 +31,7 @@
         </div>
 
         <div class="grid grid-1-2" style="gap: 1.5rem;">
-
+            
             <div class="card">
                 <div class="card-content pt-6" style="text-align: center;">
                     <div class="avatar avatar-lg" style="margin: 0 auto 1rem;">@GetInitials(pessoa.Nome)</div>
@@ -80,6 +80,7 @@
                 </div>
             </div>
 
+            
             <div class="space-y">
                 <div class="tabs-list">
                     <button class="tab-trigger @(tab == "ambientes" ? "active" : "")" @onclick='() => tab = "ambientes"'>Ambientes com Acesso</button>
@@ -211,7 +212,7 @@
                 <p>Esta ação não pode ser desfeita</p>
             </div>
             <div class="modal-body space-y-sm">
-                <div class="alert alert-danger">Todos os dados de <strong>@pessoa.Nome</strong> serão removidos permanentemente, incluindo histórico de acessos e biometria.</div>
+                <div class="alert alert-danger">Atenção! Serão removidos permanentemente histórico de acessos e biometria.</div>
                 <div class="form-group">
                     <label class="form-label">Digite o nome exato para confirmar: <strong>@pessoa.Nome</strong></label>
                     <input class="form-input" @bind="nomeConfirmacaoExcluir" placeholder="@pessoa.Nome" />
@@ -220,7 +221,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" @onclick="() => { showConfirmExcluir = false; nomeConfirmacaoExcluir = string.Empty; erroExcluir = null; }" disabled="@isExcluindo">Cancelar</button>
-                <button class="btn btn-primary text-destructive" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != pessoa.Nome || isExcluindo)">
+                <button class="btn btn-primary" @onclick="HandleConfirmarExcluir" disabled="@(nomeConfirmacaoExcluir != pessoa.Nome || isExcluindo)">
                     @if (isExcluindo) { <span class="spinner"></span><span>Excluindo…</span> }
                     else { <span>Excluir Permanentemente</span> }
                 </button>
@@ -259,7 +260,7 @@
                 }
                 else
                 {
-                    <p>Mudar para <strong>Somente Senha</strong>. A pessoa só poderá acessar com ID+senha.</p>
+                    <p>Mudar para <strong>Somente Senha</strong>. A pessoa só poderá acessar with ID+senha.</p>
                     @if (pessoa.biometriaCadastrada != null)
                     {
                         <div class="alert alert-warning">A biometria atual será desativada. O template fica salvo pra re-ativação futura sem precisar recadastrar.</div>
@@ -411,6 +412,7 @@
     private string editEmail = "";
     private string editCargo = "";
 
+    
     private bool showAddAmbientes = false;
     private string addAmbienteBusca = "";
     private string addAmbienteSort = "nome_az";
@@ -437,6 +439,7 @@
         }
     }
 
+    
     private bool TodosAmbientesSelecionaveisMarcados
     {
         get
@@ -499,7 +502,8 @@
         await Task.Yield();
         try
         {
-
+            
+            
             if (pessoa.modoAcesso == "digital_e_senha")
             {
                 foreach (var ambId in ambientesSelecionados)
@@ -518,6 +522,7 @@
                 }
             }
 
+            
             foreach (var ambId in ambientesSelecionados.ToList())
             {
                 if (AmbientePessoaRepo.PessoaTemAcesso(ambId, pessoa.Id)) continue;
@@ -537,6 +542,7 @@
                         }
                     }
 
+                    
                     if (pessoa.templateBackup != null
                         && pessoa.templateBackup.Length > 0
                         && pessoa.biometriaCadastrada == null)
@@ -547,11 +553,13 @@
                 }
             }
 
+            
             if (pessoa.Status != "ativo")
             {
                 await PessoaRepo.AlterarStatus(pessoa.Id, true);
             }
 
+            
             pessoa = await PessoaRepo.BuscarPorId(Id);
             ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(Id);
             showAddAmbientes = false;
@@ -719,14 +727,13 @@
         if (pessoa == null || isExcluindo) return;
         erroExcluir = null;
         isExcluindo = true;
-
+        
         StateHasChanged();
         await Task.Yield();
         try
         {
-
+            
             var ambientesPessoa = AmbientePessoaRepo.ListarAmbientesDaPessoa(pessoa.Id);
-
             var t50sUnicos = ambientesPessoa
                 .SelectMany(a => AmbienteT50Repo.ListarT50sDoAmbiente(a.Id))
                 .Select(t => t.Id)
@@ -797,7 +804,6 @@
                 var t50s = AmbienteT50Repo.ListarT50sDoAmbiente(amb.Id);
                 foreach (var t50 in t50s)
                 {
-
                     if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id)) continue;
                     if (t50.DigitaisCadastradas >= 1000)
                         alterarModoT50sCheios.Add(t50.Nome);
@@ -852,14 +858,12 @@
                     if (PessoaT50Repo.EstaCadastrada(pessoa.Id, t50.Id))
                     {
                         PessoaT50Repo.Remover(pessoa.Id, t50.Id);
-
                         T50PendenciaRepo.Enfileirar("limpar_biometria", pessoa.Id, t50.Id);
                     }
                 }
 
                 pessoa.modoAcesso = "somente_senha";
                 pessoa.biometriaCadastrada = null;
-
                 await PessoaRepo.Atualizar(pessoa);
             }
 
@@ -877,15 +881,29 @@
     private async Task HandleConfirmarReset()
     {
         if (pessoa == null) return;
+        var tinhaBiometria = pessoa.biometriaCadastrada != null;
         pessoa.biometriaCadastrada = null;
         pessoa.templateBackup = null;
         await PessoaRepo.Atualizar(pessoa);
-
+        
+        
         try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
-
+        
+        
+        if (tinhaBiometria)
+        {
+            foreach (var amb in ambientesPessoa)
+            {
+                var dispositivo = DispositivoRepo.BuscarPorId(amb.DispositivoT50Id);
+                if (dispositivo != null && dispositivo.DigitaisCadastradas > 0)
+                {
+                    dispositivo.DigitaisCadastradas--;
+                    DispositivoRepo.Atualizar(dispositivo);
+                }
+            }
+        }
         LogRepo.Registrar(TokenStore.AdminId, "ResetBiometria", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
         showConfirmReset = false;
     }
 }
-
