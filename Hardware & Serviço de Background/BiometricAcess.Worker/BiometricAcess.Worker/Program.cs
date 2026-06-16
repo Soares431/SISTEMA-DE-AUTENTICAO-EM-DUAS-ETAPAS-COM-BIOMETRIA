@@ -37,17 +37,8 @@ builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
 builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
 builder.Services.AddScoped<IT50PendenciaRepository, T50PendenciaImplemetions>();
 
-// CameraService — consumido pelo EventProcessor T50M via IServiceScopeFactory
-// para associar gravações ONVIF a tentativas de acesso liberado (§5.11 doc técnica).
 builder.Services.AddScoped<CameraService>();
 
-// ═══════════════════════════════════════════════════════════════
-// T50M real (hardware Anviz) — único modo suportado em produção.
-//
-// IP/porta vêm das variáveis T50M_IP / T50M_PORTA (defaults: 192.168.0.218:5010).
-// AnvizConnector é Singleton — uma instância compartilhada por AnvizService
-// (que acessa connector.Device) e pelo Worker (que chama Conectar()).
-// ═══════════════════════════════════════════════════════════════
 var t50Ip = Environment.GetEnvironmentVariable("T50M_IP");
 if (string.IsNullOrWhiteSpace(t50Ip)) t50Ip = "192.168.0.218";
 var t50PortaStr = Environment.GetEnvironmentVariable("T50M_PORTA");
@@ -61,11 +52,9 @@ builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 
 builder.Services.AddHostedService<Worker>();
 
-// Sincroniza hora do T50M com o servidor diariamente.
 builder.Services.AddHostedService<TimeSyncWorker>();
 
-// Consome a fila T50Pendencia (cadastros/remoções enfileiradas pelo Frontend) e executa
-// via Anviz SDK no hardware. §5.2 doc técnica.
+
 builder.Services.AddHostedService<SincronizadorT50Worker>();
 
 var host = builder.Build();
