@@ -49,12 +49,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Jobs
                 }
                 _context.PessoasT50.RemoveRange(vinculosT50);
 
-                if (usuario.SlotAs608 != null)
-                {
-                    usuario.SlotAs608ParaApagar = usuario.SlotAs608;
-                    usuario.SlotAs608 = null;
-                }
-
                 _logger.LogInformation("Usuário {id} inativado por inatividade ({count} ambientes, {t50} T50s removidos).",
                     usuario.Id, vinculos.Count, vinculosT50.Count);
             }

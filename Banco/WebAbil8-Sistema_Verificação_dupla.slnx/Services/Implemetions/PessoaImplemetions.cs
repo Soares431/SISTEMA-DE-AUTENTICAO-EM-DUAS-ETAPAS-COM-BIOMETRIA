@@ -125,57 +125,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services.Implemetions
                 await _context.SaveChangesAsync();
                 return pessoa;
             }
-
-            public async Task<int?> AlocarSlotAs608Livre()
-            {
-                var ocupados = await _context.Pessoas
-                    .Where(p => p.SlotAs608 != null)
-                    .Select(p => p.SlotAs608!.Value)
-                    .ToListAsync();
-                var setOcupados = new HashSet<int>(ocupados);
-                for (int s = 1; s <= 127; s++)
-                {
-                    if (!setOcupados.Contains(s)) return s;
-                }
-                return null;
-            }
-
-            public async Task DefinirSlotAs608(long pessoaId, int slot)
-            {
-                var pessoa = await _context.Pessoas.FindAsync(pessoaId);
-                if (pessoa == null) throw new ArgumentNullException("Usuário inexistente.");
-                pessoa.SlotAs608 = slot;
-                await _context.SaveChangesAsync();
-            }
-
-            public async Task EnfileirarSlotParaApagar(long pessoaId)
-            {
-                var pessoa = await _context.Pessoas.FindAsync(pessoaId);
-                if (pessoa == null) throw new ArgumentNullException("Usuário inexistente.");
-
-                if (pessoa.SlotAs608 != null)
-                {
-                    pessoa.SlotAs608ParaApagar = pessoa.SlotAs608;
-                    pessoa.SlotAs608 = null;
-                    await _context.SaveChangesAsync();
-                }
-            }
-
-            public async Task<List<Pessoa>> ListarSlotsPendentesApagar()
-            {
-                return await _context.Pessoas
-                    .Where(p => p.SlotAs608ParaApagar != null)
-                    .ToListAsync();
-            }
-
-            public async Task LimparSlotPendenteApagar(long pessoaId)
-            {
-                var pessoa = await _context.Pessoas.FindAsync(pessoaId);
-                if (pessoa == null) return;
-                pessoa.SlotAs608ParaApagar = null;
-                await _context.SaveChangesAsync();
-            }
-
         }
 
     }

@@ -10,7 +10,6 @@
 @inject IDispositivoT50Repository DispositivoRepo
 @inject ICodigoRepository CodigoRepo
 @inject ISenhaRepository SenhaRepo
-@inject ISlotAs608OrfaoRepository SlotOrfaoRepo
 @inject ILogAdminRepository LogRepo
 @inject ITokenStore TokenStore
 @inject NavigationManager Nav
@@ -662,7 +661,6 @@
         if (ambientesPessoa.Count == 0 && pessoa.Status == "ativo")
         {
             await PessoaRepo.AlterarStatus(pessoa.Id, false);
-            try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
             pessoa.Status = "inativo";
         }
     }
@@ -704,7 +702,6 @@
         }
 
         await PessoaRepo.AlterarStatus(pessoa.Id, false);
-        try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
 
         LogRepo.Registrar(TokenStore.AdminId, "Inativacao", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);
@@ -762,12 +759,6 @@
             }
             catch {  }
 
-            if (pessoa.SlotAs608 != null)
-            {
-                try { await SlotOrfaoRepo.Adicionar(pessoa.SlotAs608.Value); }
-                catch {  }
-            }
-
             LogRepo.Registrar(TokenStore.AdminId, "Remocao", "Pessoa", (int)pessoa.Id);
             await PessoaRepo.Remover(pessoa.Id);
             Nav.NavigateTo("/pessoas");
@@ -787,8 +778,7 @@
         if (pessoa == null) return;
         erroAlterarModo = null;
 
-        alterarModoTemplateExiste = (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0)
-            || pessoa.SlotAs608 != null;
+        alterarModoTemplateExiste = (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0);
         alterarModoT50sCheios = new List<string>();
         if (pessoa.modoAcesso != "digital_e_senha")
         {
@@ -839,8 +829,7 @@
                         T50PendenciaRepo.Enfileirar("adicionar", pessoa.Id, t50.Id);
                 }
 
-                var jaTinha = (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0)
-                    || pessoa.SlotAs608 != null;
+                var jaTinha = (pessoa.templateBackup != null && pessoa.templateBackup.Length > 0);
                 pessoa.modoAcesso = "digital_e_senha";
                 if (jaTinha) pessoa.biometriaCadastrada = DateTime.UtcNow;
                 await PessoaRepo.Atualizar(pessoa);
@@ -880,8 +869,6 @@
         pessoa.biometriaCadastrada = null;
         pessoa.templateBackup = null;
         await PessoaRepo.Atualizar(pessoa);
-
-        try { await PessoaRepo.EnfileirarSlotParaApagar(pessoa.Id); } catch {  }
 
         LogRepo.Registrar(TokenStore.AdminId, "ResetBiometria", "Pessoa", (int)pessoa.Id);
         pessoa = await PessoaRepo.BuscarPorId(Id);

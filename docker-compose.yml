@@ -3,7 +3,7 @@
 # ═══════════════════════════════════════════════════════════════
 # - int1: API REST (.NET 8) — porta 5018
 # - int3: Frontend Blazor — porta 8080
-# - worker: serviço de background (modo simulador)
+# - worker: serviço de background (polling do T50M)
 #
 # Todos compartilham o mesmo arquivo banco.db via volume `db-data`.
 # Subir tudo:    docker compose up -d --build
@@ -83,6 +83,10 @@ services:
       - DOTNET_ENVIRONMENT=Production
       - CAMERA_BASE_PATH=/var/cameras
       - FFMPEG_PATH=ffmpeg
+      # T50M — IP/porta do terminal Anviz. Lidos do .env ao lado do compose.
+      # Sem isso, usa default 192.168.0.218:5010.
+      - T50M_IP=${T50M_IP:-192.168.0.218}
+      - T50M_PORTA=${T50M_PORTA:-5010}
     depends_on:
       int1:
         condition: service_started

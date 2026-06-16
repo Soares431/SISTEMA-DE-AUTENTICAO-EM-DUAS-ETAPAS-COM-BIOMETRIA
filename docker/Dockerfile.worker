@@ -1,10 +1,8 @@
 # ═══════════════════════════════════════════════════════════════
 # Dockerfile do Worker (Int2) — Hardware Service
 # ═══════════════════════════════════════════════════════════════
-# Atenção: containers Linux NÃO enxergam portas COM/Serial do Windows.
-# Esta imagem só serve pra rodar o Worker em modo SIMULADOR (OPÇÃO 1B
-# no Program.cs). Pra hardware real (Arduino COM3 ou T50M Anviz),
-# rode o Worker nativo no host Windows — não dentro do Docker.
+# Worker faz polling TCP/IP no T50M (porta 5010) — o container precisa
+# de rota até o IP do dispositivo na rede do cliente.
 # ═══════════════════════════════════════════════════════════════
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build

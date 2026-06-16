@@ -71,18 +71,6 @@ public static class FormatHelper
         return true;
     }
 
-    public static bool PortaSerialValida(string? porta)
-    {
-        if (string.IsNullOrWhiteSpace(porta)) return false;
-        var p = porta.Trim().ToUpperInvariant();
-        if (!p.StartsWith("COM")) return false;
-        var num = p.Substring(3);
-        if (num.Length == 0 || num.Length > 3) return false;
-        if (!num.All(char.IsDigit)) return false;
-        return int.TryParse(num, out var n) && n >= 1 && n <= 256;
-    }
-
-    public static bool EnderecoT50Valido(string? endereco, bool aceitaSerial = true) =>
-        IpValido(endereco) || (aceitaSerial && PortaSerialValida(endereco));
+    public static bool EnderecoT50Valido(string? endereco) => IpValido(endereco);
 }
 

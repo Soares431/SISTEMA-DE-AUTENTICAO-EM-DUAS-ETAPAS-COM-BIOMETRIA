@@ -20,6 +20,10 @@ namespace BiometricAcess.Worker.Services
 
         public string EnderecoIdentificador => _ip;
 
+        // Exposto pra que AnvizService (Singleton compartilhado) acesse o mesmo device.
+        // Worker.cs chama Conectar() no startup do polling — antes disso, fica null.
+        public AnvizDevice? Device => _device;
+
         public bool Conectar()
         {
             try

@@ -11,10 +11,9 @@ Sistema de controle de acesso com autenticação em duas etapas: senha numérica
 ```
 /
 ├── Banco/                          # Banco de dados, modelos e repositórios
-├── Hardware & Serviço de Background/  # Worker Service — comunicação com hardware
+├── Hardware & Serviço de Background/  # Worker Service — comunicação com o T50M
 ├── PainelWeb/                      # Painel administrativo Blazor
-├── InfraestruturaBloco1/           # Integrações e infraestrutura
-└── Arduino/                        # Hardware customizado para apresentação
+└── InfraestruturaBloco1/           # Integrações e infraestrutura (FFmpeg, MailKit)
 ```
 
 ---
@@ -26,8 +25,7 @@ Sistema de controle de acesso com autenticação em duas etapas: senha numérica
 | Back-end | C# .NET 8, Worker Service |
 | Banco de dados | SQLite + Entity Framework Core 8 |
 | Front-end | Blazor Server |
-| Hardware real | Anviz T50M (SDK OAE, porta 5010) |
-| Hardware apresentação | Arduino Uno + LCD I2C + Keypad 4x4 + AS608 |
+| Hardware | Anviz T50M (SDK OAE, porta 5010) |
 | Integrações | MailKit, BCrypt.Net, FFmpeg |
 
 ---
@@ -37,7 +35,7 @@ Sistema de controle de acesso com autenticação em duas etapas: senha numérica
 | Integrante | Módulo | Responsabilidade |
 |---|---|---|
 | Integrante 1 | Banco | EF Core, SQLite, repositórios |
-| Integrante 2 | Hardware & Worker | Anviz SDK, Worker Service, Arduino |
+| Integrante 2 | Hardware & Worker | Anviz SDK, Worker Service |
 | Integrante 3 | Painel Web | Blazor Server, interface administrativa |
 | Integrante 4 | Infraestrutura | FFmpeg, MailKit, BCrypt, Hangfire |
 
@@ -57,7 +55,6 @@ Sistema de controle de acesso com autenticação em duas etapas: senha numérica
 Cada módulo tem seu próprio README com instruções detalhadas. Consulte:
 
 - `Hardware & Serviço de Background/README.md` — Worker Service e hardware
-- `Arduino/README.md` — Simulação com hardware customizado
 
 ---
 

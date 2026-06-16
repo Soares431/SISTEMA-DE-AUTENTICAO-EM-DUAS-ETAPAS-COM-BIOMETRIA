@@ -16,55 +16,13 @@ BiometricAcess.Worker/
 │   ├── IAnvizService.cs
 │   ├── AnvizService.cs
 │   ├── IEventProcessor.cs
-│   └── EventProcessor.cs
-├── Simulador/                   # Dados mockados — sem hardware
-│   ├── AnvizConnectorSimulador.cs
-│   ├── AnvizServiceSimulador.cs
-│   └── EventProcessorSimulador.cs
-├── HardwareNosso/               # Arduino customizado
-│   ├── Arduino/
-│   │   └── Arduino_Real.ino    # Código para o Arduino físico
-│   ├── Simulador/
-│   │   └── EventProcessorArduinoSimulador.cs
-│   ├── ArduinoConnector.cs
-│   ├── ArduinoService.cs
-│   ├── ArduinoServiceExtras.cs
-│   ├── EventProcessorArduino.cs
-│   ├── IAnvizArduinoService.cs
-│   └── SerialProtocol.cs
+│   ├── EventProcessor.cs
+│   ├── SincronizadorT50Worker.cs
+│   ├── TimeSyncWorker.cs
+│   ├── ILogService.cs
+│   └── LogService.cs
 ├── Worker.cs
 └── Program.cs
-```
-
----
-
-## Como Trocar de Modo
-
-Tudo é controlado pelo `Program.cs`. Apenas uma opção deve estar ativa por vez.
-
-```csharp
-// ── OPÇÃO 1 — Simulador falso (padrão, sem hardware) ──────────────
-builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
-builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
-
-// ── OPÇÃO 2 — Nosso Arduino (hardware físico) ──────────────────────
-// Ajuste a porta COM antes de ativar
-//var arduinoConnector = new ArduinoConnector(porta: "COM3");
-//builder.Services.AddSingleton<IAnvizConnector>(arduinoConnector);
-//builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
-//builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
-
-// OPÇÃO 2A — banco vazio / dados mockados
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorArduinoSimulador>();
-
-// OPÇÃO 2B — banco real
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
-
-// ── OPÇÃO 3 — T50M real (hardware Anviz) ──────────────────────────
-//builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();
-//builder.Services.AddSingleton<IAnvizService, AnvizService>();
-//builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 ```
 
 ---
@@ -110,19 +68,6 @@ builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
 | 3 | Timeout de reconexão TCP de 20s definido no SDK | `Worker.cs + AnvizConnector.cs` | Monitorar logs de DeviceError em produção |
 
 Confiança geral de funcionamento com hardware real: ~80%
-
----
-
-## Como Usar o Arduino Real
-
-1. Suba o `HardwareNosso/Arduino/Arduino_Real.ino` para o Arduino Uno pelo Arduino IDE
-2. Verifique a porta COM no Gerenciador de Dispositivos do Windows
-3. No `Program.cs` descomente a OPÇÃO 2 e ajuste a porta:
-   ```csharp
-   var arduinoConnector = new ArduinoConnector(porta: "COM3"); // ajuste aqui
-   ```
-4. Escolha entre OPÇÃO 2A (mockado) ou OPÇÃO 2B (banco real)
-5. Rode o Worker
 
 ---
 

@@ -48,7 +48,6 @@ builder.Services.AddHangfireServer();
 
 builder.Services.AddDataBaseConfiguration(builder.Configuration);
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
-builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
 builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
 builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
@@ -319,24 +318,6 @@ using (var scope = app.Services.CreateScope())
         createCmd.ExecuteNonQuery();
     }
 
-    bool slotOrfaoExiste;
-    using (var checkCmd = conn.CreateCommand())
-    {
-        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='SlotAs608Orfao'";
-        slotOrfaoExiste = checkCmd.ExecuteScalar() != null;
-    }
-    if (!slotOrfaoExiste)
-    {
-        using var createCmd = conn.CreateCommand();
-        createCmd.CommandText = @"
-            CREATE TABLE SlotAs608Orfao (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                slot     INTEGER NOT NULL,
-                criadoEm TEXT NOT NULL
-            )";
-        createCmd.ExecuteNonQuery();
-    }
-
     bool codigoTabelaExiste;
     using (var checkCmd = conn.CreateCommand())
     {
@@ -366,20 +347,6 @@ using (var scope = app.Services.CreateScope())
     {
         using var alterCmd = conn.CreateCommand();
         alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN codigoUsuario VARCHAR(6) NULL";
-        alterCmd.ExecuteNonQuery();
-    }
-
-    if (!pessoaColsExistentes.Contains("slotAs608"))
-    {
-        using var alterCmd = conn.CreateCommand();
-        alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN slotAs608 INTEGER NULL";
-        alterCmd.ExecuteNonQuery();
-    }
-
-    if (!pessoaColsExistentes.Contains("slotAs608ParaApagar"))
-    {
-        using var alterCmd = conn.CreateCommand();
-        alterCmd.CommandText = "ALTER TABLE pessoa ADD COLUMN slotAs608ParaApagar INTEGER NULL";
         alterCmd.ExecuteNonQuery();
     }
 

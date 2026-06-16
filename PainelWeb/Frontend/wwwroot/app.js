@@ -162,23 +162,12 @@ window.maskIp = function(el) {
     el.value  = parts.join('.');
 };
 
-// Endereço T50: aceita IP (192.168.0.x) OU porta serial Arduino (COM1..COM256).
-// Detecta pelo primeiro char: letra → modo COM (auto-uppercase), dígito → modo IP.
+// Endereço T50: IP do dispositivo na rede (formato 192.168.0.x).
 window.maskEnderecoT50 = function(el) {
     var v = (el.value || '');
-    var first = v.replace(/\s/g, '').charAt(0);
-    if (first && /[a-zA-Z]/.test(first)) {
-        // Modo serial: "COM" + até 3 dígitos
-        var up = v.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (up.length > 3) up = 'COM' + up.replace(/[^0-9]/g, '').slice(0, 3);
-        else if (up.length > 0 && !'COM'.startsWith(up)) up = 'COM';
-        el.value = up.slice(0, 6);
-    } else {
-        // Modo IP: 4 octetos de até 3 dígitos
-        var raw   = v.replace(/[^\d.]/g, '').replace(/\.+/g, '.');
-        var parts = raw.split('.').slice(0, 4).map(function(p) { return p.slice(0, 3); });
-        el.value  = parts.join('.');
-    }
+    var raw   = v.replace(/[^\d.]/g, '').replace(/\.+/g, '.');
+    var parts = raw.split('.').slice(0, 4).map(function(p) { return p.slice(0, 3); });
+    el.value  = parts.join('.');
 };
 
 window.downloadCsv = function(filename, csvContent) {

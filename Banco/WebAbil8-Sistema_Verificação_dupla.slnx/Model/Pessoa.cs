@@ -70,12 +70,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Model
         [Required]
         [Column("dataCadastro", TypeName = "DATETIME")]
         public DateTime? dataCadastro { get; set; }
-
-        [Column("slotAs608")]
-        public int? SlotAs608 { get; set; }
-
-        [Column("slotAs608ParaApagar")]
-        public int? SlotAs608ParaApagar { get; set; }
     }
 }
 

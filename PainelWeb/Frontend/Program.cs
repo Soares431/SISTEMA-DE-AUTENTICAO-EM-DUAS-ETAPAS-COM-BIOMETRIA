@@ -24,7 +24,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddSingleton(new Frontend.Data.Services.BackupBancoService(dbPath));
 
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
-builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
 builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
 builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<ITentativaAcessoRepository, TentativaAcessoImplemetions>();

@@ -149,8 +149,6 @@ O Worker, em `Hardware & Serviço de Background/BiometricAcess.Worker/`, tem dep
 
 **Microsoft.Extensions.Hosting 8.0.1** e **Microsoft.Extensions.Hosting.WindowsServices 8.0.1** fornecem a infraestrutura de hospedagem para serviços em background. O Worker herda de `BackgroundService` da `Microsoft.Extensions.Hosting`, o que dá um ciclo de vida gerenciado — startup, execução em loop, graceful shutdown — e integração natural com o sistema de injeção de dependências do .NET. A variante `.WindowsServices` permite, com um `UseWindowsService()` no `Program.cs`, que o mesmo executável seja instalado como serviço do Windows com restart automático em caso de falha. No Linux, a integração equivalente é com systemd via arquivo de unidade.
 
-**System.IO.Ports 9.0.0** é referenciada mas só é necessária quando o Worker opera no modo demonstrativo Arduino, que não é parte da entrega ao cliente final. Em produção, permanece como dependência transitiva sem uso ativo.
-
 ### 2.4 Bibliotecas da infraestrutura (Int4)
 
 O projeto Int4, em `InfraestruturaBloco1/`, é uma biblioteca compartilhada (não um serviço) que reúne dois serviços auxiliares.

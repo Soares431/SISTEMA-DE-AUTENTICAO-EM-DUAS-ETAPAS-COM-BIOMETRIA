@@ -16,16 +16,6 @@ namespace WebAbil8_Sistema_Verificação_dupla.slnx.Services
         Task<Pessoa> SalvarTemplate(long pessoaId, byte[] template);
         Task<Pessoa> AtualizarUltimoAcesso(long pessoaId);
         Task<Pessoa> AtualizarSenha(long pessoaId, string novaSenhaClear, string novoSenhaHash);
-
-        Task<int?> AlocarSlotAs608Livre();
-
-        Task DefinirSlotAs608(long pessoaId, int slot);
-
-        Task EnfileirarSlotParaApagar(long pessoaId);
-
-        Task<List<Pessoa>> ListarSlotsPendentesApagar();
-
-        Task LimparSlotPendenteApagar(long pessoaId);
     }
 }
 

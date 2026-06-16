@@ -1,4 +1,3 @@
-﻿using Anviz.SDK;
 using Anviz.SDK.Responses;
 using Anviz.SDK.Utils;
 
@@ -6,25 +5,26 @@ namespace BiometricAcess.Worker.Services
 {
     public class AnvizService : IAnvizService
     {
-        private readonly AnvizDevice _device;
+        private readonly AnvizConnector _connector;
 
-        public AnvizService(AnvizDevice device)
+        public AnvizService(AnvizConnector connector)
         {
-            _device = device;
+            _connector = connector;
         }
 
         public bool AdicionarPessoa(int id, string nome, string senha)
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.AdicionarPessoa: dispositivo ainda não conectado."); return false; }
             try
             {
                 var userInfo = new UserInfo((ulong)id, nome);
-                // DEPOIS
                 // ATENÇÃO: O T50M usa formato especial de 3 bytes para senha.
                 // O SDK .NET (Anviz.SDK NuGet) pode ou não fazer essa conversão internamente.
                 // Formato nativo: bits 23-20 = comprimento da senha, bits 19-0 = valor numérico.
                 // Se a autenticação por senha falhar com hardware real, investigar aqui primeiro.
                 userInfo.Password = ulong.Parse(senha);
-                _device.SetEmployeesData(userInfo).Wait();
+                device.SetEmployeesData(userInfo).Wait();
                 return true;
             }
             catch (Exception ex)
@@ -36,9 +36,11 @@ namespace BiometricAcess.Worker.Services
 
         public bool RemoverPessoa(int id)
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.RemoverPessoa: dispositivo ainda não conectado."); return false; }
             try
             {
-                _device.DeleteEmployeesData((ulong)id).Wait();
+                device.DeleteEmployeesData((ulong)id).Wait();
                 return true;
             }
             catch (Exception ex)
@@ -50,9 +52,11 @@ namespace BiometricAcess.Worker.Services
 
         public bool UploadTemplate(int id, byte[] template)
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.UploadTemplate: dispositivo ainda não conectado."); return false; }
             try
             {
-                _device.SetFingerprintTemplate((ulong)id, Finger.RightIndex, template).Wait();
+                device.SetFingerprintTemplate((ulong)id, Finger.RightIndex, template).Wait();
                 return true;
             }
             catch (Exception ex)
@@ -64,9 +68,11 @@ namespace BiometricAcess.Worker.Services
 
         public byte[]? DownloadTemplate(int id)
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.DownloadTemplate: dispositivo ainda não conectado."); return null; }
             try
             {
-                var result = _device.GetFingerprintTemplate((ulong)id, Finger.RightIndex).Result;
+                var result = device.GetFingerprintTemplate((ulong)id, Finger.RightIndex).Result;
                 return result;
             }
             catch (Exception ex)
@@ -78,10 +84,12 @@ namespace BiometricAcess.Worker.Services
 
         public byte[]? IniciarCapturaDigital(int id)
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.IniciarCapturaDigital: dispositivo ainda não conectado."); return null; }
             try
             {
                 // EnrollFingerprint bloqueia até o usuário colocar o dedo 2x (verifyCount=2) e retorna o template diretamente
-                return _device.EnrollFingerprint((ulong)id).Result;
+                return device.EnrollFingerprint((ulong)id).Result;
             }
             catch (Exception ex)
             {
@@ -92,6 +100,8 @@ namespace BiometricAcess.Worker.Services
 
         public bool AlterarModo(int id, string modo)
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.AlterarModo: dispositivo ainda não conectado."); return false; }
             try
             {
                 var userInfo = new UserInfo((ulong)id, string.Empty);
@@ -109,7 +119,7 @@ namespace BiometricAcess.Worker.Services
                 {
                     userInfo.Mode = 4;
                 }
-                _device.SetEmployeesData(userInfo).Wait();
+                device.SetEmployeesData(userInfo).Wait();
                 return true;
             }
             catch (Exception ex)
@@ -121,9 +131,11 @@ namespace BiometricAcess.Worker.Services
 
         public bool SincronizarHora()
         {
+            var device = _connector.Device;
+            if (device == null) { Console.WriteLine("AnvizService.SincronizarHora: dispositivo ainda não conectado."); return false; }
             try
             {
-                _device.SetDateTime(DateTime.Now).Wait();
+                device.SetDateTime(DateTime.Now).Wait();
                 return true;
             }
             catch (Exception ex)

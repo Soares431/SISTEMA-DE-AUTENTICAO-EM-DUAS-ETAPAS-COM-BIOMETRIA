@@ -1,8 +1,5 @@
 using BiometricAcess.Worker;
 using BiometricAcess.Worker.Services;
-using BiometricAcess.Worker.Simulador;
-using BiometricAcess.Worker.HardwareNosso;
-using BiometricAcess.Worker.HardwareNosso.Simulador;
 using InfraestruturaBloco1.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -29,7 +26,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
 builder.Services.AddScoped<IPessoaRepository, PessoaImplemetions>();
-builder.Services.AddScoped<ISlotAs608OrfaoRepository, SlotAs608OrfaoImplemetions>();
 builder.Services.AddScoped<IAmbienteRepository, AmbienteImplementions>();
 builder.Services.AddScoped<IAmbientePessoaRepository, AmbientePessoaImplemetions>();
 builder.Services.AddScoped<IDispositivoT50Repository, DispositivoT50Implemetions>();
@@ -41,66 +37,36 @@ builder.Services.AddScoped<IAmbienteT50Repository, AmbienteT50Implemetions>();
 builder.Services.AddScoped<IPessoaT50Repository, PessoaT50Implemetions>();
 builder.Services.AddScoped<IT50PendenciaRepository, T50PendenciaImplemetions>();
 
-// CameraService — consumido pelos EventProcessors reais (Arduino + T50M) via IServiceScopeFactory
+// CameraService — consumido pelo EventProcessor T50M via IServiceScopeFactory
 // para associar gravações ONVIF a tentativas de acesso liberado (§5.11 doc técnica).
 builder.Services.AddScoped<CameraService>();
 
 // ═══════════════════════════════════════════════════════════════
-// OPÇÃO 1 — Simulador falso (sem banco, apenas console)
+// T50M real (hardware Anviz) — único modo suportado em produção.
+//
+// IP/porta vêm das variáveis T50M_IP / T50M_PORTA (defaults: 192.168.0.218:5010).
+// AnvizConnector é Singleton — uma instância compartilhada por AnvizService
+// (que acessa connector.Device) e pelo Worker (que chama Conectar()).
 // ═══════════════════════════════════════════════════════════════
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorSimulador>();
+var t50Ip = Environment.GetEnvironmentVariable("T50M_IP");
+if (string.IsNullOrWhiteSpace(t50Ip)) t50Ip = "192.168.0.218";
+var t50PortaStr = Environment.GetEnvironmentVariable("T50M_PORTA");
+if (!int.TryParse(t50PortaStr, out var t50Porta) || t50Porta < 1 || t50Porta > 65535) t50Porta = 5010;
+Console.WriteLine($"[INT2 T50M] {t50Ip}:{t50Porta}");
 
-// ═══════════════════════════════════════════════════════════════
-// OPÇÃO 1B — Simulador com banco real (padrão para demonstração)
-// Grava TentativasAcesso no SQLite — o painel exibe os dados em tempo real
-// Requer pelo menos um Ambiente cadastrado no painel
-// ═══════════════════════════════════════════════════════════════
-//builder.Services.AddSingleton<IAnvizConnector, AnvizConnectorSimulador>();
-//builder.Services.AddSingleton<IAnvizService, AnvizServiceSimulador>();
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorSimuladorBanco>();
-
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
-// OPÇÃO 2 — Nosso Arduino (hardware físico)
-// Antes de ativar: ajuste a porta COM no ArduinoConnector
-// ═══════════════════════════════════════════════════════════════
-
-var arduinoConnector = new ArduinoConnector(porta: "COM5"); // ← ajuste a porta (USB-SERIAL CH340 = Arduino)
-builder.Services.AddSingleton<IAnvizConnector>(sp =>
-{
-    arduinoConnector.ScopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-    return arduinoConnector;
-});
-builder.Services.AddSingleton<IAnvizService>(new ArduinoService(arduinoConnector));
-builder.Services.AddSingleton<IAnvizArduinoService>(new ArduinoServiceExtras(arduinoConnector));
-
-// OPÇÃO 2A — banco vazio / dados mockados
-//builder.Services.AddSingleton<IEventProcessor, EventProcessorArduinoSimulador>();
-
-// OPÇÃO 2B — banco real
-builder.Services.AddSingleton<IEventProcessor, EventProcessorArduino>();
-
-// ═══════════════════════════════════════════════════════════════
-
-// OPÇÃO 3 — T50M real (hardware Anviz)
-//builder.Services.AddSingleton<IAnvizConnector, AnvizConnector>();
-//builder.Services.AddSingleton<IAnvizService, AnvizService>();
-//builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
-
-// ═══════════════════════════════════════════
+builder.Services.AddSingleton<AnvizConnector>(_ => new AnvizConnector(t50Ip, t50Porta));
+builder.Services.AddSingleton<IAnvizConnector>(sp => sp.GetRequiredService<AnvizConnector>());
+builder.Services.AddSingleton<IAnvizService>(sp => new AnvizService(sp.GetRequiredService<AnvizConnector>()));
+builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 
 builder.Services.AddHostedService<Worker>();
 
-// Sincroniza hora do T50M com o servidor diariamente (no-op no simulador).
+// Sincroniza hora do T50M com o servidor diariamente.
 builder.Services.AddHostedService<TimeSyncWorker>();
 
 // Consome a fila T50Pendencia (cadastros/remoções enfileiradas pelo Frontend) e executa
 // via Anviz SDK no hardware. §5.2 doc técnica.
 builder.Services.AddHostedService<SincronizadorT50Worker>();
-
-// Drena fila de slots a apagar no AS608 (Pessoa.SlotAs608ParaApagar). Idle quando
-// IAnvizArduinoService não está registrado (modos simulador/T50M).
-builder.Services.AddHostedService<SincronizadorAs608Worker>();
 
 var host = builder.Build();
 
