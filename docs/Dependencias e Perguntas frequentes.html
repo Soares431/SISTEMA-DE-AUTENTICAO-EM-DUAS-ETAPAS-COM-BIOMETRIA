@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Respostas Técnicas — Sistema de Controle de Acesso 5º CTA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --primary: #10b981; --primary-dark: #059669;
+  --foreground: #0f172a; --muted-foreground: #64748b;
+  --destructive: #ef4444; --success: #10b981; --warning: #f59e0b; --info: #3b82f6;
+  --border: #e2e8f0; --sidebar-bg: #f8fafc; --bg: #fafbfc; --card: #ffffff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--foreground); line-height: 1.75; }
+.doc { max-width: 980px; margin: 0 auto; padding: 48px 32px 96px; }
+
+.cover {
+  background: linear-gradient(135deg, #1a2236 0%, #10b981 100%);
+  color: white; padding: 72px 48px; border-radius: 16px; margin-bottom: 40px; text-align: center;
+}
+.cover h1 { font-size: 2.2rem; margin-bottom: 8px; }
+.cover .sub { font-size: 1.05rem; opacity: 0.92; }
+.cover .meta { font-size: 0.85rem; opacity: 0.78; margin-top: 16px; }
+
+.toc { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; margin-bottom: 40px; }
+.toc h2 { font-size: 1.2rem; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.toc ol { list-style: none; padding-left: 0; }
+.toc ol > li { padding: 4px 0; font-size: 0.95rem; font-weight: 600; color: var(--primary); }
+.toc ol > li a { color: var(--foreground); text-decoration: none; font-weight: 600; }
+.toc ol > li a:hover { color: var(--primary); }
+.toc ol ol { padding-left: 24px; margin-top: 4px; }
+.toc ol ol > li { font-size: 0.88rem; font-weight: 400; color: var(--muted-foreground); padding: 2px 0; }
+.toc ol ol > li a { color: var(--muted-foreground); font-weight: 400; }
+.toc ol ol > li a:hover { color: var(--primary); }
+
+h1.section { font-size: 1.9rem; margin: 64px 0 18px; padding-bottom: 12px; border-bottom: 2px solid var(--primary); scroll-margin-top: 20px; }
+h2.subsection { font-size: 1.4rem; margin: 40px 0 14px; padding-bottom: 6px; border-bottom: 1px dashed var(--border); }
+h3 { font-size: 1.1rem; margin: 24px 0 12px; }
+h4 { font-size: 1rem; margin: 18px 0 8px; }
+p { margin-bottom: 14px; }
+p.lead { font-size: 1.05rem; color: var(--muted-foreground); margin-bottom: 22px; }
+
+.box { padding: 16px 20px; border-radius: 8px; margin: 16px 0; border-left: 4px solid; }
+.box strong { display: block; margin-bottom: 6px; }
+.box-info { background: #f0fdf4; border-color: var(--success); }
+.box-warn { background: #fef3c7; border-color: var(--warning); }
+.box-alert { background: #fee2e2; border-color: var(--destructive); }
+.box-tip { background: #eff6ff; border-color: var(--info); }
+
+table.t {
+  width: 100%; border-collapse: collapse; margin: 16px 0; background: var(--card);
+  border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+}
+table.t th, table.t td { padding: 11px 15px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: top; }
+table.t th { background: var(--sidebar-bg); font-weight: 600; }
+table.t tr:last-child td { border-bottom: none; }
+
+pre {
+  background: #1a2236; color: #e2e8f0; padding: 16px 20px; border-radius: 8px;
+  overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+  margin: 12px 0; line-height: 1.5;
+}
+pre code { background: none; padding: 0; color: inherit; }
+code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: #be185d; }
+
+.filepath { display: inline-block; background: #1e293b; color: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.82em; }
+
+ul.doc-list { padding-left: 24px; margin: 10px 0; }
+ul.doc-list li { margin-bottom: 6px; }
+
+.lib-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 18px 22px; margin: 14px 0; border-left: 4px solid var(--primary);
+}
+.lib-card .lib-name { font-weight: 700; font-size: 1.05rem; color: var(--primary); }
+.lib-card .lib-version { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--muted-foreground); margin-left: 8px; }
+.lib-card .lib-int { background: rgba(16,185,129,0.15); color: var(--success); padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; display: inline-block; }
+.lib-card .lib-purpose { font-style: italic; color: var(--muted-foreground); margin-top: 6px; font-size: 0.92rem; }
+.lib-card .lib-funcs { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.lib-card .lib-funcs strong { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--foreground); }
+.lib-card ul { padding-left: 22px; font-size: 0.9rem; }
+.lib-card ul li { margin-bottom: 4px; }
+
+.q-block {
+  background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--info);
+  border-radius: 8px; padding: 18px 22px; margin: 24px 0;
+}
+.q-block .q { font-weight: 700; color: var(--info); font-size: 1rem; margin-bottom: 10px; }
+.q-block .q::before { content: "❓ "; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<div class="cover">
+  <h1>Respostas Técnicas</h1>
+  <p class="sub">Sistema de Controle de Acesso Biométrico — 5º CTA</p>
+  <p class="meta">Junho de 2026 · Material complementar pra apresentação</p>
+</div>
+
+
+
+<div class="toc">
+  <h2>Sumário</h2>
+  <ol>
+      <ol>
+        <li><a href="#p1-libs">1.1 Bibliotecas usadas, pra quê e onde</a></li>
+        <li><a href="#p1-t50">1.2 Dispositivo T50M Anviz</a></li>
+        <li><a href="#p1-cam">1.3 Câmeras IP (ONVIF / RTSP / HLS)</a></li>
+        <li><a href="#p1-email">1.4 Envio de email</a></li>
+      </ol>
+    </li>
+    
+</div>
+
+
+
+
+<!-- ============== 1.1 BIBLIOTECAS ============== -->
+<h2 class="subsection" id="p1-libs">1.1 Bibliotecas usadas, pra quê e onde</h2>
+
+<p class="lead">O sistema usa um conjunto de bibliotecas .NET e NuGet, todas open source ou de uso livre. Cada projeto (Int1, Int2, Int3, Int4) tem suas próprias dependências. Abaixo, cada uma com introdução, propósito no sistema e as funções específicas que chamamos.</p>
+
+<h3>Resumo por projeto (descontando Simulador e Arduino que não vão pra produção)</h3>
+<table class="t">
+  <tr><th>Projeto</th><th>Bibliotecas principais</th></tr>
+  <tr><td><strong>Int1 — API/Banco</strong></td><td>BCrypt.Net-Next, Hangfire, Entity Framework Core, MailKit, QuestPDF, Microsoft.AspNetCore.Authentication.JwtBearer, Serilog, Swashbuckle</td></tr>
+  <tr><td><strong>Int2 — Worker</strong></td><td>Anviz.SDK, Microsoft.Extensions.Hosting</td></tr>
+  <tr><td><strong>Int3 — Painel</strong></td><td>(usa só o framework Blazor Server do ASP.NET Core e referência ao Int1)</td></tr>
+  <tr><td><strong>Int4 — Infraestrutura</strong></td><td>SharpOnvifClient, Microsoft.Extensions.Logging.Abstractions</td></tr>
+</table>
+
+<h3>1.1.1 BCrypt.Net-Next</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">BCrypt.Net-Next</span> <span class="lib-version">v4.1.0</span> <span class="lib-int">Int1</span></div>
+  <div class="lib-purpose">Hash one-way de senhas (BCrypt) com salt automático e fator de custo ajustável. Padrão da indústria pra armazenar senhas com segurança.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> precisamos guardar a senha do administrador e a senha de cada pessoa cadastrada de forma irreversível. Mesmo se alguém roubar o banco, a senha original não é recuperável — só dá pra verificar se uma senha digitada bate com o hash. BCrypt resiste a ataques de força bruta porque cada hash leva centenas de milissegundos pra calcular (configurável via "fator de custo").</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas:</strong>
+    <ul>
+      <li><code>BCrypt.Net.BCrypt.HashPassword(senha, workFactor: 10)</code> — gera o hash com fator 10. Usado no cadastro de pessoa (<span class="filepath">Pessoas/Index.razor → HandleCadastrar</span>) e ao trocar senha de admin.</li>
+      <li><code>BCrypt.Net.BCrypt.Verify(senhaInformada, admin.senhaHash)</code> — confere se a senha digitada bate com o hash armazenado. Usado em <span class="filepath">AuthController.Login</span> e no autenticador de acesso por senha.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.2 Hangfire (Core, AspNetCore, MemoryStorage)</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">Hangfire</span> <span class="lib-version">v1.8.14</span> <span class="lib-int">Int1</span></div>
+  <div class="lib-purpose">Framework de jobs em background pra .NET. Permite agendar tarefas recorrentes (cron) ou disparar tarefas em segundo plano sem bloquear a requisição HTTP. Tem dashboard web pra acompanhar o status.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> precisamos rodar duas tarefas de limpeza todo dia às 03:00 UTC sem interferir no funcionamento normal: (1) apagar tentativas de acesso e logs com data de retenção vencida; (2) inativar pessoas que ficaram tempo demais sem acessar. Hangfire faz isso de forma robusta, com retry automático em caso de falha e visibilidade total no dashboard.</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas:</strong>
+    <ul>
+      <li><code>builder.Services.AddHangfire(...)</code> e <code>AddHangfireServer()</code> — registra o Hangfire no startup do Int1 (<span class="filepath">Banco/.../Program.cs</span>).</li>
+      <li><code>RecurringJob.AddOrUpdate&lt;InativarUsuariosInativos2AnosJob&gt;("inativar-usuarios", j =&gt; j.Executar(), "0 3 * * *")</code> — agenda o job de inativação pras 03:00 UTC diariamente.</li>
+      <li><code>RecurringJob.AddOrUpdate&lt;LimparDadosExpiradosJob&gt;("limpar-dados", j =&gt; j.Executar(), "0 3 * * *")</code> — agenda o job de purga.</li>
+      <li><code>app.UseHangfireDashboard("/hangfire")</code> — expõe o dashboard web em <code>http://localhost:5018/hangfire</code> pra monitorar jobs.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.3 Microsoft.EntityFrameworkCore.Sqlite (+ Design, Tools)</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">Entity Framework Core + SQLite Provider</span> <span class="lib-version">v8.0.7</span> <span class="lib-int">Int1, Int2 (transitivo), Int3 (transitivo)</span></div>
+  <div class="lib-purpose">ORM oficial da Microsoft pra .NET. Em vez de escrever SQL na mão, você define classes C# (entidades) e o EF traduz pra comandos SQL. O provider SQLite faz tudo isso em cima de um arquivo único de banco (sem servidor).</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> precisamos armazenar pessoas, ambientes, T50Ms, câmeras, tentativas de acesso e logs. SQLite foi escolhido em vez de SQL Server/PostgreSQL porque: (1) o sistema roda numa máquina só, sem necessidade de banco distribuído; (2) zero administração — é um arquivo <code>banco.db</code> que dá pra backup com simples <code>cp</code>; (3) altamente performático pra cargas moderadas (milhares de acessos por dia). EF Core dá produtividade enorme: migrações automáticas, queries via LINQ, change tracking.</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas:</strong>
+    <ul>
+      <li><code>builder.Services.AddDbContext&lt;AppDbContext&gt;(opt =&gt; opt.UseSqlite(...))</code> — registra o contexto do banco no startup.</li>
+      <li><code>db.Pessoas.Where(...).Include(p =&gt; p.Ambientes).ToList()</code> — queries com eager loading (necessário porque EF Core não tem lazy loading por padrão).</li>
+      <li><code>db.Pessoas.Add(pessoa)</code>, <code>db.SaveChangesAsync()</code> — inserts/updates.</li>
+      <li><code>db.Database.EnsureCreated()</code> — cria o banco se não existir (usado no startup).</li>
+      <li>Migrations via CLI: <code>dotnet ef migrations add &lt;nome&gt;</code> e <code>dotnet ef database update</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.4 Microsoft.AspNetCore.Authentication.JwtBearer + System.IdentityModel.Tokens.Jwt</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">JWT Bearer Authentication</span> <span class="lib-version">v8.0.0 / v7.6.0</span> <span class="lib-int">Int1</span></div>
+  <div class="lib-purpose">Implementação padrão de autenticação por tokens JSON Web Token (JWT). O cliente loga uma vez, recebe um token assinado, e nas próximas requisições envia o token no header <code>Authorization: Bearer ...</code>.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> qualquer endpoint da API precisa ser autenticado, exceto o de login. JWT é stateless (não precisa guardar sessão no servidor), expira sozinho em 8h, e permite carregar dados do admin diretamente no token (adminId, nomeCompleto) sem precisar consultar o banco a cada requisição.</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas:</strong>
+    <ul>
+      <li><code>builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...)</code> — configura JWT Bearer no startup.</li>
+      <li><code>new JwtSecurityToken(issuer, audience, claims, expires: DateTime.UtcNow.AddHours(8), signingCredentials: ...)</code> — gera o token no <span class="filepath">AuthController.Login</span>.</li>
+      <li><code>new JwtSecurityTokenHandler().WriteToken(token)</code> — serializa o token pra string.</li>
+      <li><code>[Authorize]</code> nos controllers — exige token válido.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.5 MailKit</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">MailKit</span> <span class="lib-version">v4.7.1.1</span> <span class="lib-int">Int1</span></div>
+  <div class="lib-purpose">Cliente SMTP/IMAP/POP3 mais completo e mantido pra .NET. Substitui o obsoleto <code>System.Net.Mail.SmtpClient</code>, com suporte completo a STARTTLS, SSL puro, OAuth2 e RFC modernas.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> quando uma pessoa é cadastrada (ou quando o admin clica "Reenviar Senha"), o sistema envia um email com ID e senha. MailKit é confiável e roda em qualquer servidor SMTP padrão (Zimbra, Office 365, Gmail, Postfix).</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas em <span class="filepath">PersonController.ReenviarCredenciais</span>:</strong>
+    <ul>
+      <li><code>new MimeMessage()</code> — constrói a mensagem.</li>
+      <li><code>msg.From.Add(new MailboxAddress(...))</code> e <code>msg.To.Add(...)</code> — define remetente e destinatário.</li>
+      <li><code>msg.Body = new TextPart("html") { Text = corpoHtml }</code> — corpo HTML formatado.</li>
+      <li><code>using var smtp = new SmtpClient()</code> — cliente SMTP MailKit.</li>
+      <li><code>smtp.ConnectAsync(host, port, SecureSocketOptions.StartTls)</code> — conecta com STARTTLS.</li>
+      <li><code>smtp.AuthenticateAsync(user, pass)</code> — login no SMTP.</li>
+      <li><code>smtp.SendAsync(msg)</code> — envio.</li>
+      <li><code>smtp.DisconnectAsync(true)</code> — fecha conexão limpamente.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.6 QuestPDF</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">QuestPDF</span> <span class="lib-version">v2024.3.4</span> <span class="lib-int">Int1 (chamado pelo Int4 ExportService)</span></div>
+  <div class="lib-purpose">Biblioteca pra gerar arquivos PDF com sintaxe declarativa em C# (sem precisar de templates HTML+PDF converters). Layout fluido, com header/footer, tabelas, imagens.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> o painel oferece relatórios em PDF: histórico de acessos, logs de admin, lista de pessoas, ata de ambiente. PDF é o formato esperado pra envio em ofícios militares. QuestPDF gera diretamente em C#, sem dependência externa (não precisa de Word, LibreOffice, etc).</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas em <span class="filepath">InfraestruturaBloco1/Services/ExportService.cs</span>:</strong>
+    <ul>
+      <li><code>Document.Create(container =&gt; { ... })</code> — cria documento.</li>
+      <li>API fluente: <code>.Page(p =&gt; p.Margin(20).Content().Column(col =&gt; ...))</code></li>
+      <li><code>.GeneratePdf()</code> — serializa pra bytes do PDF.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.7 Serilog</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">Serilog</span> <span class="lib-version">v8.0.x</span> <span class="lib-int">Int1, Int2</span></div>
+  <div class="lib-purpose">Framework de logging estruturado pra .NET. Logs saem com timestamps, níveis, propriedades estruturadas (JSON quando precisa) e configuração via arquivo.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> precisamos de logs detalhados pra diagnosticar problemas no servidor sem precisar de debugger — quando o cliente reporta um problema, os logs do dia ajudam a entender o que aconteceu. Serilog tem mensagens com placeholders nomeados (mais informativo que <code>string.Format</code>), e sinks (saídas) configuráveis (console, arquivo, etc).</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas:</strong>
+    <ul>
+      <li><code>builder.Host.UseSerilog((ctx, lc) =&gt; lc.ReadFrom.Configuration(ctx.Configuration))</code> — configura via appsettings.json.</li>
+      <li>Injetado em controllers: <code>private readonly ILogger&lt;PersonController&gt; _logger</code>.</li>
+      <li><code>_logger.LogInformation("Pessoa {Id} cadastrada com sucesso", pessoaId)</code> — log estruturado.</li>
+      <li><code>_logger.LogError(ex, "Falha ao processar X")</code> — log de erro com exception.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.8 Swashbuckle.AspNetCore (Swagger UI)</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">Swashbuckle.AspNetCore</span> <span class="lib-version">v10.1.7</span> <span class="lib-int">Int1</span></div>
+  <div class="lib-purpose">Gera documentação OpenAPI (Swagger) automática a partir dos controllers .NET, com UI web pra testar os endpoints direto pelo navegador.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> facilita testes da API durante desenvolvimento e documentação pra futuros desenvolvedores. Acesse <code>http://localhost:5018/swagger</code> e veja todos os endpoints da API com schemas, autenticação e botão de "Try it out".</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas no <span class="filepath">Banco/.../Program.cs</span>:</strong>
+    <ul>
+      <li><code>builder.Services.AddSwaggerGen()</code> — registra o gerador.</li>
+      <li><code>app.UseSwagger()</code> e <code>app.UseSwaggerUI()</code> — expõe os endpoints <code>/swagger/v1/swagger.json</code> e a UI.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.9 Anviz.SDK</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">Anviz.SDK</span> <span class="lib-version">v2.0.18</span> <span class="lib-int">Int2 (Worker)</span></div>
+  <div class="lib-purpose">SDK não-oficial mas amplamente utilizado pra falar com dispositivos da família T-series da Anviz (T5, T50, T50M) via protocolo OAE (Open Anviz Ethernet) sobre TCP/IP. Wraps o protocolo binário em chamadas .NET assíncronas.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> escrever do zero o protocolo OAE seria enorme (centenas de comandos, framing/checksum, criptografia). O SDK encapsula tudo isso em métodos como <code>SetEmployeesData()</code>, <code>EnrollFingerprint()</code>. Detalhes técnicos do T50M estão na §1.2.</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas em <span class="filepath">AnvizConnector.cs</span> e <span class="filepath">AnvizService.cs</span>:</strong>
+    <ul>
+      <li><code>new AnvizManager().Connect(ip, porta).Result</code> — estabelece sessão TCP com o T50M e retorna um <code>AnvizDevice</code>.</li>
+      <li><code>_device.ReceivedRecord += OnReceivedRecord</code> — assina o evento de novo registro de acesso (push do T50M).</li>
+      <li><code>_device.DownloadRecords(onlyNew: true).Result</code> — drena registros offline acumulados no T50M durante queda de rede.</li>
+      <li><code>_device.SetEmployeesData(userInfo).Wait()</code> — cadastra/atualiza um usuário no T50M.</li>
+      <li><code>_device.DeleteEmployeesData(id).Wait()</code> — remove usuário.</li>
+      <li><code>_device.SetFingerprintTemplate(id, finger, template).Wait()</code> — envia template biométrico já capturado anteriormente (usado pra restaurar biometria).</li>
+      <li><code>_device.GetFingerprintTemplate(id, finger).Result</code> — baixa template biométrico do T50M (backup).</li>
+      <li><code>_device.EnrollFingerprint(id).Result</code> — pede ao T50M pra capturar nova digital. Bloqueia até o usuário colocar o dedo 2 vezes.</li>
+      <li><code>_device.SetDateTime(DateTime.Now).Wait()</code> — sincroniza relógio do T50M com o servidor.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.10 SharpOnvifClient</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">SharpOnvifClient</span> <span class="lib-version">v0.9.3</span> <span class="lib-int">Int4 (Infraestrutura)</span></div>
+  <div class="lib-purpose">Cliente .NET pro padrão ONVIF (Open Network Video Interface Forum), o protocolo aberto usado por câmeras IP pra interoperabilidade. Fala SOAP/HTTP com a câmera pra obter info, descobrir streams e (em parte) acessar gravações.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> precisamos buscar o link da gravação correspondente a uma tentativa de acesso. Cada câmera tem seu jeito de expor isso (Hikvision, Dahua, Intelbras) mas todas implementam ONVIF como denominador comum. Usamos a parte de Device Service pra confirmar que a câmera está respondendo, e a partir daí construímos a URL RTSP de replay.</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas em <span class="filepath">InfraestruturaBloco1/Services/CameraService.cs</span>:</strong>
+    <ul>
+      <li><code>new SimpleOnvifClient(enderecoOnvif, usuario, senha)</code> — cliente ONVIF com credenciais.</li>
+      <li><code>await client.GetDeviceInformationAsync()</code> — pinga a câmera via ONVIF; se responder em ≤5s, confirma que está online e tem credenciais válidas. Esse é o teste de saúde antes de associar a gravação à tentativa.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.11 Microsoft.Extensions.Hosting + Hosting.WindowsServices</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">Microsoft.Extensions.Hosting / .WindowsServices</span> <span class="lib-version">v8.0.1</span> <span class="lib-int">Int2 (Worker)</span></div>
+  <div class="lib-purpose">Hospedagem genérica pra apps .NET que rodam em background (BackgroundService). Permite instalar o Worker como serviço do Windows (ou daemon Linux via systemd) com restart automático.</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> o Worker precisa rodar 24/7, reiniciar sozinho quando cair e ligar automaticamente após reboot do servidor. Essas libs dão a estrutura padrão pra isso.</p>
+  <div class="lib-funcs">
+    <strong>Funções utilizadas em <span class="filepath">Worker/Program.cs</span>:</strong>
+    <ul>
+      <li><code>Host.CreateApplicationBuilder(args)</code> — host builder.</li>
+      <li><code>builder.Services.AddHostedService&lt;Worker&gt;()</code> — registra o Worker principal.</li>
+      <li><code>builder.Services.AddHostedService&lt;SincronizadorT50Worker&gt;()</code> — sincronizador.</li>
+      <li><code>builder.Services.AddHostedService&lt;TimeSyncWorker&gt;()</code> — sincronização de hora.</li>
+      <li><code>UseWindowsService()</code> — habilita instalação como serviço do Windows.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.12 Blazor Server (parte do ASP.NET Core 8)</h3>
+
+<div class="lib-card">
+  <div><span class="lib-name">ASP.NET Core 8 / Blazor Server</span> <span class="lib-int">Int3 (Painel)</span></div>
+  <div class="lib-purpose">Framework de UI da Microsoft que permite escrever a interface inteira em C# (em vez de JavaScript). Estado e renderização ficam no servidor; o navegador recebe atualizações via SignalR (WebSockets).</div>
+  <p style="margin-top: 10px;"><strong>Por que usamos:</strong> uniforma a stack — toda a equipe escreve C#, sem necessidade de React/Vue/Angular. Reaproveita o mesmo modelo do banco do Int1 diretamente (não precisa criar DTOs). Componentes são <code>.razor</code> com sintaxe parecida com Vue/JSX. Pra um sistema interno como esse (poucos usuários simultâneos, alta confiança na rede local), Blazor Server é a escolha mais produtiva.</p>
+  <div class="lib-funcs">
+    <strong>Conceitos centrais usados:</strong>
+    <ul>
+      <li>Componentes <code>.razor</code> com directives como <code>@page</code>, <code>@inject</code>, <code>@onclick</code>.</li>
+      <li>SignalR circuit (gerenciado por <code>CircuitHandler</code>) pra estado por sessão de admin.</li>
+      <li><code>IJSRuntime</code> pra chamar JavaScript do lado servidor (downloads, gráficos Chart.js).</li>
+      <li><code>NavigationManager</code> pra redirecionamentos client-side.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.1.13 Outras dependências menores</h3>
+<table class="t">
+  <tr><th>Biblioteca</th><th>Propósito</th></tr>
+  <tr><td><code>Microsoft.AspNetCore.OpenApi</code> v8.0.7</td><td>Suporte base do .NET pra geração de OpenAPI (consumido pelo Swashbuckle).</td></tr>
+  <tr><td><code>Microsoft.Extensions.Logging.Abstractions</code> v8.0.2</td><td>Abstrações de logging pra que o Int4 (biblioteca) não dependa de uma implementação específica.</td></tr>
+  <tr><td><code>System.Security.Cryptography</code> (BCL)</td><td>Criptografia AES-256-CBC pra cifrar a <code>senhaClear</code> da pessoa (precisamos do texto puro pra reenviar por email, mas não pode ficar em plaintext). Implementado em <span class="filepath">AesHelper.cs</span>.</td></tr>
+  <tr><td><code>System.IdentityModel.Tokens.Jwt</code> v7.6.0</td><td>Manipulação direta de tokens JWT (criação/parsing) — complementa o JwtBearer.</td></tr>
+</table>
+
+
+<!-- ============== 1.2 T50M ============== -->
+<h2 class="subsection" id="p1-t50">1.2 Dispositivo T50M Anviz</h2>
+
+<div class="q-block">
+  <div class="q">Que garantia eu tenho que o T50M vai funcionar?</div>
+  <p>A garantia vem em 3 camadas:</p>
+  <ol class="doc-list">
+    <li><strong>Protocolo oficial Anviz:</strong> o T50M usa OAE (Open Anviz Ethernet), publicado pela fabricante e estável há mais de uma década. A SDK <code>Anviz.SDK</code> 2.0.18 implementa esse protocolo e é a mesma usada por sistemas comerciais (Anviz CrossChex etc).</li>
+    <li><strong>O T50M é um dispositivo padrão de mercado:</strong> não é hardware customizado nosso. Qualquer T50M comprado da Anviz vai responder ao protocolo OAE da mesma forma.</li>
+    
+  </ol>
+  <p><strong>Ressalva conhecida:</strong> existe um ponto a investigar caso autenticação por senha falhe — o T50M usa um formato especial de 3 bytes pra senha numérica, e a SDK .NET <em>pode ou não</em> fazer essa conversão internamente. Se houver problema, está documentado no código em <span class="filepath">AnvizService.cs</span> linhas 22-26 onde olhar primeiro.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">Como o nosso sistema conecta com o T50M?</div>
+  <p>A conexão é <strong>TCP/IP direta na porta 5010</strong> com protocolo binário OAE. O fluxo é:</p>
+  <ol class="doc-list">
+    <li>O T50M é configurado com um IP fixo na rede local (pelo menu do próprio aparelho: <em>System → Comm → Ethernet</em>).</li>
+    <li>O admin cadastra esse IP no painel (<em>Dispositivos T50 → + Novo T50</em>).</li>
+    <li>O Worker (Int2) lê do banco a lista de T50Ms cadastrados e, pra cada um, instancia um <code>AnvizConnector</code> com aquele IP e porta.</li>
+    <li>O <code>AnvizConnector.Conectar()</code> chama <code>new AnvizManager().Connect(_ip, _porta).Result</code> — isso abre o socket TCP e estabelece a sessão OAE com o dispositivo.</li>
+    <li>Uma vez conectado, o Worker assina o evento <code>_device.ReceivedRecord</code> — sempre que alguém usa o T50M (passa o dedo ou digita senha), o T50M envia um <code>Record</code> push pro Worker.</li>
+    <li>O Worker processa o evento (<code>EventProcessor.Processar</code>) e registra a tentativa no banco.</li>
+  </ol>
+  <p>Resumo gráfico:</p>
+  <pre><code>┌──────────────┐         TCP :5010 (OAE)         ┌──────────┐
+│   Worker     │ ─────────── Connect ──────────→  │   T50M   │
+│  (Int2)      │ ←── ReceivedRecord (push)  ───── │  Anviz   │
+│              │ ──── SetEmployeesData ────────→  │          │
+│              │ ──── EnrollFingerprint ───────→  │          │
+└──────────────┘                                   └──────────┘</code></pre>
+</div>
+
+<div class="q-block">
+  <div class="q">Quais operações da biblioteca são usadas e pra fazer o quê?</div>
+  <table class="t">
+    <tr><th>Operação SDK</th><th>O que faz no nosso sistema</th><th>Onde é chamada</th></tr>
+    <tr><td><code>AnvizManager.Connect(ip, port)</code></td><td>Abre sessão TCP/IP com o T50M. Chamada na inicialização do Worker e em retry após falha.</td><td><span class="filepath">AnvizConnector.cs:Conectar()</span></td></tr>
+    <tr><td><code>device.ReceivedRecord</code> (evento)</td><td>Callback chamado pelo SDK toda vez que o T50M envia um novo registro de acesso. Convertemos em <code>EventoAcesso</code> e enfileiramos pra processamento.</td><td><span class="filepath">AnvizConnector.cs:OnReceivedRecord()</span></td></tr>
+    <tr><td><code>device.DownloadRecords(onlyNew: true)</code></td><td>Drena os registros offline acumulados no T50M (até 50.000) caso o Worker tenha ficado fora do ar. Roda na reconexão.</td><td><span class="filepath">AnvizConnector.cs:BuscarEventosArmazenados()</span></td></tr>
+    <tr><td><code>device.SetEmployeesData(userInfo)</code></td><td>Envia ao T50M um usuário (ID, nome, senha, modo de verificação). Usado pra cadastrar pessoa, alterar nome, alterar modo (Mode 4=senha, Mode 6=digital ou senha).</td><td><span class="filepath">AnvizService.cs:AdicionarPessoa(), AlterarModo()</span></td></tr>
+    <tr><td><code>device.DeleteEmployeesData(id)</code></td><td>Remove um usuário do T50M (junto com o template biométrico dele).</td><td><span class="filepath">AnvizService.cs:RemoverPessoa()</span></td></tr>
+    <tr><td><code>device.SetFingerprintTemplate(id, finger, bytes)</code></td><td>Carrega no T50M um template biométrico previamente capturado. Usado pra <em>restaurar biometria</em> sem precisar fazer enroll novo.</td><td><span class="filepath">AnvizService.cs:UploadTemplate()</span></td></tr>
+    <tr><td><code>device.GetFingerprintTemplate(id, finger)</code></td><td>Baixa o template biométrico do T50M pra guardar como backup no banco (campo <code>templateBackup</code> da Pessoa).</td><td><span class="filepath">AnvizService.cs:DownloadTemplate()</span></td></tr>
+    <tr><td><code>device.EnrollFingerprint(id)</code></td><td>Manda o T50M entrar em modo enroll: pede pra pessoa colocar o dedo 2 vezes e retorna o template gerado. Usado no <em>primeiro acesso</em>.</td><td><span class="filepath">AnvizService.cs:IniciarCapturaDigital()</span></td></tr>
+    <tr><td><code>device.SetDateTime(DateTime.Now)</code></td><td>Sincroniza o relógio interno do T50M com a hora do servidor. Roda diariamente às 03:30 UTC pelo <code>TimeSyncWorker</code>.</td><td><span class="filepath">AnvizService.cs:SincronizarHora()</span></td></tr>
+  </table>
+</div>
+
+<div class="q-block">
+  <div class="q">Quais as limitações do T50M?</div>
+  <table class="t">
+    <tr><th>Limite</th><th>Valor</th><th>Implicação</th></tr>
+    <tr><td>Capacidade de templates biométricos</td><td>1.000 por dispositivo</td><td>Sistema avisa quando passa de 950 (badge amarelo "Capacidade crítica") e bloqueia cadastros novos quando atinge 1000. Se o cliente tem mais de 1000 pessoas com biometria no mesmo ambiente, é necessário <strong>distribuir em mais de um T50M</strong>.</td></tr>
+    <tr><td>Capacidade de registros offline</td><td>50.000</td><td>Se o Worker ficar fora do ar mais tempo do que isso (improvável), registros mais antigos são sobrescritos no T50M (não no nosso banco — ali não há limite).</td></tr>
+    <tr><td>Comunicação</td><td>1 sessão TCP por vez</td><td>Se outro software estiver conectado no T50M, o Worker não consegue conectar. Solução: desligar o outro software.</td></tr>
+    <tr><td>Tempo de relé (Lock Relay Time)</td><td>15s fixo</td><td>Não dá pra alterar pelo nosso sistema — só pelo menu local do T50M ou pelo CrossChex.</td></tr>
+    <tr><td>Modos de verificação</td><td>FP (Mode 2), PWD (Mode 4), FP+PWD (Mode 6)</td><td>Não suporta cartão RFID nem face. Só digital e senha.</td></tr>
+    <tr><td>Formato de senha</td><td>3 bytes (12 bits de comprimento + 20 bits de valor)</td><td>Ressalva técnica: a SDK .NET pode ou não fazer essa conversão internamente. Se senha falhar com hardware real, é o primeiro lugar pra investigar.</td></tr>
+    <tr><td>Alimentação</td><td>12V DC, &lt; 130mA</td><td>Cada T50M precisa de fonte 12V próxima.</td></tr>
+  </table>
+</div>
+
+<div class="q-block">
+  <div class="q">O que o cliente tem que fazer (ou mudar no código) pra funcionar?</div>
+  <p><strong>Não precisa mudar nada no código.</strong> Tudo é configuração:</p>
+  <ol class="doc-list">
+    <li>Configurar IP fixo em cada T50M (menu local do aparelho).</li>
+    <li>Garantir que o servidor da aplicação enxerga os T50Ms via TCP/IP na porta 5010.</li>
+    <li>Cadastrar cada T50M no painel (com nome descritivo e o IP).</li>
+    <li>(Opcional) Definir o modo de verificação local no T50M (FP+PWD recomendado).</li>
+  </ol>
+  <p>O único cenário em que seria preciso mexer no código é se a senha de 3 bytes falhar autenticação: aí seria preciso adicionar a conversão manual em <span class="filepath">AnvizService.cs:AdicionarPessoa()</span>, linha 26 (<code>userInfo.Password = ulong.Parse(senha)</code>) — substituir por uma conversão pro formato Anviz se necessário.</p>
+</div>
+
+
+<!-- ============== 1.3 CÂMERAS ============== -->
+<h2 class="subsection" id="p1-cam">1.3 Câmeras IP (ONVIF / RTSP / HLS)</h2>
+
+<div class="q-block">
+  <div class="q">Como o nosso sistema conecta com as câmeras?</div>
+  <p>Não há "conexão persistente" com a câmera — o sistema fala com ela <strong>sob demanda, em 2 momentos</strong>:</p>
+  <ol class="doc-list">
+    <li><strong>Quando o admin pede pra ver ao vivo:</strong> o painel apenas constrói uma URL RTSP/HLS e a entrega pro player do navegador. A câmera é falada pelo navegador, não pelo nosso backend.</li>
+    <li><strong>Quando uma tentativa de acesso é registrada:</strong> o <code>CameraService.MonitorarNovoArquivo()</code> espera o tempo configurado (30-120s), conecta no endpoint ONVIF da câmera via <code>SimpleOnvifClient</code>, faz um <code>GetDeviceInformationAsync()</code> pra confirmar que ela está respondendo, e monta uma URL RTSP de Replay no formato Hikvision/Dahua/Intelbras (<code>rtsp://user:pass@ip/Streaming/tracks/101?starttime=...&amp;endtime=...</code>). Essa URL é salva no campo <code>GravacaoPath</code> da tentativa.</li>
+  </ol>
+  <p>É um modelo deliberadamente leve: o sistema <strong>não baixa, transcodifica ou armazena gravações</strong>. A câmera continua gravando como já fazia. Nosso sistema só guarda <em>o link pra encontrar o trecho certo</em>.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">Com que tipo de câmeras o sistema funciona?</div>
+  <p>Qualquer câmera IP que suporte <strong>ONVIF Profile S</strong> e disponibilize um stream RTSP. Isso cobre praticamente todas as marcas profissionais:</p>
+  <ul class="doc-list">
+    <li>Intelbras (séries VIP, série S)</li>
+    <li>Hikvision (DS-2CD..., Hilook)</li>
+    <li>Dahua (IPC-HFW..., IPC-HDW...)</li>
+    <li>Axis (M, P, Q series)</li>
+    <li>Bosch (Dinion, Flexidome)</li>
+  </ul>
+  <p>Câmeras analógicas convencionais (sem rede) <strong>não funcionam</strong> — o sistema requer câmera IP com ONVIF + RTSP. Câmeras Wi-Fi residenciais (tipo Wyze, Tapo) geralmente não têm ONVIF aberto e <em>não funcionam direto</em>; em alguns casos firmwares alternativos (CFW) habilitam.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">O que é a URL RTSP e pra que serve?</div>
+  <p><strong>RTSP</strong> (Real Time Streaming Protocol) é o protocolo padrão pra entrega de vídeo ao vivo de câmeras IP. A URL tem o formato:</p>
+  <pre><code>rtsp://&lt;usuario&gt;:&lt;senha&gt;@&lt;ip-da-camera&gt;:554/&lt;caminho-do-stream&gt;</code></pre>
+  <p>Exemplo real Hikvision:</p>
+  <pre><code>rtsp://admin:S3nh@F0rt3@192.168.0.50:554/Streaming/Channels/101</code></pre>
+  <p><strong>Pra que serve no sistema:</strong></p>
+  <ul class="doc-list">
+    <li>É a URL que o admin pode abrir no <strong>VLC</strong> pra ver a câmera ao vivo (player desktop).</li>
+    <li>É a base usada pra construir a URL de <strong>Replay</strong> que aparece no Histórico — o sistema só substitui o path por <code>/Streaming/tracks/101?starttime=...&amp;endtime=...</code> e usa as mesmas credenciais.</li>
+    <li>É obrigatória no cadastro.</li>
+  </ul>
+</div>
+
+<div class="q-block">
+  <div class="q">O que é a URL HLS e pra que serve? Por que é opcional?</div>
+  <p><strong>HLS</strong> (HTTP Live Streaming) é o protocolo de streaming sobre HTTP usado pra rodar vídeo em navegadores web modernos. Funciona em qualquer navegador (Chrome, Edge, Firefox) sem precisar de plugin.</p>
+  <p>Exemplo de URL HLS:</p>
+  <pre><code>http://mediamtx.local:8888/cam-frontal/index.m3u8</code></pre>
+  <p><strong>Por que é opcional:</strong> as câmeras IP <em>não disponibilizam HLS diretamente</em> — elas só falam RTSP. Pra ter HLS, é necessário um <strong>servidor de mídia intermediário</strong> (FFmpeg, nginx-rtmp ou MediaMTX) que pega o RTSP da câmera e retransmite como HLS pro navegador. Como nem todo cliente vai querer instalar esse intermediário, deixamos o campo opcional.</p>
+  <p><strong>Se HLS for preenchido:</strong> o painel mostra o vídeo ao vivo direto na aba "Ver ao Vivo".</p>
+  <p><strong>Se HLS for omitido:</strong> a aba "Ver ao Vivo" mostra um placeholder ("vídeo indisponível no navegador, use VLC com a URL RTSP"). O resto do sistema (gravação associada, etc.) continua funcionando normalmente.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">O que é o Endereço ONVIF e pra que serve? É obrigatório?</div>
+  <p><strong>ONVIF</strong> (Open Network Video Interface Forum) é um padrão aberto que permite que sistemas de diferentes fornecedores conversem com câmeras de diferentes marcas. Toda câmera IP profissional implementa ONVIF.</p>
+  <p>O endpoint ONVIF é uma URL SOAP/HTTP pra falar com a câmera. Formato típico:</p>
+  <pre><code>http://&lt;ip-da-camera&gt;:80/onvif/device_service</code></pre>
+  <p><strong>Pra que serve no nosso sistema:</strong></p>
+  <ul class="doc-list">
+    <li>Quando ocorre um acesso liberado, o <code>CameraService</code> conecta no endpoint ONVIF da câmera do ambiente e chama <code>GetDeviceInformationAsync()</code> — isso confirma que a câmera está respondendo e que as credenciais embutidas na URL RTSP são válidas.</li>
+    <li>Só depois desse "ping ONVIF" bem-sucedido é que o sistema monta a URL de Replay e associa ao histórico.</li>
+  </ul>
+  <p><strong>É obrigatório?</strong></p>
+  <ul class="doc-list">
+    <li><strong>Pra ter gravação associada no histórico:</strong> sim. Sem ONVIF, o campo "Vídeo" no histórico fica em branco (—).</li>
+    <li><strong>Pra ver ao vivo:</strong> não. Ver ao vivo funciona só com a URL RTSP (via VLC) ou HLS (via navegador).</li>
+  </ul>
+  <p>O campo no formulário aceita ficar vazio — você cadastra a câmera só com RTSP se não tem interesse em rastrear gravações por acesso.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">Qual a limitação do sistema em relação às câmeras?</div>
+  <ul class="doc-list">
+    <li><strong>Não controlamos a gravação:</strong> o sistema assume que a câmera já está gravando (por detecção de movimento ou contínuo) — só pega o link do trecho. Se a câmera não estiver gravando, não há vídeo.</li>
+    <li><strong>O Profile G completo do ONVIF não está implementado.</strong> A SDK SharpOnvifClient na versão usada não expõe <code>FindRecordings + GetReplayUri</code> de forma confiável pra todas as marcas. Por isso usamos a abordagem <em>"montar URL no formato Hikvision/Dahua/Intelbras"</em>, que funciona pra essas 3 marcas (e similares) mas pode não funcionar pra outras marcas.</li>
+    <li><strong>Streaming ao vivo no navegador exige HLS:</strong> RTSP não roda em navegador moderno. Se quiser ver ao vivo direto no painel, precisa do MediaMTX configurado.</li>
+    <li><strong>Sem PTZ:</strong> o sistema não controla pan/tilt/zoom da câmera. Visualização é só estática.</li>
+    <li><strong>Sem áudio:</strong> não consumimos nem armazenamos áudio das câmeras.</li>
+  </ul>
+</div>
+
+<div class="q-block">
+  <div class="q">Que garantia temos que vai funcionar?</div>
+  <ul class="doc-list">
+    <li>O protocolo ONVIF é padronizado pela <a href="https://www.onvif.org">ONVIF Foundation</a> desde 2008. Câmeras certificadas <strong>são obrigadas</strong> a responder ao <code>GetDeviceInformation</code> de forma consistente.</li>
+    <li>O formato de URL de Replay <code>/Streaming/tracks/101?starttime=...&amp;endtime=...</code> é o padrão Hikvision e foi adotado também por Dahua e Intelbras (que copiaram esse formato pra interoperar com NVRs da concorrência).</li>
+    <li>Validamos com VLC: antes do cadastro, qualquer câmera que abra no VLC vai funcionar pro <em>ver ao vivo</em>. Se também responde ONVIF (testável com programas como ONVIF Device Manager), funciona pra gravação associada.</li>
+  </ul>
+  <p><strong>Ressalva:</strong> não dá pra garantir 100% sem testar com a câmera específica do cliente. O comportamento esperado:</p>
+  <ul class="doc-list">
+    <li>Câmera responde ONVIF + tem URL RTSP no formato padrão → tudo funciona.</li>
+    <li>Câmera responde ONVIF mas formato de Replay diferente (raro) → ver ao vivo OK, gravação associada vai dar 404 ao tentar abrir.</li>
+    <li>Câmera não responde ONVIF → ver ao vivo OK (RTSP funciona), gravação associada não vem (— no histórico).</li>
+  </ul>
+</div>
+
+<div class="q-block">
+  <div class="q">O que  tem que fazer (ou mudar no código) pra funcionar?</div>
+  <p><strong>Não precisa mexer no código.</strong> Só configuração na câmera:</p>
+  <ol class="doc-list">
+    <li>Habilitar ONVIF no painel web da câmera (caminho varia por marca).</li>
+    <li>Criar um usuário ONVIF dedicado (não usar o admin da câmera) com permissão de leitura + playback.</li>
+    <li>Anotar URL RTSP, endpoint ONVIF e credenciais.</li>
+    <li>Cadastrar tudo no painel do sistema.</li>
+  </ol>
+  <p><strong>Se quiser ver ao vivo no navegador:</strong> instalar e configurar MediaMTX (ou FFmpeg/nginx-rtmp), apontar pra URL RTSP da câmera, copiar a URL HLS gerada pro campo HLS do cadastro. Setup detalhado está no DeploymentGuide.html, §6.4.</p>
+</div>
+
+
+<!-- ============== 1.4 EMAIL ============== -->
+<h2 class="subsection" id="p1-email">1.4 Envio de email</h2>
+
+<div class="q-block">
+  <div class="q">Como o nosso sistema está fazendo o envio de email?</div>
+  <p>O fluxo completo, passo a passo:</p>
+  <ol class="doc-list">
+    <li>Quando o admin clica em "Cadastrar" no formulário de pessoa, depois da gravação no banco, o Frontend (Int3) chama o endpoint <code>POST /api/person/{id}/reenviar-credenciais</code> do Int1.</li>
+    <li>O <code>PersonController.ReenviarCredenciais()</code> faz:
+      <ol style="padding-left: 24px; margin-top: 6px;">
+        <li>Busca a pessoa no banco.</li>
+        <li>Descriptografa a <code>senhaClear</code> usando AES-256-CBC com a chave do appsettings.</li>
+        <li>Lê as 4 variáveis de ambiente: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code>.</li>
+        <li>Se alguma estiver faltando: cai no <em>fallback console</em> — escreve no log do servidor as credenciais e marca <code>fallback = true</code> no retorno.</li>
+        <li>Se todas estiverem presentes: monta um <code>MimeMessage</code> com HTML, conecta no SMTP via <code>SmtpClient.ConnectAsync(host, port, SecureSocketOptions.StartTls)</code>, autentica e envia.</li>
+        <li>Registra log de auditoria (<code>LogAdmin</code> com ação "ReenvioCredenciais").</li>
+        <li>Retorna JSON: <code>{ sucesso: true, fallback: true/false, mensagem: "..." }</code>.</li>
+      </ol>
+    </li>
+    <li>O Frontend usa esse retorno pra mostrar no painel: verde (enviado), amarelo (fallback — SMTP falhou), azul (enviando).</li>
+  </ol>
+  <p>O HTML do email mora em <span class="filepath">PersonController.cs</span> linhas 182-189, na variável <code>corpoHtml</code> — texto HTML simples com tabela do ID e senha. Pra customizar (cores, logo, mensagem), basta editar essa string e rebuildar.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">Que garantia temos que vai funcionar?</div>
+  <p>A garantia tem 2 partes:</p>
+  <p><strong>Do lado do nosso código:</strong> a biblioteca MailKit é a referência de mercado pra clientes SMTP em .NET, mantida ativamente e usada em centenas de milhares de aplicações. O código segue exatamente o template oficial da documentação MailKit. Não há "mágica" nem heurística — é SMTP padrão (RFC 5321).</p>
+  <p><strong>Do lado do servidor SMTP do cliente:</strong> isso <em>depende exclusivamente do servidor deles</em>. Se o EBmail Zimbra estiver online, aceitar conexões TLS em 587 e as credenciais funcionarem em qualquer outro cliente de email (Outlook, Thunderbird), também vai funcionar no nosso sistema.</p>
+  <p><strong>Como confirmar funcionamento antes da entrega definitiva:</strong> no painel, ao cadastrar uma pessoa de teste com o email do próprio admin, a banner de status já mostra se chegou. Se não chegar, o log do Int1 indica exatamente o erro (auth failed, timeout, TLS failed, etc.). Veja a seção 7.3 do DeploymentGuide.html.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">Vai enviar pelo servidor de email ? Como?</div>
+  <p><strong>Sim, integralmente pelo servidor SMTP deles.</strong> O sistema é apenas um cliente SMTP — não tem servidor de email embutido. Não faz relay próprio nem usa serviço externo (SendGrid, etc.).</p>
+  <p>A configuração funciona por <strong>variáveis de ambiente</strong> lidas pelo processo do Int1 no startup:</p>
+  <table class="t">
+    <tr><th>Variável</th><th>Valor exemplo</th><th>Significado</th></tr>
+    <tr><td><code>SMTP_HOST</code></td><td><code>smtp.ebmail.eb.mil.br</code></td><td>Hostname do servidor SMTP do CTA</td></tr>
+    <tr><td><code>SMTP_PORT</code></td><td><code>587</code></td><td>Porta SMTP — padrão STARTTLS é 587, SSL puro é 465</td></tr>
+    <tr><td><code>SMTP_USER</code></td><td><code>controle.acesso@eb.mil.br</code></td><td>Conta de serviço dedicada pra envio</td></tr>
+    <tr><td><code>SMTP_PASS</code></td><td>(privado)</td><td>Senha SMTP da conta</td></tr>
+  </table>
+  <p>Quando o Int1 sobe, ele lê essas 4 variáveis com <code>Environment.GetEnvironmentVariable("SMTP_HOST")</code> etc. e usa nas chamadas MailKit. Se alguma estiver vazia, cai no fallback console.</p>
+</div>
+
+<div class="q-block">
+  <div class="q">O que o tem que fazer (ou mudar no código) pra funcionar?</div>
+  <p><strong>Não precisa mexer no código.</strong> Só configuração de ambiente, em 3 passos:</p>
+  <ol class="doc-list">
+    <li><strong>Obter da TI do CTA:</strong> SMTP_HOST, SMTP_PORT, SMTP_USER (idealmente uma conta dedicada do tipo <code>controle.acesso@eb.mil.br</code>), SMTP_PASS.</li>
+    <li><strong>Configurar as 4 variáveis no nível da máquina</strong> (não da sessão), de forma persistente:
+      <pre><code># Windows (PowerShell como Admin)
+[System.Environment]::SetEnvironmentVariable("SMTP_HOST", "smtp.ebmail.eb.mil.br", "Machine")
+[System.Environment]::SetEnvironmentVariable("SMTP_PORT", "587", "Machine")
+[System.Environment]::SetEnvironmentVariable("SMTP_USER", "controle.acesso@eb.mil.br", "Machine")
+[System.Environment]::SetEnvironmentVariable("SMTP_PASS", "&lt;senha&gt;", "Machine")</code></pre>
+    </li>
+    <li><strong>Reiniciar o Int1</strong> (as env vars são lidas no startup): <code>Restart-Service "5CTA-Banco"</code> ou rodar o <code>iniciar.ps1</code> de novo.</li>
+  </ol>
+  <p>No Linux, as 4 variáveis vão no arquivo do serviço systemd em <span class="filepath">/etc/systemd/system/5cta-banco.service</span>. Detalhes na §7.2 do DeploymentGuide.html.</p>
+  <p><strong>Customização do conteúdo do email (opcional):</strong> se quiser mudar o HTML do email (adicionar logo do 5º CTA, mudar cores, etc.), editar a variável <code>corpoHtml</code> em <span class="filepath">PersonController.cs</span> linhas 182-189 e rebuildar.</p>
+</div>
+
+
